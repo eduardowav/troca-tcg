@@ -20,7 +20,8 @@ foreign key entre eles (ex.: `listings` referencia `finishes`, `cards` e `profil
 | 06 | `schema/06_matches.sql` | matches, participantes, itens, eventos |
 | 07 | `schema/07_terms_reports.sql` | aceites de termos, denúncias |
 | 08 | `schema/08_notifications.sql` | notificações, push subscriptions |
-| 09 | `schema/09_rls.sql` | Row Level Security |
+| 09 | `schema/09_rls.sql` | Row Level Security (tabelas de usuário) |
+| 10 | `schema/10_hardening.sql` | RLS do catálogo (leitura pública) + trava de `match_events` + search_path da função |
 
 > **Dependência do Supabase Auth:** `profiles.id` referencia `auth.users(id)`.
 > Aplique este schema em um projeto Supabase (onde o schema `auth` já existe).
