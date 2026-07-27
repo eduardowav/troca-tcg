@@ -1,0 +1,34 @@
+name: Jobs agendados
+
+# Dispara os jobs internos da API por cron. As rotas /internal/* são protegidas
+# por header X-Job-Secret. Ver seções 5 e 18 da doc.
+on:
+  schedule:
+    - cron: '0 9 * * *'      # 06:00 BRT — recomputa triangulares + expira vencidos
+    - cron: '*/15 * * * *'   # notifica "procuram sua carta"
+  workflow_dispatch:
+
+jobs:
+  disparar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Chamar jobs internos
+        env:
+          API_URL: ${{ secrets.API_URL }}
+          JOB_SECRET: ${{ secrets.JOB_SECRET }}
+        run: |
+          if [ -z "$API_URL" ] || [ -z "$JOB_SECRET" ]; then
+            echo "Secrets API_URL/JOB_SECRET ainda não configurados — jobs em espera."
+            exit 0
+          fi
+          chamar() {
+            curl -sf -X POST "$API_URL/v1/internal/jobs/$1" \
+                 -H "X-Job-Secret: $JOB_SECRET" --fail
+          }
+          # Notificações rodam em todo disparo (inclusive no de 15 min).
+          chamar notify-wanted || echo "notify-wanted falhou"
+          # Tarefas diárias: só na janela das 06:00 BRT (09:00 UTC).
+          if [ "$(date -u +%H:%M)" = "09:00" ]; then
+            chamar triangular || echo "triangular falhou"
+            chamar expire || echo "expire falhou"
+          fi
