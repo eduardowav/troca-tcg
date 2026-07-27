@@ -1,0 +1,163 @@
+@import 'tailwindcss';
+
+/* ============================================================
+   TOKENS — mundo da carta física (playmat / sleeve / foil)
+   Ver contrato de direção em index.html.
+   ============================================================ */
+@theme {
+  /* Superfícies — grafite de playmat, não preto puro */
+  --color-ink: #0e1116; /* base do playmat */
+  --color-ink-deep: #090c10; /* vinheta / vãos */
+  --color-surface: #161b22; /* cartelas, painéis */
+  --color-surface-2: #1d232d; /* elevação sutil */
+  --color-edge: #2a313c; /* bordas visíveis */
+  --color-edge-soft: #222834; /* divisórias discretas */
+
+  /* Texto — cardstock levemente quente */
+  --color-paper: #eaeef4; /* principal */
+  --color-muted: #94a0b2; /* secundário / placeholder (≥4.5:1) */
+  --color-faint: #5c6675; /* decorativo, não-texto */
+
+  /* Acento primário — volt calibrado */
+  --color-volt: #7c5cff;
+  --color-volt-strong: #6b49f0;
+  --color-volt-ink: #0b0714; /* texto sobre volt */
+
+  /* Afordâncias semânticas das duas listas */
+  --color-offer: #2dd4bf; /* Ofereço — o que eu dou */
+  --color-want: #f5a524; /* Procuro — o que eu quero */
+
+  /* Estado */
+  --color-alert: #f2555a;
+
+  /* Foil / holo — SÓ no momento do match */
+  --color-holo-a: #5ee7df;
+  --color-holo-b: #b490ca;
+  --color-holo-c: #ff9dc8;
+
+  /* Tipografia */
+  --font-display: 'Cabinet Grotesk', 'Satoshi', ui-sans-serif, system-ui,
+    sans-serif;
+  --font-sans: 'Satoshi', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', monospace;
+
+  /* Raio — cartela de carta */
+  --radius-card: 14px;
+  --radius-control: 10px;
+
+  /* Sombra — offset + blur (nunca halo de raio zero) */
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px -12px rgb(0 0 0 / 0.6);
+  --shadow-pop: 0 12px 40px -12px rgb(0 0 0 / 0.7);
+}
+
+/* Gradiente holo reutilizável (linha de troca) */
+@layer base {
+  :root {
+    --holo: linear-gradient(
+      110deg,
+      var(--color-holo-a),
+      var(--color-holo-b),
+      var(--color-holo-c)
+    );
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100dvh;
+    background-color: var(--color-ink);
+    /* Feltro de playmat: vinheta radial sutil, sem ruído falso */
+    background-image:
+      radial-gradient(
+        120% 80% at 50% -10%,
+        color-mix(in oklab, var(--color-volt) 7%, transparent),
+        transparent 60%
+      ),
+      radial-gradient(100% 100% at 50% 120%, var(--color-ink-deep), transparent 55%);
+    background-attachment: fixed;
+    color: var(--color-paper);
+    font-family: var(--font-sans);
+    font-synthesis-weight: none;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    background: color-mix(in oklab, var(--color-volt) 40%, transparent);
+    color: var(--color-paper);
+  }
+
+  /* Foco de teclado visível em tudo que é interativo */
+  :focus-visible {
+    outline: 2px solid var(--color-volt);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  h1, h2, h3 {
+    font-family: var(--font-display);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    text-wrap: balance;
+  }
+}
+
+/* Utilitários do mundo visual */
+@layer utilities {
+  /* Código de set: o vernáculo do colecionador (PRE 059/131) */
+  .set-code {
+    font-family: var(--font-mono);
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .text-holo {
+    background: var(--holo);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  /* Varredura holo — reservada ao match. Um único momento autoral. */
+  .holo-sweep {
+    background:
+      linear-gradient(
+          110deg,
+          transparent 20%,
+          color-mix(in oklab, var(--color-holo-b) 55%, transparent) 50%,
+          transparent 80%
+        )
+        no-repeat,
+      var(--holo);
+    background-size:
+      220% 100%,
+      100% 100%;
+    background-position:
+      -60% 0,
+      0 0;
+    animation: holo-sweep 2.4s ease-out both;
+  }
+
+  @keyframes holo-sweep {
+    to {
+      background-position:
+        160% 0,
+        0 0;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .holo-sweep {
+      animation: none;
+    }
+    * {
+      animation-duration: 0.001ms !important;
+      transition-duration: 0.001ms !important;
+    }
+  }
+}
