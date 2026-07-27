@@ -72,6 +72,15 @@ npm install
 npm run dev
 ```
 
+### Skills de design (opcional)
+
+O trabalho de frontend usa skills de design instaláveis (Refactoring UI, Emil
+Kowalski, impeccable). O conteúdo fica fora do git; para restaurá-lo:
+
+```bash
+npx skills experimental_install   # lê skills-lock.json
+```
+
 ## Roadmap
 
 - [ ] **Fase 1 — Fundação:** schema, API `/health`, sync de catálogo, keep-alive, backup

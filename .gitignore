@@ -33,3 +33,10 @@ dist-ssr/
 .idea/
 .DS_Store
 Thumbs.db
+
+# ---- Skills (guias de design/dev) ----
+# Conteúdo instalado fica fora do git; skills-lock.json (versionado) o restaura
+# via `npx skills experimental_install`.
+/.agents/
+/agent/
+/.claude/skills/
