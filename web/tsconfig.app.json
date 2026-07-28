@@ -20,7 +20,8 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true,
 
-    "baseUrl": ".",
+    // Sem "baseUrl": desde o TS 4.4 o "paths" resolve relativo a este arquivo,
+    // e a opção foi depreciada (some no TS 7).
     "paths": { "@/*": ["./src/*"] }
   },
   "include": ["src"]
