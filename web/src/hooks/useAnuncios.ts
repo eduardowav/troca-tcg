@@ -3,7 +3,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   type Anuncio,
   type AnuncioEdicao,
+  type AnuncioNovo,
   atualizarAnuncio,
+  criarAnuncio,
   listarAnuncios,
   removerAnuncio,
 } from '@/lib/anuncios'
@@ -44,6 +46,22 @@ export function useCartasPorId(ids: string[]) {
       if (error) throw error
       return new Map((data as Carta[]).map((c) => [c.id, c]))
     },
+  })
+}
+
+/**
+ * Adiciona uma carta à lista aberta.
+ *
+ * Sem otimismo aqui de propósito: o id do anúncio nasce no servidor, e o upsert
+ * da API é idempotente — recadastrar a mesma carta reativa o anúncio existente
+ * em vez de criar outro. Esperar a resposta evita inventar uma linha fantasma.
+ */
+export function useAdicionarAnuncio() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (item: AnuncioNovo) => criarAnuncio(item),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: CHAVE }),
   })
 }
 

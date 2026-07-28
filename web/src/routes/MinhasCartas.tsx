@@ -1,6 +1,5 @@
 import { AnimatePresence, motion } from 'motion/react'
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 
 import { CartaThumb } from '@/components/carta/CartaThumb'
@@ -15,11 +14,14 @@ import { ApiError } from '@/lib/api'
 import { cn } from '@/lib/cn'
 import { type Carta, codigoSet, type ListingKind, nomeCarta } from '@/lib/types'
 import {
+  useAdicionarAnuncio,
   useAnuncios,
   useCartasPorId,
   useEditarAnuncio,
   useRemoverAnuncio,
 } from '@/hooks/useAnuncios'
+import { useCardSearch } from '@/hooks/useCardSearch'
+import { useDebounced } from '@/hooks/useDebounced'
 
 export default function MinhasCartas() {
   const [aba, setAba] = useState<ListingKind>('OFERTA')
@@ -53,6 +55,8 @@ export default function MinhasCartas() {
       </header>
 
       <Abas aba={aba} onAba={setAba} totais={totais} />
+
+      <Adicionar aba={aba} jaNaLista={new Set(daAba.map((a) => a.card_id))} />
 
       <div className="mt-5 flex-1">
         {isPending ? (
@@ -126,6 +130,123 @@ function Abas({
           </button>
         )
       })}
+    </div>
+  )
+}
+
+/* ---------- Adicionar carta à lista aberta ---------- */
+
+function Adicionar({
+  aba,
+  jaNaLista,
+}: {
+  aba: ListingKind
+  jaNaLista: Set<string>
+}) {
+  const [aberto, setAberto] = useState(false)
+  const [busca, setBusca] = useState('')
+  const termo = useDebounced(busca)
+  const { data: resultados, isFetching } = useCardSearch(termo)
+  const adicionar = useAdicionarAnuncio()
+
+  const rotulo = aba === 'OFERTA' ? 'Ofereço' : 'Procuro'
+
+  function incluir(carta: Carta) {
+    adicionar.mutate(
+      { card_id: carta.id, tipo: aba },
+      {
+        onSuccess: () => {
+          toast.success(`${nomeCarta(carta)} entrou em ${rotulo}.`)
+          setBusca('')
+        },
+        onError: (erro) =>
+          toast.error(
+            erro instanceof ApiError
+              ? erro.message
+              : 'Não foi possível adicionar agora.',
+          ),
+      },
+    )
+  }
+
+  if (!aberto) {
+    return (
+      <Button
+        variant="subtle"
+        size="md"
+        block
+        className="mt-3"
+        onClick={() => setAberto(true)}
+      >
+        Adicionar carta a {rotulo}
+      </Button>
+    )
+  }
+
+  return (
+    <div className="mt-3 rounded-[var(--radius-card)] border border-edge bg-surface p-3">
+      <div className="flex items-center gap-2">
+        <input
+          autoFocus
+          type="search"
+          value={busca}
+          onChange={(e) => setBusca(e.target.value)}
+          aria-label={`Buscar carta para ${rotulo}`}
+          placeholder="Busque: Pikachu, Umbreon, Pesquisa…"
+          className="h-11 min-w-0 flex-1 rounded-[var(--radius-control)] border border-edge bg-surface-2 px-3 text-[15px] text-paper placeholder:text-muted"
+        />
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            setAberto(false)
+            setBusca('')
+          }}
+        >
+          Fechar
+        </Button>
+      </div>
+
+      {termo.trim().length >= 2 && (
+        <div className="mt-3">
+          {isFetching && !resultados ? (
+            <p className="py-3 text-center text-[14px] text-muted">Buscando…</p>
+          ) : resultados?.length ? (
+            <ul className="flex max-h-72 flex-col gap-1.5 overflow-y-auto">
+              {resultados.map((carta) => {
+                const dentro = jaNaLista.has(carta.id)
+                return (
+                  <li key={carta.id}>
+                    <button
+                      type="button"
+                      disabled={dentro || adicionar.isPending}
+                      onClick={() => incluir(carta)}
+                      className="flex w-full items-center gap-3 rounded-[10px] p-2 text-left hover:bg-surface-2 disabled:opacity-45 disabled:hover:bg-transparent"
+                    >
+                      <CartaThumb carta={carta} className="w-9 shrink-0" />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-[14px] text-paper">
+                          {nomeCarta(carta)}
+                        </span>
+                        <span className="set-code block text-[11px] text-muted">
+                          {codigoSet(carta)}
+                        </span>
+                      </span>
+                      <span className="shrink-0 text-[13px] text-muted">
+                        {dentro ? 'já na lista' : 'adicionar'}
+                      </span>
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
+          ) : (
+            <p className="py-3 text-center text-[14px] text-muted">
+              Nenhuma carta com esse nome.
+            </p>
+          )}
+        </div>
+      )}
     </div>
   )
 }
@@ -423,12 +544,9 @@ function Vazio({ aba }: { aba: ListingKind }) {
           ? 'As cartas repetidas que você topa trocar entram aqui.'
           : 'As cartas que faltam para você entram aqui — é o que o app usa para achar match.'}
       </p>
-      <Link
-        to="/onboarding"
-        className="mt-5 text-[14px] text-paper underline underline-offset-4"
-      >
-        Adicionar cartas
-      </Link>
+      <p className="mt-5 text-[13px] text-faint">
+        Use “Adicionar carta” acima para começar.
+      </p>
     </div>
   )
 }
