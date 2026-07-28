@@ -13,6 +13,8 @@ interface OnboardingState {
   alternar: (carta: Carta, tipo: ListingKind) => void
   remover: (cardId: string) => void
   tipoDe: (cardId: string) => ListingKind | undefined
+  /** Zera após o lote ir para o servidor — a verdade passa a ser a API. */
+  limpar: () => void
 }
 
 export const useOnboarding = create<OnboardingState>((set, get) => ({
@@ -35,6 +37,7 @@ export const useOnboarding = create<OnboardingState>((set, get) => ({
       return { selecoes }
     }),
   tipoDe: (cardId) => get().selecoes[cardId]?.tipo,
+  limpar: () => set({ selecoes: {} }),
 }))
 
 /** Deriva as contagens sem recalcular no componente. */

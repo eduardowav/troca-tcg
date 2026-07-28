@@ -1,14 +1,19 @@
 import NumberFlow from '@number-flow/react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { AnimatePresence, motion } from 'motion/react'
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { toast } from 'sonner'
 
 import { CartaThumb } from '@/components/carta/CartaThumb'
 import { Button } from '@/components/ui/Button'
 import { useCardSearch } from '@/hooks/useCardSearch'
 import { useDebounced } from '@/hooks/useDebounced'
+import { criarAnunciosEmLote } from '@/lib/anuncios'
+import { ApiError } from '@/lib/api'
 import { cn } from '@/lib/cn'
 import { type Carta, codigoSet, type ListingKind, nomeCarta } from '@/lib/types'
-import { contar, useOnboarding } from '@/stores/onboarding'
+import { contar, type Selecao, useOnboarding } from '@/stores/onboarding'
 
 const META = 10
 
@@ -260,6 +265,7 @@ function BandejaSelecao({ total, faltam }: { total: number; faltam: number }) {
   const remover = useOnboarding((s) => s.remover)
   const lista = Object.values(selecoes)
   const pronto = faltam === 0
+  const { salvar, salvando } = useSalvarListas(lista)
 
   return (
     <AnimatePresence>
@@ -294,8 +300,14 @@ function BandejaSelecao({ total, faltam }: { total: number; faltam: number }) {
             </ul>
 
             {pronto ? (
-              <Button variant="primary" size="lg" block>
-                Ver meus matches
+              <Button
+                variant="primary"
+                size="lg"
+                block
+                loading={salvando}
+                onClick={salvar}
+              >
+                {salvando ? 'Salvando suas listas…' : 'Ver meus matches'}
               </Button>
             ) : (
               <div
@@ -312,6 +324,43 @@ function BandejaSelecao({ total, faltam }: { total: number; faltam: number }) {
       )}
     </AnimatePresence>
   )
+}
+
+/* ---------- Persistência do lote ---------- */
+
+/**
+ * Manda as seleções para POST /me/listings/bulk — o único write, já autenticado.
+ *
+ * O onboarding ainda não pergunta condição nem acabamento, então vai o padrão do
+ * schema: NM e finish NORMAL (id 1). O upsert da API é idempotente, então repetir
+ * o envio depois de um erro de rede não duplica nada.
+ */
+function useSalvarListas(lista: Selecao[]) {
+  const limpar = useOnboarding((s) => s.limpar)
+  const queryClient = useQueryClient()
+  const navigate = useNavigate()
+
+  const mutation = useMutation({
+    mutationFn: () =>
+      criarAnunciosEmLote(
+        lista.map(({ carta, tipo }) => ({ card_id: carta.id, tipo })),
+      ),
+    onSuccess: async () => {
+      limpar()
+      // O bulk também marca onboarding_ok; o perfil em cache ficou velho.
+      await queryClient.invalidateQueries({ queryKey: ['perfil'] })
+      navigate('/pronto', { replace: true })
+    },
+    onError: (erro) => {
+      toast.error(
+        erro instanceof ApiError
+          ? erro.message
+          : 'Não foi possível salvar suas listas. Tente de novo.',
+      )
+    },
+  })
+
+  return { salvar: () => mutation.mutate(), salvando: mutation.isPending }
 }
 
 /* ---------- Ícone ---------- */
