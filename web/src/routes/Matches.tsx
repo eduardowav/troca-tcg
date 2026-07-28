@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 
 import { LinhaDeTroca } from '@/components/carta/LinhaDeTroca'
+import { IconeTroca } from '@/components/ui/Icone'
 import { useCartasPorId } from '@/hooks/useAnuncios'
 import { useMatches } from '@/hooks/useMatches'
 import { cn } from '@/lib/cn'
@@ -153,10 +154,8 @@ function Esqueleto() {
 function Vazio() {
   return (
     <div className="flex flex-col items-center py-14 text-center">
-      <div className="grid size-12 place-items-center rounded-2xl border border-edge bg-surface">
-        <span aria-hidden className="text-xl">
-          🔄
-        </span>
+      <div className="grid size-12 place-items-center rounded-2xl border border-edge bg-surface text-muted">
+        <IconeTroca className="size-6" />
       </div>
       <p className="mt-4 text-[15px] text-paper">Nenhuma troca possível ainda.</p>
       <p className="mt-1.5 max-w-xs text-[14px] leading-relaxed text-muted">

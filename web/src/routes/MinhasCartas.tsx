@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 
 import { CartaThumb } from '@/components/carta/CartaThumb'
 import { Button } from '@/components/ui/Button'
+import { IconeBusca, IconeCartas } from '@/components/ui/Icone'
 import {
   type Anuncio,
   CONDICOES,
@@ -529,10 +530,12 @@ function Vazio({ aba }: { aba: ListingKind }) {
   const oferta = aba === 'OFERTA'
   return (
     <div className="flex flex-col items-center py-14 text-center">
-      <div className="grid size-12 place-items-center rounded-2xl border border-edge bg-surface">
-        <span aria-hidden className="text-xl">
-          {oferta ? '🎴' : '🔍'}
-        </span>
+      <div className="grid size-12 place-items-center rounded-2xl border border-edge bg-surface text-muted">
+        {oferta ? (
+          <IconeCartas className="size-6" />
+        ) : (
+          <IconeBusca className="size-6" />
+        )}
       </div>
       <p className="mt-4 text-[15px] text-paper">
         {oferta

@@ -5,6 +5,7 @@ import { z } from 'zod'
 
 import { Campo } from '@/components/ui/Campo'
 import { Button } from '@/components/ui/Button'
+import { IconeEnvelope } from '@/components/ui/Icone'
 import { mensagemAuth } from '@/lib/authMensagens'
 import { cn } from '@/lib/cn'
 import { usernameDisponivel } from '@/lib/perfil'
@@ -324,10 +325,8 @@ function AceiteTermos({ erro }: { erro?: string }) {
 function ConfirmeEmail({ email }: { email: string }) {
   return (
     <div className="mx-auto flex min-h-[100dvh] w-full max-w-sm flex-col justify-center px-5 py-12 text-center">
-      <div className="mx-auto grid size-14 place-items-center rounded-2xl border border-edge bg-surface">
-        <span aria-hidden className="text-2xl">
-          ✉️
-        </span>
+      <div className="mx-auto grid size-14 place-items-center rounded-2xl border border-edge bg-surface text-muted">
+        <IconeEnvelope className="size-7" />
       </div>
       <h1 className="mt-5 text-[24px] leading-[1.15]">Confirme seu e-mail</h1>
       <p className="mt-3 text-[15px] leading-relaxed text-muted">
