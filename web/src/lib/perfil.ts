@@ -40,6 +40,8 @@ export interface CadastroPendente {
   username: string
   nome_exibicao: string
   aceite_termos: boolean
+  /** WhatsApp. Vai junto porque sem contato o match chega ao fim e trava. */
+  contato_visivel?: string
 }
 
 /** Perfil da sessão atual, criando-o a partir do cadastro pendente se faltar. */
@@ -61,6 +63,7 @@ export async function garantirPerfil(): Promise<Perfil | null> {
       username: meta.username,
       nome_exibicao: meta.nome_exibicao,
       aceite_termos: Boolean(meta.aceite_termos),
+      contato_visivel: meta.contato_visivel ?? null,
     })
   } catch (erro) {
     // Outra aba criou primeiro: o perfil existe, é só buscar de novo.

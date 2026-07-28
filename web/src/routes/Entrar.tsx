@@ -9,6 +9,7 @@ import { mensagemAuth } from '@/lib/authMensagens'
 import { cn } from '@/lib/cn'
 import { usernameDisponivel } from '@/lib/perfil'
 import { supabase } from '@/lib/supabase'
+import { formatarTelefone, telefoneSchema } from '@/lib/telefone'
 
 type Modo = 'entrar' | 'criar'
 type Erros = Record<string, string>
@@ -38,6 +39,7 @@ const esquemaCriar = z.object({
       'De 3 a 20 caracteres: letras minúsculas, números ou _',
     ),
   email,
+  telefone: telefoneSchema,
   senha: z.string().min(8, 'Use ao menos 8 caracteres.'),
   aceite: z
     .boolean()
@@ -89,6 +91,7 @@ export default function Entrar() {
         .trim()
         .toLowerCase(),
       email: form.get('email'),
+      telefone: form.get('telefone'),
       senha: form.get('senha'),
       aceite: form.get('aceite') === 'on',
     })
@@ -111,6 +114,7 @@ export default function Entrar() {
           username: dados.username,
           nome_exibicao: dados.nome_exibicao,
           aceite_termos: true,
+          contato_visivel: dados.telefone,
         },
       },
     })
@@ -181,6 +185,8 @@ export default function Entrar() {
           placeholder="voce@email.com"
           erro={erros.email}
         />
+
+        {modo === 'criar' && <CampoTelefone erro={erros.telefone} />}
 
         <Campo
           rotulo="Senha"
@@ -255,6 +261,31 @@ function Alternador({
         )
       })}
     </div>
+  )
+}
+
+/* ---------- WhatsApp ---------- */
+
+/**
+ * Formata enquanto digita. Deixa o campo não-controlado (o form lê por
+ * FormData) e só reescreve o valor — assim o cursor não pula, que é o problema
+ * clássico de máscara com estado controlado.
+ */
+export function CampoTelefone({ erro }: { erro?: string }) {
+  return (
+    <Campo
+      rotulo="Seu WhatsApp"
+      name="telefone"
+      type="tel"
+      inputMode="numeric"
+      autoComplete="tel"
+      placeholder="(91) 98765-4321"
+      dica="Só aparece para quem fechar troca com você."
+      erro={erro}
+      onChange={(e) => {
+        e.currentTarget.value = formatarTelefone(e.currentTarget.value)
+      }}
+    />
   )
 }
 

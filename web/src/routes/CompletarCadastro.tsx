@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/Button'
 import { Campo } from '@/components/ui/Campo'
 import { ApiError } from '@/lib/api'
 import { criarPerfil, usernameDisponivel } from '@/lib/perfil'
+import { CampoTelefone } from '@/routes/Entrar'
+import { telefoneSchema } from '@/lib/telefone'
 import { sair, useAuth } from '@/stores/auth'
 
 const esquema = z.object({
@@ -22,6 +24,7 @@ const esquema = z.object({
       /^[a-z0-9_]{3,20}$/,
       'De 3 a 20 caracteres: letras minúsculas, números ou _',
     ),
+  telefone: telefoneSchema,
   aceite: z
     .boolean()
     .refine((v) => v, 'É preciso aceitar os termos para usar o TrocaTCG.'),
@@ -51,6 +54,7 @@ export default function CompletarCadastro() {
       username: String(form.get('username') ?? '')
         .trim()
         .toLowerCase(),
+      telefone: form.get('telefone'),
       aceite: form.get('aceite') === 'on',
     })
     if (!analise.success) {
@@ -72,6 +76,7 @@ export default function CompletarCadastro() {
         username: analise.data.username,
         nome_exibicao: analise.data.nome_exibicao,
         aceite_termos: true,
+        contato_visivel: analise.data.telefone,
       })
       await queryClient.invalidateQueries({ queryKey: ['perfil'] })
       navigate('/', { replace: true })
@@ -123,6 +128,8 @@ export default function CompletarCadastro() {
           dica="É assim que os outros vão te achar."
           erro={erros.username}
         />
+        <CampoTelefone erro={erros.telefone} />
+
         <div className="flex flex-col gap-1.5">
           <label className="flex cursor-pointer items-start gap-3">
             <input
