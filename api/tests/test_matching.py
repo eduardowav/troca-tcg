@@ -65,6 +65,38 @@ def test_compatibilidade_exige_condicao_e_finish():
     assert "o.user_id <> p.user_id" in sql  # ninguém troca consigo mesmo
 
 
+def _schema_resposta(caminho: str, metodo: str) -> str:
+    """Nome do schema que a rota realmente serializa, lido do OpenAPI.
+
+    Vale mais que inspecionar `response_model` no objeto da rota: é o contrato
+    publicado, e é ele que o FastAPI usa para filtrar a saída.
+    """
+    conteudo = app.openapi()["paths"][caminho][metodo]["responses"]["200"]["content"][
+        "application/json"
+    ]["schema"]
+    if conteudo.get("type") == "array":
+        return conteudo["items"]["$ref"].rsplit("/", 1)[-1]
+    return conteudo["$ref"].rsplit("/", 1)[-1]
+
+
+def test_feed_nao_expoe_contato():
+    """O feed lista muita gente de uma vez: o schema dele não tem contato."""
+    assert _schema_resposta("/v1/me/matches", "get") == "MatchOut"
+    assert "contato_visivel" not in str(
+        app.openapi()["components"]["schemas"]["ParticipanteResumo"]
+    )
+
+
+def test_detalhe_deixa_o_contato_passar():
+    """Regressão: com MatchOut aqui, o FastAPI filtrava o contato da resposta e
+    a revelação depois do aceite mútuo nunca acontecia."""
+    assert _schema_resposta("/v1/me/matches/{match_id}", "get") == "MatchCompleto"
+    assert (
+        _schema_resposta("/v1/me/matches/{match_id}/responder", "post")
+        == "MatchCompleto"
+    )
+
+
 def test_feed_exige_autenticacao():
     client = TestClient(app)
     assert client.get("/v1/me/matches").status_code in (401, 403)

@@ -35,16 +35,18 @@ export default function Pronto() {
       </dl>
 
       <Link
+        to="/matches"
+        className="mt-6 flex h-13 items-center justify-center rounded-[var(--radius-control)] bg-volt text-[15px] font-bold text-[var(--color-volt-ink)] shadow-[0_1px_0_rgba(255,255,255,0.18)_inset,0_6px_20px_-8px_var(--color-volt)] transition-colors hover:bg-volt-strong"
+      >
+        Ver trocas possíveis
+      </Link>
+
+      <Link
         to="/minhas-cartas"
-        className="mt-5 flex h-13 items-center justify-center rounded-[var(--radius-control)] border border-edge bg-surface-2 text-[15px] text-paper transition-colors hover:border-[var(--color-faint)]"
+        className="mt-2 flex h-13 items-center justify-center rounded-[var(--radius-control)] border border-edge bg-surface-2 text-[15px] text-paper transition-colors hover:border-[var(--color-faint)]"
       >
         Ver e editar minhas cartas
       </Link>
-
-      <p className="mt-4 rounded-card border border-edge bg-surface p-4 text-[14px] leading-relaxed text-muted">
-        O feed de matches é a próxima etapa em construção. Enquanto isso, suas
-        cartas já estão salvas e visíveis para a comunidade.
-      </p>
 
       <button
         onClick={sair}

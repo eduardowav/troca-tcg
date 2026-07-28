@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import usuario_atual
 from app.db.session import get_session
-from app.schemas.match import MatchOut
+from app.schemas.match import MatchCompleto, MatchOut
 from app.services import matching
 
 router = APIRouter(prefix="/me/matches", tags=["matches"])
@@ -29,7 +29,13 @@ async def listar(
     return await matching.listar_matches(session, user_id)
 
 
-@router.get("/{match_id}", response_model=MatchOut)
+# Detalhe e resposta usam MatchCompleto porque é neles que o contato pode
+# aparecer. O `response_model` do FastAPI *filtra* a saída pelo schema
+# declarado: com MatchOut aqui, o contato seria descartado mesmo depois do
+# aceite mútuo e a revelação nunca aconteceria. Quem decide preencher continua
+# sendo o serviço (só com o match ACEITO) — o schema apenas deixa passar.
+# O feed segue em MatchOut, onde contato não tem o que fazer.
+@router.get("/{match_id}", response_model=MatchCompleto)
 async def detalhar(
     match_id: UUID,
     user_id: UUID = Depends(usuario_atual),
@@ -38,7 +44,7 @@ async def detalhar(
     return await matching.obter_match(session, user_id, match_id)
 
 
-@router.post("/{match_id}/responder", response_model=MatchOut)
+@router.post("/{match_id}/responder", response_model=MatchCompleto)
 async def responder(
     match_id: UUID,
     corpo: Resposta,

@@ -1,0 +1,71 @@
+import { api } from '@/lib/api'
+import type { Condicao } from '@/lib/anuncios'
+
+/**
+ * Espelha ParticipanteResumo/ParticipanteCompleto da API.
+ *
+ * `contato_visivel` é opcional aqui porque no feed ele simplesmente não vem —
+ * a API só o serializa quando o match inteiro está ACEITO. Ver
+ * api/app/schemas/match.py.
+ */
+export interface ParticipanteMatch {
+  user_id: string
+  username: string
+  nome_exibicao: string
+  reputacao: number | null
+  aceitou: boolean | null
+  contato_visivel?: string | null
+}
+
+/** Uma carta indo de alguém para alguém. */
+export interface ItemMatch {
+  card_id: string
+  de_user_id: string
+  para_user_id: string
+  condicao: Condicao
+  finish_id: number
+}
+
+export type MatchStatus =
+  | 'SUGERIDO'
+  | 'PENDENTE'
+  | 'ACEITO'
+  | 'RECUSADO'
+  | 'CONCLUIDO'
+  | 'FURADO'
+  | 'EXPIRADO'
+
+export interface Match {
+  id: string
+  tipo: 'DIRETO' | 'MULTIPLO' | 'TRIANGULAR'
+  status: MatchStatus
+  score: number
+  expira_em: string
+  participantes: ParticipanteMatch[]
+  itens: ItemMatch[]
+}
+
+export const listarMatches = () => api.get<Match[]>('/me/matches')
+
+export const obterMatch = (id: string) => api.get<Match>(`/me/matches/${id}`)
+
+export const responderMatch = (id: string, aceitou: boolean) =>
+  api.post<Match>(`/me/matches/${id}/responder`, { aceitou })
+
+/** Quem é o outro lado da troca. Em DIRETO só há um. */
+export function parceiro(
+  match: Match,
+  meuId: string | undefined,
+): ParticipanteMatch | undefined {
+  return match.participantes.find((p) => p.user_id !== meuId)
+}
+
+export function euAceitei(match: Match, meuId: string | undefined): boolean {
+  return match.participantes.find((p) => p.user_id === meuId)?.aceitou === true
+}
+
+/** Dias inteiros até expirar — o match some do feed em 7 dias. */
+export function diasParaExpirar(match: Match): number {
+  const ms = new Date(match.expira_em).getTime() - Date.now()
+  return Math.max(0, Math.ceil(ms / 86_400_000))
+}
