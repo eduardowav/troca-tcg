@@ -11,6 +11,10 @@ export interface Carta {
   imagem_url: string | null
 }
 
+/** Projeção usada em toda leitura de `cards` — mantém os selects em sintonia. */
+export const COLUNAS_CARTA =
+  'id, external_id, set_code, set_nome, numero, nome_pt, nome_en, raridade, imagem_url'
+
 /** As duas listas — nunca "coleção". */
 export type ListingKind = 'OFERTA' | 'PROCURA'
 

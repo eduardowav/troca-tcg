@@ -20,6 +20,20 @@ class AnuncioItem(BaseModel):
     aceita_qualquer_finish: bool = False
 
 
+class AnuncioAtualizar(BaseModel):
+    """Edição inline da tela Minhas cartas — só o que o dono pode mexer.
+
+    `card_id` e `tipo` ficam de fora de propósito: trocar a carta ou mudar de
+    Ofereço para Procuro é outro anúncio, não uma edição. Quem faz isso remove e
+    cadastra de novo.
+    """
+
+    quantidade: int | None = Field(default=None, ge=1, le=99)
+    condicao: Condicao | None = None
+    prioridade: int | None = Field(default=None, ge=1, le=3)
+    aceita_qualquer_finish: bool | None = None
+
+
 class AnuncioBulkIn(BaseModel):
     itens: list[AnuncioItem] = Field(min_length=1, max_length=300)
 

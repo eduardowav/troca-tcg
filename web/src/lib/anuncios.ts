@@ -29,8 +29,35 @@ export interface Anuncio {
   ativo: boolean
 }
 
+/** Espelha AnuncioAtualizar da API: só o que a edição inline pode mexer. */
+export interface AnuncioEdicao {
+  quantidade?: number
+  condicao?: Condicao
+  prioridade?: number
+  aceita_qualquer_finish?: boolean
+}
+
+/** Rótulos das condições, do jeito que o jogador fala. */
+export const CONDICOES: { valor: Condicao; rotulo: string; dica: string }[] = [
+  { valor: 'NM', rotulo: 'NM', dica: 'Quase perfeita' },
+  { valor: 'LP', rotulo: 'LP', dica: 'Pouco usada' },
+  { valor: 'MP', rotulo: 'MP', dica: 'Usada' },
+  { valor: 'HP', rotulo: 'HP', dica: 'Muito usada' },
+  { valor: 'DMG', rotulo: 'DMG', dica: 'Danificada' },
+]
+
+/** Prioridade 1–3 (schema: default 2). Quanto maior, mais o dono quer resolver. */
+export const PRIORIDADES: { valor: number; rotulo: string }[] = [
+  { valor: 1, rotulo: 'Baixa' },
+  { valor: 2, rotulo: 'Normal' },
+  { valor: 3, rotulo: 'Alta' },
+]
+
 export const listarAnuncios = (tipo?: ListingKind) =>
   api.get<Anuncio[]>(`/me/listings${tipo ? `?tipo=${tipo}` : ''}`)
+
+export const atualizarAnuncio = (id: string, dados: AnuncioEdicao) =>
+  api.patch<Anuncio>(`/me/listings/${id}`, dados)
 
 export const criarAnuncio = (item: AnuncioNovo) =>
   api.post<Anuncio>('/me/listings', item)

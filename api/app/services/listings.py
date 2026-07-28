@@ -7,7 +7,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import RegraNegocio
-from app.schemas.listing import AnuncioItem, AnuncioOut
+from app.schemas.listing import AnuncioAtualizar, AnuncioItem, AnuncioOut
 
 _COLUNAS = """
   id::text, card_id::text, tipo, quantidade, condicao, finish_id,
@@ -89,9 +89,66 @@ async def listar_anuncios(
     if tipo:
         sql += " and tipo = :tipo"
         params["tipo"] = tipo
-    sql += " order by criado_em desc"
+    # O desempate por id não é enfeite: `criar_bulk` grava o lote inteiro numa
+    # transação só, e o now() do Postgres é o horário de início da transação —
+    # então todo o onboarding compartilha o mesmo criado_em. Sem o desempate a
+    # ordem fica indeterminada e as cartas trocam de lugar a cada refetch, o que
+    # faz o usuário clicar no controle da carta errada.
+    sql += " order by criado_em desc, id"
     res = await session.execute(text(sql), params)
     return [AnuncioOut(**dict(r)) for r in res.mappings().all()]
+
+
+async def obter_anuncio(
+    session: AsyncSession, user_id: UUID, anuncio_id: UUID
+) -> AnuncioOut:
+    res = await session.execute(
+        text(
+            f"select {_COLUNAS} from listings "
+            "where id = :id and user_id = :user_id and ativo = true"
+        ),
+        {"id": str(anuncio_id), "user_id": str(user_id)},
+    )
+    row = res.mappings().first()
+    if row is None:
+        raise _nao_encontrado()
+    return AnuncioOut(**dict(row))
+
+
+async def atualizar_anuncio(
+    session: AsyncSession,
+    user_id: UUID,
+    anuncio_id: UUID,
+    dados: AnuncioAtualizar,
+) -> AnuncioOut:
+    """Edição inline. PATCH vazio devolve o anúncio como está, sem tocar no banco."""
+    campos = dados.model_dump(exclude_unset=True)
+    if not campos:
+        return await obter_anuncio(session, user_id, anuncio_id)
+
+    sets = ", ".join(f"{c} = :{c}" for c in campos)
+    params: dict[str, object] = {**campos}
+    params["id"] = str(anuncio_id)
+    params["user_id"] = str(user_id)
+
+    try:
+        res = await session.execute(
+            text(
+                f"update listings set {sets} "
+                "where id = :id and user_id = :user_id and ativo = true "
+                f"returning {_COLUNAS}"
+            ),
+            params,
+        )
+        row = res.mappings().first()
+        await session.commit()
+    except IntegrityError as exc:
+        await session.rollback()
+        raise _traduzir(exc) from exc
+
+    if row is None:
+        raise _nao_encontrado()
+    return AnuncioOut(**dict(row))
 
 
 async def remover_anuncio(
@@ -107,13 +164,32 @@ async def remover_anuncio(
     )
     await session.commit()
     if res.rowcount == 0:
-        raise RegraNegocio(
-            "ANUNCIO_NAO_ENCONTRADO", "Anúncio não encontrado.", status_code=404
-        )
+        raise _nao_encontrado()
+
+
+def _nao_encontrado() -> RegraNegocio:
+    return RegraNegocio(
+        "ANUNCIO_NAO_ENCONTRADO", "Anúncio não encontrado.", status_code=404
+    )
 
 
 def _traduzir(exc: IntegrityError) -> RegraNegocio:
     detalhe = str(getattr(exc, "orig", exc))
+
+    # Precisa vir antes das checagens de coluna: a unique key inclui card_id e
+    # finish_id, então uma violação dela cairia no branch errado e diria
+    # "carta não encontrada" para o que é, na verdade, anúncio duplicado.
+    if (
+        "duplicate key" in detalhe
+        or "UniqueViolation" in type(getattr(exc, "orig", exc)).__name__
+    ):
+        return RegraNegocio(
+            "ANUNCIO_DUPLICADO",
+            "Você já tem essa carta na lista com essa condição.",
+            campo="condicao",
+            status_code=409,
+        )
+
     if "card_id" in detalhe or "cards" in detalhe:
         return RegraNegocio(
             "CARTA_INVALIDA",

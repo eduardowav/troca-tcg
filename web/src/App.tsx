@@ -4,6 +4,7 @@ import { ExigePerfil, ExigeSessao } from '@/components/RotaProtegida'
 import { usePerfil } from '@/hooks/usePerfil'
 import CompletarCadastro from '@/routes/CompletarCadastro'
 import Entrar from '@/routes/Entrar'
+import MinhasCartas from '@/routes/MinhasCartas'
 import Onboarding from '@/routes/Onboarding'
 import Pronto from '@/routes/Pronto'
 import Termos from '@/routes/Termos'
@@ -21,7 +22,8 @@ export default function App() {
           <Route path="/" element={<Inicio />} />
           <Route path="/onboarding" element={<Onboarding />} />
           <Route path="/pronto" element={<Pronto />} />
-          {/* Próximas fases: /minhas-cartas, /matches, /perfil */}
+          <Route path="/minhas-cartas" element={<MinhasCartas />} />
+          {/* Próximas fases: /matches, /perfil */}
         </Route>
       </Route>
 

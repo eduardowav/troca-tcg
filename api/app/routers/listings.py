@@ -7,7 +7,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import usuario_atual
 from app.db.session import get_session
-from app.schemas.listing import AnuncioBulkIn, AnuncioItem, AnuncioOut
+from app.schemas.listing import (
+    AnuncioAtualizar,
+    AnuncioBulkIn,
+    AnuncioItem,
+    AnuncioOut,
+)
 from app.services import listings
 
 router = APIRouter(prefix="/me/listings", tags=["anuncios"])
@@ -39,6 +44,16 @@ async def criar_bulk(
 ) -> dict[str, int]:
     n = await listings.criar_bulk(session, user_id, corpo.itens)
     return {"cadastradas": n}
+
+
+@router.patch("/{anuncio_id}", response_model=AnuncioOut)
+async def atualizar(
+    anuncio_id: UUID,
+    dados: AnuncioAtualizar,
+    user_id: UUID = Depends(usuario_atual),
+    session: AsyncSession = Depends(get_session),
+) -> AnuncioOut:
+    return await listings.atualizar_anuncio(session, user_id, anuncio_id, dados)
 
 
 @router.delete("/{anuncio_id}", status_code=status.HTTP_204_NO_CONTENT)

@@ -1,8 +1,8 @@
-import { useQuery } from '@tanstack/react-query'
+import { Link } from 'react-router-dom'
 
+import { useAnuncios } from '@/hooks/useAnuncios'
 import { usePerfil } from '@/hooks/usePerfil'
-import { listarAnuncios } from '@/lib/anuncios'
-import { sair, useUsuarioId } from '@/stores/auth'
+import { sair } from '@/stores/auth'
 
 /**
  * Confirmação pós-onboarding.
@@ -12,13 +12,8 @@ import { sair, useUsuarioId } from '@/stores/auth'
  */
 export default function Pronto() {
   const { data: perfil } = usePerfil()
-  const userId = useUsuarioId()
-
-  const { data: anuncios } = useQuery({
-    queryKey: ['anuncios', userId],
-    enabled: Boolean(userId),
-    queryFn: () => listarAnuncios(),
-  })
+  // Mesma query de Minhas cartas: uma chave só, para editar lá refletir aqui.
+  const { data: anuncios } = useAnuncios()
 
   const ofereco = anuncios?.filter((a) => a.tipo === 'OFERTA').length ?? 0
   const procuro = anuncios?.filter((a) => a.tipo === 'PROCURA').length ?? 0
@@ -39,7 +34,14 @@ export default function Pronto() {
         <Placar rotulo="Procuro" valor={procuro} cor="text-want" />
       </dl>
 
-      <p className="mt-7 rounded-card border border-edge bg-surface p-4 text-[14px] leading-relaxed text-muted">
+      <Link
+        to="/minhas-cartas"
+        className="mt-5 flex h-13 items-center justify-center rounded-[var(--radius-control)] border border-edge bg-surface-2 text-[15px] text-paper transition-colors hover:border-[var(--color-faint)]"
+      >
+        Ver e editar minhas cartas
+      </Link>
+
+      <p className="mt-4 rounded-card border border-edge bg-surface p-4 text-[14px] leading-relaxed text-muted">
         O feed de matches é a próxima etapa em construção. Enquanto isso, suas
         cartas já estão salvas e visíveis para a comunidade.
       </p>

@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 
 import { supabase } from '@/lib/supabase'
-import type { Carta } from '@/lib/types'
+import { COLUNAS_CARTA, type Carta } from '@/lib/types'
 
 /**
  * Busca cartas pelo nome em PT ou EN direto no catálogo (leitura pública via RLS).
@@ -18,9 +18,7 @@ export function useCardSearch(termo: string) {
       const padrao = `%${q}%`
       const { data, error } = await supabase
         .from('cards')
-        .select(
-          'id, external_id, set_code, set_nome, numero, nome_pt, nome_en, raridade, imagem_url',
-        )
+        .select(COLUNAS_CARTA)
         .or(`nome_pt.ilike.${padrao},nome_en.ilike.${padrao}`)
         .order('numero', { ascending: true })
         .limit(24)
