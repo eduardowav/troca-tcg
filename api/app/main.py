@@ -11,7 +11,7 @@ from slowapi.util import get_remote_address
 from app.core.config import settings
 from app.core.errors import RegraNegocio, regra_negocio_handler
 from app.db.session import engine
-from app.routers import health, internal, listings, users
+from app.routers import health, internal, listings, matches, users
 
 limiter = Limiter(key_func=get_remote_address, default_limits=["100/minute"])
 
@@ -45,6 +45,7 @@ app.add_middleware(
 app.include_router(health.router, prefix="/v1")
 app.include_router(users.router, prefix="/v1")
 app.include_router(listings.router, prefix="/v1")
+app.include_router(matches.router, prefix="/v1")
 app.include_router(internal.router, prefix="/v1")
 
 
