@@ -45,6 +45,19 @@ _RESPOSTAS = {
     # set sem metadados: a fonte nem sempre traz sigla, contagem ou data
     "/v2/pt/sets/mee": {"id": "mee", "name": "Megaevolução Energia", "cards": []},
     "/v2/en/sets/mee": {"name": "Mega Evolution Energy", "cards": []},
+    # set antigo: a TCGdex traduz o nome do set mas não tem o card-a-card em PT
+    "/v2/pt/sets/base1": {"id": "base1", "name": "Coleção Básica", "cards": []},
+    "/v2/en/sets/base1": {
+        "name": "Base Set",
+        "cards": [
+            {
+                "id": "base1-4",
+                "localId": "4",
+                "name": "Charizard",
+                "image": "https://assets.tcgdex.net/en/base/base1/4",
+            }
+        ],
+    },
 }
 
 
@@ -98,6 +111,22 @@ async def test_obter_set_sem_metadados_nao_quebra(fonte: TCGdex):
     assert conjunto.lancado_em is None
     assert conjunto.serie_code is None
     assert cartas == []
+
+
+async def test_set_sem_pt_cai_para_o_ingles(fonte: TCGdex):
+    """Sets anteriores a Black & White não têm card-a-card em PT na fonte.
+
+    O set existe em papel e é trocado, então vem em inglês com `nome_pt` nulo —
+    é o caso que `nomeCarta()` no frontend já resolve. Sem isso, todo o vintage
+    ficaria fora do catálogo.
+    """
+    conjunto, cartas = await fonte.obter_set("base1")
+
+    assert conjunto.nome == "Coleção Básica"  # o set é traduzido, as cartas não
+    assert len(cartas) == 1
+    assert cartas[0].nome_pt is None
+    assert cartas[0].nome_en == "Charizard"
+    assert cartas[0].imagem_url == "https://assets.tcgdex.net/en/base/base1/4/low.webp"
 
 
 async def test_obter_cartas_mescla_pt_e_en(fonte: TCGdex):

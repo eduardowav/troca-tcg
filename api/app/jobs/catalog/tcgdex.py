@@ -88,8 +88,18 @@ class TCGdex(FonteCatalogo):
             c["localId"]: c.get("name") for c in en.get("cards", []) if c.get("localId")
         }
 
+        # A TCGdex só tem o card-a-card em português a partir de Black & White
+        # (2011). Nos sets anteriores ela traduz o nome do set mas devolve a lista
+        # de cartas vazia — e essas cartas existem em papel e são trocadas. Quando
+        # o PT não tem nada, o set inteiro vem do inglês com `nome_pt` nulo, que é
+        # o caso que `nomeCarta()` no frontend já resolve.
+        cartas_fonte = pt.get("cards") or []
+        so_em_ingles = not cartas_fonte
+        if so_em_ingles:
+            cartas_fonte = en.get("cards") or []
+
         cartas: list[CartaCatalogo] = []
-        for c in pt.get("cards", []):
+        for c in cartas_fonte:
             local_id = c.get("localId")
             if not local_id or not c.get("id"):
                 continue
@@ -99,7 +109,7 @@ class TCGdex(FonteCatalogo):
                     external_id=c["id"],
                     set_code=set_code,
                     numero=local_id,
-                    nome_pt=c.get("name"),
+                    nome_pt=None if so_em_ingles else c.get("name"),
                     nome_en=nome_en,
                     imagem_url=montar_imagem(c.get("image")),
                 )

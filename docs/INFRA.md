@@ -34,30 +34,48 @@ A hierarquia da fonte virou schema na migração 12: **série → set → carta*
 em cada carta) e passou a morar em `sets`, junto com sigla oficial, contagens,
 logo, símbolo e data de lançamento. `cards.set_code` é FK para `sets.code`.
 
-Carregado hoje: **4703 cartas em 26 sets, 2 séries.**
+Carregado: **todo o ocidente — 15.997 cartas, 112 sets, 11 séries.**
 
 ```bash
 cd api
-uv run python -m app.jobs.catalog.run --serie sv    # Escarlate e Violeta
-uv run python -m app.jobs.catalog.run --serie me    # Megaevolução
+uv run python -m app.jobs.catalog.run --serie sv    # uma série
 uv run python -m app.jobs.catalog.run sv03 sv08.5   # sets avulsos
+uv run python -m app.jobs.catalog.run --all         # todos os sets da fonte
 ```
 
 O `--serie` resolve a lista de sets no próprio endpoint da TCGdex, então não há
 lista de códigos para manter aqui. Os upserts são idempotentes: rodar de novo
 atualiza, não duplica.
 
-| Série | Sets | Cartas |
-|---|---|---|
-| `sv` — Escarlate e Violeta | 18 | 3656 |
-| `me` — Megaevolução | 8 | 1047 |
+| Série | Sets | Cartas | Só em inglês |
+|---|---|---|---|
+| `swsh` — Espada e Escudo | 25 | 3663 | 25 |
+| `sv` — Escarlate e Violeta | 18 | 3656 | 0 |
+| `sm` — Sol e Lua | 18 | 2899 | 163 |
+| `xy` — XY | 15 | 1710 | 117 |
+| `bw` — Black & White | 12 | 1336 | 161 |
+| `me` — Megaevolução | 8 | 1047 | 0 |
+| `ex` — EX | 5 | 552 | 552 |
+| `hgss` — HeartGold SoulSilver | 4 | 414 | 414 |
+| `dp` — Diamante & Pérola | 3 | 386 | 386 |
+| `base` — Coleção Básica | 3 | 228 | 228 |
+| `col` — Chamado das Lendas | 1 | 106 | 106 |
 
-Duas notas de leitura desses números:
+Três notas de leitura desses números:
 
-- A contagem é a do **catálogo em português**. `svp` (Black Star Promos) declara
-  225 cartas e trouxe 218 — promos que a Copag não publicou em PT.
+- **A TCGdex só tem o card-a-card em português a partir de Black & White (2011).**
+  Nos blocos anteriores ela traduz o nome do set mas devolve a lista de cartas
+  vazia. Essas cartas existem em papel e são trocadas, então o sync cai para o
+  inglês: `nome_pt` fica nulo e `nomeCarta()` no frontend mostra o `nome_en`.
+  São 2152 cartas nessa condição — todas com imagem.
+- A contagem é a do catálogo em português quando ele existe. `svp` (Black Star
+  Promos) declara 225 cartas e trouxe 218 — promos que a Copag não publicou em PT.
 - `mee` e `mep` não têm imagem na TCGdex; o `CartaThumb` cai para a arte
   tipográfica com o código do set, então aparecem normalmente na busca.
+
+**`tcgp` (Estampas Ilustradas Pocket) ficou de fora de propósito**: é o jogo de
+celular, as cartas são digitais e não se trocam em mão. Se um dia entrar, entra
+como jogo separado, não como mais uma série.
 
 `sets.sigla` guarda a abreviação impressa na carta (`OBF`, `PRE`, `MEW`), que é
 como o jogador lê o canto — "OBF 125/197". A UI ainda mostra o `set_code`
