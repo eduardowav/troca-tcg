@@ -106,7 +106,29 @@ literal. A ordem final é relevância → set mais recente → número natural
 `total` volta em cada linha (janela calculada antes do LIMIT), e é o que o app
 usa para dizer "Mostrando 24 de 87 cartas" e decidir se mostra "Mostrar mais".
 
-Ainda **não** tem: filtro por série/set e busca pela sigla ("OBF 125").
+#### Filtro (migração 14)
+
+`buscar_cartas` ganhou `filtro_serie` e `filtro_set`, e com filtro **o termo
+deixa de ser obrigatório**: escolher uma expansão e navegar as 207 cartas de 151
+em ordem de Pokédex é um uso legítimo, e antes a tela exigia digitar duas letras
+antes de mostrar qualquer coisa. Com expansão escolhida, um termo só de dígitos
+casa com o **número impresso** — PRE + "59" leva direto à Umbreon 059. Fora
+desse caso o número não entra: "125" sem filtro traria uma carta de cada uma das
+112 expansões.
+
+No app (`web/src/components/carta/FiltroCatalogo.tsx`), dois `<select>` nativos —
+no celular abrem o seletor do sistema, que ganha de qualquer dropdown desenhado,
+e a lista tem 112 expansões. Os dois se mantêm coerentes: escolher a expansão
+fixa a série junto, e trocar a série derruba a expansão que não pertence a ela.
+
+**Atalho "OBF 125"**, que é como o colecionador escreve: interpretado no
+frontend (`interpretarAtalho` em `useCardSearch`), onde dá para *mostrar* o que
+foi entendido. Exige a parte numérica de propósito — várias siglas são também
+nome de Pokémon (`MEW` é a sigla de 151), e quem digita só "mew" quer o Mew.
+
+⚠️ **Filtro por raridade não existe porque o dado não existe:** `cards.raridade`
+é 100% nulo. A TCGdex não traz raridade no brief do set — sairia uma request por
+carta, ~16 mil. Enriquecer isso é uma decisão à parte.
 
 `sets.sigla` guarda a abreviação impressa na carta (`OBF`, `PRE`, `MEW`), que é
 como o jogador lê o canto — "OBF 125/197". A UI ainda mostra o `set_code`

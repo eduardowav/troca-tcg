@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react'
 import { toast } from 'sonner'
 
 import { CartaThumb } from '@/components/carta/CartaThumb'
+import { FiltroCatalogo } from '@/components/carta/FiltroCatalogo'
 import { Button } from '@/components/ui/Button'
 import { IconeBusca, IconeCartas } from '@/components/ui/Icone'
 import {
@@ -13,7 +14,14 @@ import {
 } from '@/lib/anuncios'
 import { ApiError } from '@/lib/api'
 import { cn } from '@/lib/cn'
-import { type Carta, codigoSet, type ListingKind, nomeCarta } from '@/lib/types'
+import {
+  type Carta,
+  codigoSet,
+  type FiltrosBusca,
+  type ListingKind,
+  nomeCarta,
+  SEM_FILTRO,
+} from '@/lib/types'
 import {
   useAdicionarAnuncio,
   useAnuncios,
@@ -146,6 +154,7 @@ function Adicionar({
 }) {
   const [aberto, setAberto] = useState(false)
   const [busca, setBusca] = useState('')
+  const [filtros, setFiltros] = useState<FiltrosBusca>(SEM_FILTRO)
   const termo = useDebounced(busca)
   const {
     cartas: resultados,
@@ -154,7 +163,8 @@ function Adicionar({
     temMais,
     carregarMais,
     carregandoMais,
-  } = useCardSearch(termo)
+    ativa,
+  } = useCardSearch(termo, filtros)
   const adicionar = useAdicionarAnuncio()
 
   const rotulo = aba === 'OFERTA' ? 'Ofereço' : 'Procuro'
@@ -209,13 +219,20 @@ function Adicionar({
           onClick={() => {
             setAberto(false)
             setBusca('')
+            setFiltros(SEM_FILTRO)
           }}
         >
           Fechar
         </Button>
       </div>
 
-      {termo.trim().length >= 2 && (
+      <FiltroCatalogo
+        filtros={filtros}
+        onFiltros={setFiltros}
+        className="mt-2.5"
+      />
+
+      {ativa && (
         <div className="mt-3">
           {carregando ? (
             <p className="py-3 text-center text-[14px] text-muted">Buscando…</p>

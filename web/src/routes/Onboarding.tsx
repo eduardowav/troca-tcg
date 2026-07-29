@@ -6,19 +6,29 @@ import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 
 import { CartaThumb } from '@/components/carta/CartaThumb'
+import { FiltroCatalogo } from '@/components/carta/FiltroCatalogo'
 import { Button } from '@/components/ui/Button'
 import { useCardSearch } from '@/hooks/useCardSearch'
 import { useDebounced } from '@/hooks/useDebounced'
 import { criarAnunciosEmLote } from '@/lib/anuncios'
 import { ApiError } from '@/lib/api'
 import { cn } from '@/lib/cn'
-import { type Carta, codigoSet, type ListingKind, nomeCarta } from '@/lib/types'
+import {
+  type Carta,
+  codigoSet,
+  type FiltrosBusca,
+  type ListingKind,
+  nomeCarta,
+  SEM_FILTRO,
+  temFiltro,
+} from '@/lib/types'
 import { contar, type Selecao, useOnboarding } from '@/stores/onboarding'
 
 const META = 10
 
 export default function Onboarding() {
   const [termo, setTermo] = useState('')
+  const [filtros, setFiltros] = useState<FiltrosBusca>(SEM_FILTRO)
   const busca = useDebounced(termo, 250)
   const {
     cartas: resultados,
@@ -27,7 +37,9 @@ export default function Onboarding() {
     temMais,
     carregarMais,
     carregandoMais,
-  } = useCardSearch(busca)
+    atalho,
+    ativa,
+  } = useCardSearch(busca, filtros)
 
   const selecoes = useOnboarding((s) => s.selecoes)
   const { total: totalSelecionado } = contar(selecoes)
@@ -39,8 +51,22 @@ export default function Onboarding() {
 
       <BuscaCartas termo={termo} onTermo={setTermo} />
 
+      <FiltroCatalogo
+        filtros={filtros}
+        onFiltros={setFiltros}
+        className="mt-3"
+      />
+
+      {atalho && (
+        <p role="status" className="mt-2 text-xs text-muted">
+          Lendo como carta{' '}
+          <span className="set-code text-paper">{atalho.numero}</span> de{' '}
+          <span className="text-paper">{atalho.set.nome}</span>.
+        </p>
+      )}
+
       <div className="mt-5 flex-1">
-        {busca.trim().length < 2 ? (
+        {!ativa ? (
           <EstadoVazio temSelecoes={totalSelecionado > 0} />
         ) : carregando ? (
           <ListaSkeleton />
@@ -65,7 +91,7 @@ export default function Onboarding() {
             )}
           </>
         ) : (
-          <SemResultados termo={busca} />
+          <SemResultados termo={busca} comFiltro={temFiltro(filtros)} />
         )}
       </div>
 
@@ -276,20 +302,28 @@ function EstadoVazio({ temSelecoes }: { temSelecoes: boolean }) {
       <p className="mt-4 text-[15px] text-muted">
         {temSelecoes
           ? 'Continue adicionando — quanto maior a lista, mais rápido o match aparece.'
-          : 'Busque a carta pelo nome e toque em Ofereço ou Procuro.'}
+          : 'Busque pelo nome, ou escolha uma expansão para navegar carta a carta.'}
       </p>
     </div>
   )
 }
 
-function SemResultados({ termo }: { termo: string }) {
+function SemResultados({
+  termo,
+  comFiltro,
+}: {
+  termo: string
+  comFiltro: boolean
+}) {
   return (
     <div className="px-6 pt-10 text-center">
       <p className="text-[15px] text-paper">
-        Nenhuma carta para “{termo}”.
+        {termo ? `Nenhuma carta para “${termo}”.` : 'Nenhuma carta aqui.'}
       </p>
       <p className="mt-1 text-sm text-muted">
-        Tente outro nome — em português ou inglês.
+        {comFiltro
+          ? 'Talvez esteja em outra expansão — tente limpar o filtro.'
+          : 'Tente outro nome — em português ou inglês.'}
       </p>
     </div>
   )

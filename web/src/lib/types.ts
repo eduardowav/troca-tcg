@@ -35,6 +35,27 @@ export interface SetCatalogo {
 export const COLUNAS_SET =
   'code, serie_code, nome, sigla, total_oficial, total_impresso, logo_url, simbolo_url, lancado_em'
 
+/** Espelha `series` — o bloco. 'sv' = Escarlate e Violeta, 'me' = Megaevolução. */
+export interface SerieCatalogo {
+  code: string
+  nome: string
+  logo_url: string | null
+}
+
+export const COLUNAS_SERIE = 'code, nome, logo_url'
+
+/** Filtro da busca de cartas. `null` nos dois = catálogo inteiro. */
+export interface FiltrosBusca {
+  serie: string | null
+  set: string | null
+}
+
+export const SEM_FILTRO: FiltrosBusca = { serie: null, set: null }
+
+export function temFiltro(f: FiltrosBusca): boolean {
+  return f.serie !== null || f.set !== null
+}
+
 /** As duas listas — nunca "coleção". */
 export type ListingKind = 'OFERTA' | 'PROCURA'
 
