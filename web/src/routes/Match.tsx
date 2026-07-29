@@ -5,10 +5,16 @@ import { toast } from 'sonner'
 import { LinhaDeTroca } from '@/components/carta/LinhaDeTroca'
 import { Button } from '@/components/ui/Button'
 import { useCartasPorId } from '@/hooks/useAnuncios'
-import { useMatch, useResponderMatch } from '@/hooks/useMatches'
+import { useDesfechoMatch, useMatch, useResponderMatch } from '@/hooks/useMatches'
 import { CONDICOES } from '@/lib/anuncios'
 import { ApiError } from '@/lib/api'
-import { diasParaExpirar, euAceitei, type Match, parceiro } from '@/lib/matches'
+import {
+  diasParaExpirar,
+  euAceitei,
+  euConfirmei,
+  type Match,
+  parceiro,
+} from '@/lib/matches'
 import { useUsuarioId } from '@/stores/auth'
 
 export default function MatchDetalhe() {
@@ -16,6 +22,7 @@ export default function MatchDetalhe() {
   const meuId = useUsuarioId()
   const { data: match, isPending, isError } = useMatch(id)
   const responder = useResponderMatch()
+  const desfecho = useDesfechoMatch()
 
   const ids = useMemo(
     () => (match?.itens ?? []).map((i) => i.card_id),
@@ -49,6 +56,28 @@ export default function MatchDetalhe() {
   const dou = match.itens.find((i) => i.de_user_id === meuId)
   const recebo = match.itens.find((i) => i.para_user_id === meuId)
   const jaAceitei = euAceitei(match, meuId)
+
+  function registrarDesfecho(aconteceu: boolean) {
+    desfecho.mutate(
+      { id: match!.id, aconteceu },
+      {
+        onSuccess: (novo) =>
+          toast.success(
+            novo.status === 'CONCLUIDO'
+              ? 'Troca concluída pelos dois. Reputação atualizada.'
+              : aconteceu
+                ? 'Confirmado. Falta a outra pessoa confirmar.'
+                : 'Registrado. Obrigado por avisar.',
+          ),
+        onError: (erro) =>
+          toast.error(
+            erro instanceof ApiError
+              ? erro.message
+              : 'Não foi possível registrar agora.',
+          ),
+      },
+    )
+  }
 
   function decidir(aceitou: boolean) {
     responder.mutate(
@@ -102,8 +131,28 @@ export default function MatchDetalhe() {
         </dl>
       </div>
 
-      {match.status === 'ACEITO' ? (
-        <Contato outro={outro} />
+      {match.status === 'CONCLUIDO' ? (
+        <Encerrado
+          titulo="Troca concluída."
+          texto="Ela entrou na sua reputação. Obrigado por confirmar — é o que faz a próxima pessoa confiar em você."
+          tom="offer"
+        />
+      ) : match.status === 'FURADO' ? (
+        <Encerrado
+          titulo="Troca marcada como não realizada."
+          texto="Registramos que o encontro não aconteceu."
+          tom="alert"
+        />
+      ) : match.status === 'ACEITO' ? (
+        <>
+          <Contato outro={outro} />
+          <Desfecho
+            match={match}
+            meuId={meuId}
+            enviando={desfecho.isPending}
+            onRegistrar={registrarDesfecho}
+          />
+        </>
       ) : (
         <Combinar
           match={match}
@@ -189,6 +238,90 @@ function Combinar({
           A outra pessoa já aceitou. Falta você.
         </p>
       )}
+    </div>
+  )
+}
+
+/**
+ * Desfecho: aconteceu ou não.
+ *
+ * Fica depois do contato de propósito — a pergunta só faz sentido para quem já
+ * tentou marcar. Concluir exige os dois lados; avisar que a pessoa não apareceu
+ * não, porque quem levou o furo não pode depender do outro para registrar.
+ */
+function Desfecho({
+  match,
+  meuId,
+  enviando,
+  onRegistrar,
+}: {
+  match: Match
+  meuId: string | undefined
+  enviando: boolean
+  onRegistrar: (aconteceu: boolean) => void
+}) {
+  if (euConfirmei(match, meuId)) {
+    return (
+      <p className="mt-5 rounded-[var(--radius-card)] border border-edge bg-surface p-4 text-center text-[14px] leading-relaxed text-muted">
+        Você confirmou que a troca aconteceu. Falta a outra pessoa confirmar
+        para ela entrar na reputação de vocês.
+      </p>
+    )
+  }
+
+  return (
+    <div className="mt-5 rounded-[var(--radius-card)] border border-edge bg-surface p-4">
+      <p className="text-[15px] text-paper">Já se encontraram?</p>
+      <p className="mt-1.5 text-[14px] leading-relaxed text-muted">
+        Confirmar é o que constrói a reputação de vocês dois.
+      </p>
+      <div className="mt-4 flex flex-col gap-2">
+        <Button
+          variant="offer"
+          size="md"
+          block
+          loading={enviando}
+          onClick={() => onRegistrar(true)}
+        >
+          A troca aconteceu
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          block
+          disabled={enviando}
+          onClick={() => onRegistrar(false)}
+          className="text-alert hover:text-alert"
+        >
+          A pessoa não apareceu
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+function Encerrado({
+  titulo,
+  texto,
+  tom,
+}: {
+  titulo: string
+  texto: string
+  tom: 'offer' | 'alert'
+}) {
+  const cor = tom === 'offer' ? 'var(--color-offer)' : 'var(--color-alert)'
+  return (
+    <div
+      className="mt-5 rounded-[var(--radius-card)] border p-5"
+      style={{
+        borderColor: `color-mix(in oklab, ${cor} 40%, transparent)`,
+        background: `color-mix(in oklab, ${cor} 10%, transparent)`,
+      }}
+    >
+      <p className="text-[15px] font-medium" style={{ color: cor }}>
+        {titulo}
+      </p>
+      <p className="mt-2 text-[14px] leading-relaxed text-muted">{texto}</p>
     </div>
   )
 }

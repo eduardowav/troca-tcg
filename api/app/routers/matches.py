@@ -44,6 +44,24 @@ async def detalhar(
     return await matching.obter_match(session, user_id, match_id)
 
 
+@router.post("/{match_id}/concluir", response_model=MatchCompleto)
+async def concluir(
+    match_id: UUID,
+    user_id: UUID = Depends(usuario_atual),
+    session: AsyncSession = Depends(get_session),
+) -> MatchOut:
+    return await matching.confirmar_conclusao(session, user_id, match_id)
+
+
+@router.post("/{match_id}/furou", response_model=MatchCompleto)
+async def furou(
+    match_id: UUID,
+    user_id: UUID = Depends(usuario_atual),
+    session: AsyncSession = Depends(get_session),
+) -> MatchOut:
+    return await matching.registrar_furo(session, user_id, match_id)
+
+
 @router.post("/{match_id}/responder", response_model=MatchCompleto)
 async def responder(
     match_id: UUID,

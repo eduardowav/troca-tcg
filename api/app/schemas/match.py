@@ -16,6 +16,7 @@ class ParticipanteResumo(BaseModel):
     nome_exibicao: str
     reputacao: float | None = None
     aceitou: bool | None = None
+    confirmou_conclusao: bool = False
 
 
 class ParticipanteCompleto(ParticipanteResumo):

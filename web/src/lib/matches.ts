@@ -14,6 +14,7 @@ export interface ParticipanteMatch {
   nome_exibicao: string
   reputacao: number | null
   aceitou: boolean | null
+  confirmou_conclusao: boolean
   contato_visivel?: string | null
 }
 
@@ -51,6 +52,20 @@ export const obterMatch = (id: string) => api.get<Match>(`/me/matches/${id}`)
 
 export const responderMatch = (id: string, aceitou: boolean) =>
   api.post<Match>(`/me/matches/${id}/responder`, { aceitou })
+
+/** Confirma que a troca aconteceu. Só fecha quando os dois confirmam. */
+export const concluirMatch = (id: string) =>
+  api.post<Match>(`/me/matches/${id}/concluir`)
+
+/** Avisa que a outra pessoa não apareceu. */
+export const furouMatch = (id: string) => api.post<Match>(`/me/matches/${id}/furou`)
+
+export function euConfirmei(match: Match, meuId: string | undefined): boolean {
+  return (
+    match.participantes.find((p) => p.user_id === meuId)?.confirmou_conclusao ===
+    true
+  )
+}
 
 /** Quem é o outro lado da troca. Em DIRETO só há um. */
 export function parceiro(

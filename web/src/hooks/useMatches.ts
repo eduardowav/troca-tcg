@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import {
+  concluirMatch,
+  furouMatch,
   listarMatches,
   type Match,
   obterMatch,
@@ -44,6 +46,27 @@ export function useResponderMatch() {
     onSuccess: (match: Match) => {
       queryClient.setQueryData([...CHAVE, match.id], match)
       queryClient.invalidateQueries({ queryKey: CHAVE })
+    },
+  })
+}
+
+/**
+ * Desfecho da troca: aconteceu ou a pessoa não apareceu.
+ *
+ * Invalida o perfil junto porque é aqui que a reputação muda — sem isso a tela
+ * de perfil continuaria mostrando o número velho.
+ */
+export function useDesfechoMatch() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id, aconteceu }: { id: string; aconteceu: boolean }) =>
+      aconteceu ? concluirMatch(id) : furouMatch(id),
+
+    onSuccess: (match: Match) => {
+      queryClient.setQueryData([...CHAVE, match.id], match)
+      queryClient.invalidateQueries({ queryKey: CHAVE })
+      queryClient.invalidateQueries({ queryKey: ['perfil'] })
     },
   })
 }

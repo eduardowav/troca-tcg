@@ -78,6 +78,12 @@ where c.posicao = 1 and pr.bloqueado = false
 """)
 
 
+def _nao_encontrado() -> RegraNegocio:
+    return RegraNegocio(
+        "MATCH_NAO_ENCONTRADO", "Match não encontrado.", status_code=404
+    )
+
+
 def _hash_grupo(a: UUID | str, b: UUID | str) -> str:
     """Dedup por par de pessoas, independente de quem consultou primeiro."""
     x, y = sorted([str(a), str(b)])
@@ -223,7 +229,8 @@ async def _participantes(
     session: AsyncSession, match_id: str, *, completo: bool
 ) -> list:
     colunas = (
-        "p.id::text as user_id, p.username, p.nome_exibicao, reputacao(p), mp.aceitou"
+        "p.id::text as user_id, p.username, p.nome_exibicao, reputacao(p), "
+        "mp.aceitou, mp.confirmou_conclusao"
     )
     if completo:
         colunas += ", p.contato_visivel"
@@ -251,6 +258,7 @@ async def _participantes(
             nome_exibicao=r["nome_exibicao"],
             reputacao=float(r["reputacao"]) if r["reputacao"] is not None else None,
             aceitou=r["aceitou"],
+            confirmou_conclusao=r["confirmou_conclusao"],
             **({"contato_visivel": r["contato_visivel"]} if completo else {}),
         )
         for r in linhas
@@ -324,6 +332,118 @@ async def responder(
     return await obter_match(session, user_id, match_id)
 
 
+async def _exigir_aceito(session: AsyncSession, user_id: UUID, match_id: UUID) -> None:
+    """Só troca combinada tem desfecho — antes disso não houve encontro."""
+    status = await session.scalar(
+        text("""
+            select m.status::text from matches m
+            join match_participants mp on mp.match_id = m.id
+            where m.id = :m and mp.user_id = :u
+        """),
+        {"m": str(match_id), "u": str(user_id)},
+    )
+    if status is None:
+        raise _nao_encontrado()
+    if status != "ACEITO":
+        raise RegraNegocio(
+            "MATCH_SEM_DESFECHO",
+            "Só dá para registrar o desfecho de uma troca combinada.",
+            status_code=409,
+        )
+
+
+async def confirmar_conclusao(
+    session: AsyncSession, user_id: UUID, match_id: UUID
+) -> MatchOut:
+    """Confirma que a troca aconteceu. Só vira CONCLUIDO quando os dois confirmam.
+
+    Exigir os dois lados é o que dá valor à reputação: se um lado sozinho
+    pudesse fechar, inflar o próprio número seria trivial.
+    """
+    await _exigir_aceito(session, user_id, match_id)
+
+    await session.execute(
+        text("""
+            update match_participants set confirmou_conclusao = true
+            where match_id = :m and user_id = :u
+        """),
+        {"m": str(match_id), "u": str(user_id)},
+    )
+    await session.execute(
+        text(
+            "insert into match_events (match_id, user_id, evento) "
+            "values (:m, :u, 'CONCLUIDO')"
+        ),
+        {"m": str(match_id), "u": str(user_id)},
+    )
+
+    faltam = await session.scalar(
+        text("""
+            select count(*) from match_participants
+            where match_id = :m and confirmou_conclusao = false
+        """),
+        {"m": str(match_id)},
+    )
+
+    if not faltam:
+        await session.execute(
+            text("update matches set status = 'CONCLUIDO' where id = :m"),
+            {"m": str(match_id)},
+        )
+        await session.execute(
+            text("""
+                update profiles set trocas_concluidas = trocas_concluidas + 1
+                where id in (
+                  select user_id from match_participants where match_id = :m
+                )
+            """),
+            {"m": str(match_id)},
+        )
+
+    await session.commit()
+    return await obter_match(session, user_id, match_id)
+
+
+async def registrar_furo(
+    session: AsyncSession, user_id: UUID, match_id: UUID
+) -> MatchOut:
+    """Registra que a outra pessoa não apareceu.
+
+    O furo conta contra quem faltou, não contra quem avisou — senão ninguém
+    avisaria. Fica um match_event com o autor: é o rastro que permite revisar
+    denúncia injusta depois.
+    """
+    await _exigir_aceito(session, user_id, match_id)
+
+    outro = await session.scalar(
+        text("""
+            select user_id::text from match_participants
+            where match_id = :m and user_id <> :u limit 1
+        """),
+        {"m": str(match_id), "u": str(user_id)},
+    )
+    if outro is None:
+        raise _nao_encontrado()
+
+    await session.execute(
+        text("update matches set status = 'FURADO' where id = :m"),
+        {"m": str(match_id)},
+    )
+    await session.execute(
+        text("update profiles set trocas_furadas = trocas_furadas + 1 where id = :f"),
+        {"f": outro},
+    )
+    await session.execute(
+        text("""
+            insert into match_events (match_id, user_id, evento, payload)
+            values (:m, :u, 'NOSHOW', cast(:payload as jsonb))
+        """),
+        {"m": str(match_id), "u": str(user_id), "payload": f'{{"faltou": "{outro}"}}'},
+    )
+    await session.commit()
+    return await obter_match(session, user_id, match_id)
+
+
 async def obter_match(session: AsyncSession, user_id: UUID, match_id: UUID) -> MatchOut:
     """Detalhe. Contato só entra quando o match inteiro está ACEITO."""
     linha = (
@@ -346,7 +466,10 @@ async def obter_match(session: AsyncSession, user_id: UUID, match_id: UUID) -> M
             "MATCH_NAO_ENCONTRADO", "Match não encontrado.", status_code=404
         )
 
-    completo = linha["status"] == "ACEITO"
+    # CONCLUIDO entra junto: as duas pessoas já se encontraram, esconder o
+    # contato depois do fato não protege ninguém e só atrapalha quem precisa
+    # retomar o assunto.
+    completo = linha["status"] in ("ACEITO", "CONCLUIDO")
     return MatchOut(
         id=linha["id"],
         tipo=linha["tipo"],
