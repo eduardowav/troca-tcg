@@ -275,40 +275,42 @@ function Adicionar({
                   Mostrando {resultados.length} de {total} cartas
                 </p>
               )}
-              <div className="max-h-[34rem] overflow-y-auto pr-0.5">
-                <GradeDeCartas>
-                  {resultados.map((carta) => {
-                    const naOferta = emOferta.has(carta.id)
-                    const naProcura = emProcura.has(carta.id)
-                    return (
-                      <CelulaCarta
-                        key={carta.id}
-                        carta={carta}
-                        destaque={
-                          naOferta ? 'OFERTA' : naProcura ? 'PROCURA' : null
-                        }
-                      >
-                        <AcoesDeLista>
-                          <BotaoLista
-                            tipo="OFERTA"
-                            ativo={naOferta}
-                            disabled={naOferta || adicionar.isPending}
-                            rotulo={naOferta ? 'Na lista' : undefined}
-                            onClick={() => incluir(carta, 'OFERTA')}
-                          />
-                          <BotaoLista
-                            tipo="PROCURA"
-                            ativo={naProcura}
-                            disabled={naProcura || adicionar.isPending}
-                            rotulo={naProcura ? 'Na lista' : undefined}
-                            onClick={() => incluir(carta, 'PROCURA')}
-                          />
-                        </AcoesDeLista>
-                      </CelulaCarta>
-                    )
-                  })}
-                </GradeDeCartas>
-              </div>
+              {/* Sem altura máxima e sem rolagem própria: com a grade ocupando a
+                  largura toda, o painel virou seção da página, não dropdown. Um
+                  `overflow-y-auto` aqui só produziria uma segunda barra de
+                  rolagem dentro da primeira. */}
+              <GradeDeCartas>
+                {resultados.map((carta) => {
+                  const naOferta = emOferta.has(carta.id)
+                  const naProcura = emProcura.has(carta.id)
+                  return (
+                    <CelulaCarta
+                      key={carta.id}
+                      carta={carta}
+                      destaque={
+                        naOferta ? 'OFERTA' : naProcura ? 'PROCURA' : null
+                      }
+                    >
+                      <AcoesDeLista>
+                        <BotaoLista
+                          tipo="OFERTA"
+                          ativo={naOferta}
+                          disabled={naOferta || adicionar.isPending}
+                          rotulo={naOferta ? 'Na lista' : undefined}
+                          onClick={() => incluir(carta, 'OFERTA')}
+                        />
+                        <BotaoLista
+                          tipo="PROCURA"
+                          ativo={naProcura}
+                          disabled={naProcura || adicionar.isPending}
+                          rotulo={naProcura ? 'Na lista' : undefined}
+                          onClick={() => incluir(carta, 'PROCURA')}
+                        />
+                      </AcoesDeLista>
+                    </CelulaCarta>
+                  )
+                })}
+              </GradeDeCartas>
               {temMais && (
                 <Button
                   variant="ghost"
