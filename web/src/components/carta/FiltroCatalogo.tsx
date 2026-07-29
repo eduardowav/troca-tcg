@@ -20,9 +20,28 @@ export function FiltroCatalogo({
   onFiltros,
   className,
 }: FiltroCatalogoProps) {
-  const { data: catalogo, isPending } = useCatalogo()
+  const { data: catalogo } = useCatalogo()
 
-  if (isPending || !catalogo) return null
+  // Enquanto o catálogo não chega, os seletores aparecem desabilitados em vez de
+  // não aparecerem: some o pulo de layout que empurrava a lista para baixo.
+  if (!catalogo) {
+    return (
+      <div className={cn('flex flex-wrap items-center gap-2', className)}>
+        <Seletor rotulo="Série" valor="" onValor={() => {}} ativo={false} carregando>
+          <option value="">Todas as séries</option>
+        </Seletor>
+        <Seletor
+          rotulo="Expansão"
+          valor=""
+          onValor={() => {}}
+          ativo={false}
+          carregando
+        >
+          <option value="">Todas as expansões</option>
+        </Seletor>
+      </div>
+    )
+  }
 
   // Sem série escolhida, a lista de expansões é o catálogo inteiro em ordem de
   // lançamento — quem sabe o nome do set não deveria ter de saber o bloco antes.
@@ -98,12 +117,14 @@ function Seletor({
   valor,
   onValor,
   ativo,
+  carregando,
   children,
 }: {
   rotulo: string
   valor: string
   onValor: (v: string) => void
   ativo: boolean
+  carregando?: boolean
   children: React.ReactNode
 }) {
   return (
@@ -112,11 +133,13 @@ function Seletor({
         value={valor}
         onChange={(e) => onValor(e.target.value)}
         aria-label={rotulo}
+        disabled={carregando}
         className={cn(
           'h-9 max-w-[min(15rem,60vw)] appearance-none truncate',
           'rounded-[var(--radius-control)] border pr-7 pl-3',
           'text-[13px] transition-colors focus:outline-none',
           'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-volt',
+          carregando && 'opacity-50',
           ativo
             ? 'border-[color-mix(in_oklab,var(--color-volt)_45%,transparent)] bg-[color-mix(in_oklab,var(--color-volt)_14%,transparent)] text-paper'
             : 'border-edge bg-surface text-muted hover:text-paper',

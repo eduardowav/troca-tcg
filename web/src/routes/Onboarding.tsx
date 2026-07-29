@@ -7,6 +7,7 @@ import { toast } from 'sonner'
 
 import { CartaThumb } from '@/components/carta/CartaThumb'
 import { FiltroCatalogo } from '@/components/carta/FiltroCatalogo'
+import { CelulaCarta, GradeDeCartas } from '@/components/carta/GradeDeCartas'
 import { Button } from '@/components/ui/Button'
 import { useCardSearch } from '@/hooks/useCardSearch'
 import { useDebounced } from '@/hooks/useDebounced'
@@ -15,7 +16,6 @@ import { ApiError } from '@/lib/api'
 import { cn } from '@/lib/cn'
 import {
   type Carta,
-  codigoSet,
   type FiltrosBusca,
   type ListingKind,
   nomeCarta,
@@ -73,11 +73,11 @@ export default function Onboarding() {
         ) : resultados && resultados.length > 0 ? (
           <>
             <Contagem mostrando={resultados.length} total={total} />
-            <ul className="flex flex-col gap-1.5">
+            <GradeDeCartas>
               {resultados.map((carta) => (
-                <LinhaResultado key={carta.id} carta={carta} />
+                <CartaEscolhivel key={carta.id} carta={carta} />
               ))}
-            </ul>
+            </GradeDeCartas>
             {temMais && (
               <Button
                 variant="subtle"
@@ -179,36 +179,17 @@ function BuscaCartas({
   )
 }
 
-/* ---------- Linha de resultado ---------- */
+/* ---------- Célula de resultado ---------- */
 
-function LinhaResultado({ carta }: { carta: Carta }) {
+function CartaEscolhivel({ carta }: { carta: Carta }) {
   const alternar = useOnboarding((s) => s.alternar)
   const tipo = useOnboarding((s) => s.selecoes[carta.id]?.tipo)
 
   return (
-    <motion.li
-      layout
-      initial={{ opacity: 0, y: 6 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.18, ease: 'easeOut' }}
-      className={cn(
-        'flex items-center gap-3 rounded-card p-2 pr-2.5',
-        'border transition-colors',
-        tipo
-          ? 'border-edge bg-surface-2'
-          : 'border-transparent hover:bg-surface/60',
-      )}
-    >
-      <CartaThumb carta={carta} className="w-11 shrink-0" />
-
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-[15px] font-medium text-paper">
-          {nomeCarta(carta)}
-        </p>
-        <IdentidadeSet carta={carta} />
-      </div>
-
-      <div className="flex shrink-0 gap-1.5">
+    <CelulaCarta carta={carta} destaque={tipo}>
+      {/* Os dois botões dividem a largura da carta: o alvo de toque cresce e
+          fica claro que são a ação daquela carta, não da lista. */}
+      <div className="grid grid-cols-2 gap-1.5">
         <BotaoLista
           ativo={tipo === 'OFERTA'}
           tipo="OFERTA"
@@ -220,7 +201,7 @@ function LinhaResultado({ carta }: { carta: Carta }) {
           onClick={() => alternar(carta, 'PROCURA')}
         />
       </div>
-    </motion.li>
+    </CelulaCarta>
   )
 }
 
@@ -240,9 +221,8 @@ function BotaoLista({
     <button
       onClick={onClick}
       aria-pressed={ativo}
-      aria-label={`${label} ${oferta ? '' : ''}`.trim()}
       className={cn(
-        'h-9 rounded-[var(--radius-control)] px-3 text-[13px] font-medium',
+        'h-9 rounded-[var(--radius-control)] px-2 text-[13px] font-medium',
         'transition-[background-color,color,border-color] duration-150',
         'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-volt',
         ativo
@@ -259,28 +239,7 @@ function BotaoLista({
   )
 }
 
-/* ---------- Identidade do set + contagem ---------- */
-
-/**
- * O que distingue 87 Charizards um do outro. A sigla em mono é o vernáculo do
- * colecionador ("PRE 059"); o nome da expansão vem logo atrás para quem não
- * decorou as siglas.
- */
-function IdentidadeSet({ carta }: { carta: Carta }) {
-  return (
-    <p className="mt-0.5 flex min-w-0 items-baseline gap-1.5 text-xs text-muted">
-      <span className="set-code shrink-0">{codigoSet(carta)}</span>
-      {carta.set_nome && (
-        <>
-          <span aria-hidden className="shrink-0 text-faint">
-            ·
-          </span>
-          <span className="truncate">{carta.set_nome}</span>
-        </>
-      )}
-    </p>
-  )
-}
+/* ---------- Contagem ---------- */
 
 function Contagem({ mostrando, total }: { mostrando: number; total: number }) {
   if (total <= mostrando) return null
@@ -331,14 +290,18 @@ function SemResultados({
 
 function ListaSkeleton() {
   return (
-    <ul className="flex flex-col gap-1.5" aria-hidden>
+    <ul className="grid grid-cols-2 gap-2.5 sm:grid-cols-3" aria-hidden>
       {Array.from({ length: 6 }).map((_, i) => (
-        <li key={i} className="flex items-center gap-3 rounded-card p-2">
-          <div className="aspect-[2.5/3.5] w-11 shrink-0 animate-pulse rounded-[10px] bg-surface-2" />
-          <div className="flex-1 space-y-2">
-            <div className="h-3.5 w-2/5 animate-pulse rounded bg-surface-2" />
-            <div className="h-3 w-1/4 animate-pulse rounded bg-surface-2" />
+        <li
+          key={i}
+          className="flex flex-col gap-2 rounded-card border border-edge-soft p-2"
+        >
+          <div className="aspect-[2.5/3.5] w-full animate-pulse rounded-[10px] bg-surface-2" />
+          <div className="space-y-1.5 px-0.5">
+            <div className="h-3.5 w-3/5 animate-pulse rounded bg-surface-2" />
+            <div className="h-2.5 w-4/5 animate-pulse rounded bg-surface-2" />
           </div>
+          <div className="h-9 animate-pulse rounded-[var(--radius-control)] bg-surface-2" />
         </li>
       ))}
     </ul>
