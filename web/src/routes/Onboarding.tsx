@@ -7,7 +7,12 @@ import { toast } from 'sonner'
 
 import { CartaThumb } from '@/components/carta/CartaThumb'
 import { FiltroCatalogo } from '@/components/carta/FiltroCatalogo'
-import { CelulaCarta, GradeDeCartas } from '@/components/carta/GradeDeCartas'
+import {
+  AcoesDeLista,
+  BotaoLista,
+  CelulaCarta,
+  GradeDeCartas,
+} from '@/components/carta/GradeDeCartas'
 import { Button } from '@/components/ui/Button'
 import { useCardSearch } from '@/hooks/useCardSearch'
 import { useDebounced } from '@/hooks/useDebounced'
@@ -17,7 +22,6 @@ import { cn } from '@/lib/cn'
 import {
   type Carta,
   type FiltrosBusca,
-  type ListingKind,
   nomeCarta,
   SEM_FILTRO,
   temFiltro,
@@ -46,24 +50,29 @@ export default function Onboarding() {
   const faltam = Math.max(0, META - totalSelecionado)
 
   return (
-    <div className="mx-auto flex min-h-[100dvh] w-full max-w-xl flex-col px-5 pb-32">
-      <Cabecalho total={totalSelecionado} faltam={faltam} />
+    // A grade quer a tela inteira no desktop; o texto e os controles, não —
+    // linha longa demais cansa de ler e barra de busca de 1200px é grotesca.
+    // Daí a coluna de `max-w-xl` por cima de um container largo.
+    <div className="mx-auto flex min-h-[100dvh] w-full max-w-[100rem] flex-col px-5 pb-32">
+      <div className="w-full max-w-xl">
+        <Cabecalho total={totalSelecionado} faltam={faltam} />
 
-      <BuscaCartas termo={termo} onTermo={setTermo} />
+        <BuscaCartas termo={termo} onTermo={setTermo} />
 
-      <FiltroCatalogo
-        filtros={filtros}
-        onFiltros={setFiltros}
-        className="mt-3"
-      />
+        <FiltroCatalogo
+          filtros={filtros}
+          onFiltros={setFiltros}
+          className="mt-3"
+        />
 
-      {atalho && (
-        <p role="status" className="mt-2 text-xs text-muted">
-          Lendo como carta{' '}
-          <span className="set-code text-paper">{atalho.numero}</span> de{' '}
-          <span className="text-paper">{atalho.set.nome}</span>.
-        </p>
-      )}
+        {atalho && (
+          <p role="status" className="mt-2 text-xs text-muted">
+            Lendo como carta{' '}
+            <span className="set-code text-paper">{atalho.numero}</span> de{' '}
+            <span className="text-paper">{atalho.set.nome}</span>.
+          </p>
+        )}
+      </div>
 
       <div className="mt-5 flex-1">
         {!ativa ? (
@@ -187,55 +196,19 @@ function CartaEscolhivel({ carta }: { carta: Carta }) {
 
   return (
     <CelulaCarta carta={carta} destaque={tipo}>
-      {/* Os dois botões dividem a largura da carta: o alvo de toque cresce e
-          fica claro que são a ação daquela carta, não da lista. */}
-      <div className="grid grid-cols-2 gap-1.5">
+      <AcoesDeLista>
         <BotaoLista
-          ativo={tipo === 'OFERTA'}
           tipo="OFERTA"
+          ativo={tipo === 'OFERTA'}
           onClick={() => alternar(carta, 'OFERTA')}
         />
         <BotaoLista
-          ativo={tipo === 'PROCURA'}
           tipo="PROCURA"
+          ativo={tipo === 'PROCURA'}
           onClick={() => alternar(carta, 'PROCURA')}
         />
-      </div>
+      </AcoesDeLista>
     </CelulaCarta>
-  )
-}
-
-function BotaoLista({
-  ativo,
-  tipo,
-  onClick,
-}: {
-  ativo: boolean
-  tipo: ListingKind
-  onClick: () => void
-}) {
-  const oferta = tipo === 'OFERTA'
-  const label = oferta ? 'Ofereço' : 'Procuro'
-  const cor = oferta ? 'offer' : 'want'
-  return (
-    <button
-      onClick={onClick}
-      aria-pressed={ativo}
-      className={cn(
-        'h-9 rounded-[var(--radius-control)] px-2 text-[13px] font-medium',
-        'transition-[background-color,color,border-color] duration-150',
-        'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-volt',
-        ativo
-          ? cor === 'offer'
-            ? 'bg-offer text-[#06231f]'
-            : 'bg-want text-[#241703]'
-          : cor === 'offer'
-            ? 'border border-[color-mix(in_oklab,var(--color-offer)_35%,transparent)] text-offer hover:bg-[color-mix(in_oklab,var(--color-offer)_14%,transparent)]'
-            : 'border border-[color-mix(in_oklab,var(--color-want)_32%,transparent)] text-want hover:bg-[color-mix(in_oklab,var(--color-want)_12%,transparent)]',
-      )}
-    >
-      {label}
-    </button>
   )
 }
 
@@ -290,7 +263,10 @@ function SemResultados({
 
 function ListaSkeleton() {
   return (
-    <ul className="grid grid-cols-2 gap-2.5 sm:grid-cols-3" aria-hidden>
+    <ul
+      className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6"
+      aria-hidden
+    >
       {Array.from({ length: 6 }).map((_, i) => (
         <li
           key={i}
@@ -327,7 +303,7 @@ function BandejaSelecao({ total, faltam }: { total: number; faltam: number }) {
           transition={{ type: 'spring', stiffness: 300, damping: 32 }}
           className="fixed inset-x-0 bottom-0 z-30 border-t border-edge bg-ink/85 backdrop-blur-md"
         >
-          <div className="mx-auto w-full max-w-xl px-5 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+          <div className="mx-auto w-full max-w-[100rem] px-5 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
             <ul className="mb-3 flex gap-2 overflow-x-auto pb-1">
               {lista.map(({ carta, tipo }) => (
                 <li key={carta.id} className="relative shrink-0">

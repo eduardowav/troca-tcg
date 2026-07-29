@@ -20,7 +20,15 @@ export function GradeDeCartas({
   className?: string
 }) {
   return (
-    <ul className={cn('grid grid-cols-2 gap-2.5 sm:grid-cols-3', className)}>
+    <ul
+      className={cn(
+        'grid gap-2.5',
+        // Duas colunas no celular e mais uma a cada respiro de largura: no
+        // desktop a tela vira bancada de loja, com dezenas de artes à vista.
+        'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6',
+        className,
+      )}
+    >
       {children}
     </ul>
   )
@@ -77,5 +85,59 @@ export function CelulaCarta({
 
       {children}
     </motion.li>
+  )
+}
+
+/**
+ * Par de ações de uma carta: Ofereço e Procuro lado a lado.
+ *
+ * Os dois botões dividem a largura da célula — o alvo de toque cresce e fica
+ * claro que a ação é daquela carta, não da lista aberta. As duas telas usam o
+ * mesmo par: quem busca uma carta decide na hora para qual lista ela vai, sem
+ * ter de sair e voltar por outra aba.
+ */
+export function AcoesDeLista({ children }: { children: React.ReactNode }) {
+  return <div className="grid grid-cols-2 gap-1.5">{children}</div>
+}
+
+export function BotaoLista({
+  tipo,
+  ativo,
+  onClick,
+  disabled,
+  rotulo,
+}: {
+  tipo: ListingKind
+  ativo: boolean
+  onClick: () => void
+  disabled?: boolean
+  /** Sobrescreve o texto — "Na lista" quando a carta já está lá. */
+  rotulo?: string
+}) {
+  const oferta = tipo === 'OFERTA'
+  const nome = oferta ? 'Ofereço' : 'Procuro'
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-pressed={ativo}
+      aria-label={`${rotulo ?? nome} — ${nome}`}
+      className={cn(
+        'h-9 rounded-[var(--radius-control)] px-2 text-[13px] font-medium',
+        'transition-[background-color,color,border-color] duration-150',
+        'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-volt',
+        'disabled:cursor-default',
+        ativo
+          ? oferta
+            ? 'bg-offer text-[#06231f]'
+            : 'bg-want text-[#241703]'
+          : oferta
+            ? 'border border-[color-mix(in_oklab,var(--color-offer)_35%,transparent)] text-offer hover:bg-[color-mix(in_oklab,var(--color-offer)_14%,transparent)] disabled:opacity-40 disabled:hover:bg-transparent'
+            : 'border border-[color-mix(in_oklab,var(--color-want)_32%,transparent)] text-want hover:bg-[color-mix(in_oklab,var(--color-want)_12%,transparent)] disabled:opacity-40 disabled:hover:bg-transparent',
+      )}
+    >
+      {rotulo ?? nome}
+    </button>
   )
 }

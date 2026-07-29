@@ -4,7 +4,12 @@ import { toast } from 'sonner'
 
 import { CartaThumb } from '@/components/carta/CartaThumb'
 import { FiltroCatalogo } from '@/components/carta/FiltroCatalogo'
-import { CelulaCarta, GradeDeCartas } from '@/components/carta/GradeDeCartas'
+import {
+  AcoesDeLista,
+  BotaoLista,
+  CelulaCarta,
+  GradeDeCartas,
+} from '@/components/carta/GradeDeCartas'
 import { Button } from '@/components/ui/Button'
 import { IconeBusca, IconeCartas } from '@/components/ui/Icone'
 import {
@@ -53,22 +58,40 @@ export default function MinhasCartas() {
     [anuncios],
   )
 
+  const porTipo = useMemo(
+    () => ({
+      OFERTA: new Set(
+        (anuncios ?? []).filter((a) => a.tipo === 'OFERTA').map((a) => a.card_id),
+      ),
+      PROCURA: new Set(
+        (anuncios ?? [])
+          .filter((a) => a.tipo === 'PROCURA')
+          .map((a) => a.card_id),
+      ),
+    }),
+    [anuncios],
+  )
+
   return (
-    <div className="mx-auto flex min-h-[100dvh] w-full max-w-xl flex-col px-5">
-      <header className="pt-10">
-        <p className="set-code text-xs tracking-wide text-muted">TROCATCG</p>
-        <h1 className="mt-3 text-[28px] leading-[1.1]">Minhas cartas</h1>
-        <p className="mt-2 text-[15px] leading-relaxed text-muted">
-          O que você oferece e o que procura. Toque numa carta para ajustar
-          quantidade, condição e prioridade.
-        </p>
-      </header>
+    // Só a busca quer a tela toda; o resto é leitura e edição, que pedem coluna
+    // estreita. Ver o mesmo raciocínio no Onboarding.
+    <div className="mx-auto flex min-h-[100dvh] w-full max-w-[100rem] flex-col px-5">
+      <div className="w-full max-w-xl">
+        <header className="pt-10">
+          <p className="set-code text-xs tracking-wide text-muted">TROCATCG</p>
+          <h1 className="mt-3 text-[28px] leading-[1.1]">Minhas cartas</h1>
+          <p className="mt-2 text-[15px] leading-relaxed text-muted">
+            O que você oferece e o que procura. Toque numa carta para ajustar
+            quantidade, condição e prioridade.
+          </p>
+        </header>
 
-      <Abas aba={aba} onAba={setAba} totais={totais} />
+        <Abas aba={aba} onAba={setAba} totais={totais} />
+      </div>
 
-      <Adicionar aba={aba} jaNaLista={new Set(daAba.map((a) => a.card_id))} />
+      <Adicionar emOferta={porTipo.OFERTA} emProcura={porTipo.PROCURA} />
 
-      <div className="mt-5 flex-1">
+      <div className="mt-5 w-full max-w-xl flex-1">
         {isPending ? (
           <Esqueleto />
         ) : isError ? (
@@ -144,14 +167,22 @@ function Abas({
   )
 }
 
-/* ---------- Adicionar carta à lista aberta ---------- */
+/* ---------- Adicionar carta ---------- */
 
+/**
+ * Uma busca só para as duas listas.
+ *
+ * Antes a busca herdava a aba aberta: para pôr uma carta em Procuro estando em
+ * Ofereço, era preciso fechar, trocar de aba e buscar de novo — e quem acabou de
+ * achar a carta já sabe para qual lista ela vai. Agora cada resultado traz os
+ * dois botões e a decisão acontece na hora, na própria carta.
+ */
 function Adicionar({
-  aba,
-  jaNaLista,
+  emOferta,
+  emProcura,
 }: {
-  aba: ListingKind
-  jaNaLista: Set<string>
+  emOferta: Set<string>
+  emProcura: Set<string>
 }) {
   const [aberto, setAberto] = useState(false)
   const [busca, setBusca] = useState('')
@@ -168,15 +199,15 @@ function Adicionar({
   } = useCardSearch(termo, filtros)
   const adicionar = useAdicionarAnuncio()
 
-  const rotulo = aba === 'OFERTA' ? 'Ofereço' : 'Procuro'
-
-  function incluir(carta: Carta) {
+  function incluir(carta: Carta, tipo: ListingKind) {
+    const rotulo = tipo === 'OFERTA' ? 'Ofereço' : 'Procuro'
     adicionar.mutate(
-      { card_id: carta.id, tipo: aba },
+      { card_id: carta.id, tipo },
       {
         onSuccess: () => {
+          // O termo continua: com os dois botões na carta, é comum adicionar
+          // várias do mesmo resultado antes de buscar outra coisa.
           toast.success(`${nomeCarta(carta)} entrou em ${rotulo}.`)
-          setBusca('')
         },
         onError: (erro) =>
           toast.error(
@@ -194,10 +225,10 @@ function Adicionar({
         variant="subtle"
         size="md"
         block
-        className="mt-3"
+        className="mt-3 max-w-xl"
         onClick={() => setAberto(true)}
       >
-        Adicionar carta a {rotulo}
+        Adicionar carta
       </Button>
     )
   }
@@ -210,9 +241,9 @@ function Adicionar({
           type="search"
           value={busca}
           onChange={(e) => setBusca(e.target.value)}
-          aria-label={`Buscar carta para ${rotulo}`}
+          aria-label="Buscar carta para adicionar"
           placeholder="Busque: Pikachu, Umbreon, Pesquisa…"
-          className="h-11 min-w-0 flex-1 rounded-[var(--radius-control)] border border-edge bg-surface-2 px-3 text-[15px] text-paper placeholder:text-muted"
+          className="h-11 min-w-0 max-w-xl flex-1 rounded-[var(--radius-control)] border border-edge bg-surface-2 px-3 text-[15px] text-paper placeholder:text-muted"
         />
         <Button
           variant="ghost"
@@ -244,26 +275,35 @@ function Adicionar({
                   Mostrando {resultados.length} de {total} cartas
                 </p>
               )}
-              <div className="max-h-[28rem] overflow-y-auto pr-0.5">
+              <div className="max-h-[34rem] overflow-y-auto pr-0.5">
                 <GradeDeCartas>
                   {resultados.map((carta) => {
-                    const dentro = jaNaLista.has(carta.id)
+                    const naOferta = emOferta.has(carta.id)
+                    const naProcura = emProcura.has(carta.id)
                     return (
                       <CelulaCarta
                         key={carta.id}
                         carta={carta}
-                        destaque={dentro ? aba : null}
+                        destaque={
+                          naOferta ? 'OFERTA' : naProcura ? 'PROCURA' : null
+                        }
                       >
-                        <Button
-                          type="button"
-                          variant={aba === 'OFERTA' ? 'offer' : 'want'}
-                          size="sm"
-                          block
-                          disabled={dentro || adicionar.isPending}
-                          onClick={() => incluir(carta)}
-                        >
-                          {dentro ? 'Já na lista' : `Pôr em ${rotulo}`}
-                        </Button>
+                        <AcoesDeLista>
+                          <BotaoLista
+                            tipo="OFERTA"
+                            ativo={naOferta}
+                            disabled={naOferta || adicionar.isPending}
+                            rotulo={naOferta ? 'Na lista' : undefined}
+                            onClick={() => incluir(carta, 'OFERTA')}
+                          />
+                          <BotaoLista
+                            tipo="PROCURA"
+                            ativo={naProcura}
+                            disabled={naProcura || adicionar.isPending}
+                            rotulo={naProcura ? 'Na lista' : undefined}
+                            onClick={() => incluir(carta, 'PROCURA')}
+                          />
+                        </AcoesDeLista>
                       </CelulaCarta>
                     )
                   })}
