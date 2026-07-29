@@ -20,35 +20,56 @@ const META = 10
 export default function Onboarding() {
   const [termo, setTermo] = useState('')
   const busca = useDebounced(termo, 250)
-  const { data: resultados, isFetching } = useCardSearch(busca)
+  const {
+    cartas: resultados,
+    total,
+    carregando,
+    temMais,
+    carregarMais,
+    carregandoMais,
+  } = useCardSearch(busca)
 
   const selecoes = useOnboarding((s) => s.selecoes)
-  const { total } = contar(selecoes)
-  const faltam = Math.max(0, META - total)
+  const { total: totalSelecionado } = contar(selecoes)
+  const faltam = Math.max(0, META - totalSelecionado)
 
   return (
     <div className="mx-auto flex min-h-[100dvh] w-full max-w-xl flex-col px-5 pb-32">
-      <Cabecalho total={total} faltam={faltam} />
+      <Cabecalho total={totalSelecionado} faltam={faltam} />
 
       <BuscaCartas termo={termo} onTermo={setTermo} />
 
       <div className="mt-5 flex-1">
         {busca.trim().length < 2 ? (
-          <EstadoVazio temSelecoes={total > 0} />
-        ) : isFetching && !resultados ? (
+          <EstadoVazio temSelecoes={totalSelecionado > 0} />
+        ) : carregando ? (
           <ListaSkeleton />
         ) : resultados && resultados.length > 0 ? (
-          <ul className="flex flex-col gap-1.5">
-            {resultados.map((carta) => (
-              <LinhaResultado key={carta.id} carta={carta} />
-            ))}
-          </ul>
+          <>
+            <Contagem mostrando={resultados.length} total={total} />
+            <ul className="flex flex-col gap-1.5">
+              {resultados.map((carta) => (
+                <LinhaResultado key={carta.id} carta={carta} />
+              ))}
+            </ul>
+            {temMais && (
+              <Button
+                variant="subtle"
+                block
+                className="mt-3"
+                loading={carregandoMais}
+                onClick={() => carregarMais()}
+              >
+                Mostrar mais
+              </Button>
+            )}
+          </>
         ) : (
           <SemResultados termo={busca} />
         )}
       </div>
 
-      <BandejaSelecao total={total} faltam={faltam} />
+      <BandejaSelecao total={totalSelecionado} faltam={faltam} />
     </div>
   )
 }
@@ -158,7 +179,7 @@ function LinhaResultado({ carta }: { carta: Carta }) {
         <p className="truncate text-[15px] font-medium text-paper">
           {nomeCarta(carta)}
         </p>
-        <p className="set-code mt-0.5 text-xs text-muted">{codigoSet(carta)}</p>
+        <IdentidadeSet carta={carta} />
       </div>
 
       <div className="flex shrink-0 gap-1.5">
@@ -209,6 +230,38 @@ function BotaoLista({
     >
       {label}
     </button>
+  )
+}
+
+/* ---------- Identidade do set + contagem ---------- */
+
+/**
+ * O que distingue 87 Charizards um do outro. A sigla em mono é o vernáculo do
+ * colecionador ("PRE 059"); o nome da expansão vem logo atrás para quem não
+ * decorou as siglas.
+ */
+function IdentidadeSet({ carta }: { carta: Carta }) {
+  return (
+    <p className="mt-0.5 flex min-w-0 items-baseline gap-1.5 text-xs text-muted">
+      <span className="set-code shrink-0">{codigoSet(carta)}</span>
+      {carta.set_nome && (
+        <>
+          <span aria-hidden className="shrink-0 text-faint">
+            ·
+          </span>
+          <span className="truncate">{carta.set_nome}</span>
+        </>
+      )}
+    </p>
+  )
+}
+
+function Contagem({ mostrando, total }: { mostrando: number; total: number }) {
+  if (total <= mostrando) return null
+  return (
+    <p role="status" className="mb-2 text-xs text-muted">
+      Mostrando {mostrando} de {total} cartas
+    </p>
   )
 }
 

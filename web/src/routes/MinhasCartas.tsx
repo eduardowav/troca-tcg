@@ -147,7 +147,14 @@ function Adicionar({
   const [aberto, setAberto] = useState(false)
   const [busca, setBusca] = useState('')
   const termo = useDebounced(busca)
-  const { data: resultados, isFetching } = useCardSearch(termo)
+  const {
+    cartas: resultados,
+    total,
+    carregando,
+    temMais,
+    carregarMais,
+    carregandoMais,
+  } = useCardSearch(termo)
   const adicionar = useAdicionarAnuncio()
 
   const rotulo = aba === 'OFERTA' ? 'Ofereço' : 'Procuro'
@@ -210,37 +217,61 @@ function Adicionar({
 
       {termo.trim().length >= 2 && (
         <div className="mt-3">
-          {isFetching && !resultados ? (
+          {carregando ? (
             <p className="py-3 text-center text-[14px] text-muted">Buscando…</p>
           ) : resultados?.length ? (
-            <ul className="flex max-h-72 flex-col gap-1.5 overflow-y-auto">
-              {resultados.map((carta) => {
-                const dentro = jaNaLista.has(carta.id)
-                return (
-                  <li key={carta.id}>
-                    <button
-                      type="button"
-                      disabled={dentro || adicionar.isPending}
-                      onClick={() => incluir(carta)}
-                      className="flex w-full items-center gap-3 rounded-[10px] p-2 text-left hover:bg-surface-2 disabled:opacity-45 disabled:hover:bg-transparent"
-                    >
-                      <CartaThumb carta={carta} className="w-9 shrink-0" />
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-[14px] text-paper">
-                          {nomeCarta(carta)}
+            <>
+              {total > resultados.length && (
+                <p role="status" className="mb-2 text-[11px] text-muted">
+                  Mostrando {resultados.length} de {total} cartas
+                </p>
+              )}
+              <ul className="flex max-h-72 flex-col gap-1.5 overflow-y-auto">
+                {resultados.map((carta) => {
+                  const dentro = jaNaLista.has(carta.id)
+                  return (
+                    <li key={carta.id}>
+                      <button
+                        type="button"
+                        disabled={dentro || adicionar.isPending}
+                        onClick={() => incluir(carta)}
+                        className="flex w-full items-center gap-3 rounded-[10px] p-2 text-left hover:bg-surface-2 disabled:opacity-45 disabled:hover:bg-transparent"
+                      >
+                        <CartaThumb carta={carta} className="w-9 shrink-0" />
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-[14px] text-paper">
+                            {nomeCarta(carta)}
+                          </span>
+                          <span className="flex min-w-0 items-baseline gap-1.5 text-[11px] text-muted">
+                            <span className="set-code shrink-0">
+                              {codigoSet(carta)}
+                            </span>
+                            {carta.set_nome && (
+                              <span className="truncate">{carta.set_nome}</span>
+                            )}
+                          </span>
                         </span>
-                        <span className="set-code block text-[11px] text-muted">
-                          {codigoSet(carta)}
+                        <span className="shrink-0 text-[13px] text-muted">
+                          {dentro ? 'já na lista' : 'adicionar'}
                         </span>
-                      </span>
-                      <span className="shrink-0 text-[13px] text-muted">
-                        {dentro ? 'já na lista' : 'adicionar'}
-                      </span>
-                    </button>
-                  </li>
-                )
-              })}
-            </ul>
+                      </button>
+                    </li>
+                  )
+                })}
+              </ul>
+              {temMais && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  block
+                  className="mt-2"
+                  loading={carregandoMais}
+                  onClick={() => carregarMais()}
+                >
+                  Mostrar mais
+                </Button>
+              )}
+            </>
           ) : (
             <p className="py-3 text-center text-[14px] text-muted">
               Nenhuma carta com esse nome.

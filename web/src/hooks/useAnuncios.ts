@@ -38,13 +38,22 @@ export function useCartasPorId(ids: string[]) {
     enabled: chave.length > 0,
     staleTime: 5 * 60 * 1000,
     queryFn: async (): Promise<Map<string, Carta>> => {
+      // Traz o set junto para a lista mostrar o mesmo "PRE 059" da busca — sem
+      // isso, a mesma carta apareceria como "SV08.5 059" aqui e "PRE 059" lá.
       const { data, error } = await supabase
         .from('cards')
-        .select(COLUNAS_CARTA)
+        .select(`${COLUNAS_CARTA}, sets(nome, sigla)`)
         .in('id', chave)
 
       if (error) throw error
-      return new Map((data as Carta[]).map((c) => [c.id, c]))
+
+      type ComSet = Carta & { sets: { nome: string; sigla: string | null } | null }
+      return new Map(
+        (data as unknown as ComSet[]).map(({ sets, ...carta }) => [
+          carta.id,
+          { ...carta, set_nome: sets?.nome ?? null, set_sigla: sets?.sigla ?? null },
+        ]),
+      )
     },
   })
 }

@@ -21,7 +21,7 @@ Dados **não-secretos** da infra do TrocaTCG. Segredos nunca entram aqui — fic
 - `SUPABASE_SERVICE_ROLE_KEY` e `SUPABASE_JWT_SECRET` → *Project Settings > API*
 - Senha do banco / connection string → *Project Settings > Database*
 
-Schema aplicado: as migrações de `db/schema/` (00–12). RLS ativo em todas as
+Schema aplicado: as migrações de `db/schema/` (00–13). RLS ativo em todas as
 tabelas; catálogo com leitura pública, `match_events` trancado para a API, e os
 grants do PostgREST fechados na 11 (escrita só pela API).
 
@@ -76,6 +76,37 @@ Três notas de leitura desses números:
 **`tcgp` (Estampas Ilustradas Pocket) ficou de fora de propósito**: é o jogo de
 celular, as cartas são digitais e não se trocam em mão. Se um dia entrar, entra
 como jogo separado, não como mais uma série.
+
+### Busca
+
+A busca é a função `buscar_cartas(termo, limite, deslocamento)` no Postgres
+(`db/schema/13_busca_cartas.sql`), chamada por RPC — o frontend não monta mais
+filtro nenhum. O query builder do PostgREST não tem como expressar "ordene por
+quão bem casou", e sem isso 87 Charizards chegam em ordem aleatória.
+
+O que a função resolve, na ordem em que apareceu testando com gente digitando:
+
+| Caso | Antes | Agora |
+|---|---|---|
+| `pokemon` (sem acento) | 0 resultados | acha "Pokémon" |
+| `pesquisa professor` | 0 resultados | acha "Pesquisa de Professores" |
+| `charizrd` (typo) | 0 resultados | 82 Charizards |
+| `charizard` | 24 de 87, ordem do número impresso | 24 de 87, exato → recente |
+| `%` | catálogo inteiro | nada (curinga é escapado) |
+
+Como funciona: `cards.busca_pt`/`busca_en` são colunas **geradas** com o nome sem
+acento e em minúsculas — a normalização é paga na escrita, e é o que torna o
+índice trigram utilizável (um índice sobre `nome_pt` não serve para uma busca
+sobre `unaccent(nome_pt)`). Os termos viram um padrão único `%a%b%`, então as
+palavras não precisam ser contíguas. Quem não casa por LIKE ainda pode entrar
+pela similaridade trigram, sempre ranqueada **depois** de qualquer casamento
+literal. A ordem final é relevância → set mais recente → número natural
+('2' antes de '10'). ~16 ms com 16 mil cartas.
+
+`total` volta em cada linha (janela calculada antes do LIMIT), e é o que o app
+usa para dizer "Mostrando 24 de 87 cartas" e decidir se mostra "Mostrar mais".
+
+Ainda **não** tem: filtro por série/set e busca pela sigla ("OBF 125").
 
 `sets.sigla` guarda a abreviação impressa na carta (`OBF`, `PRE`, `MEW`), que é
 como o jogador lê o canto — "OBF 125/197". A UI ainda mostra o `set_code`

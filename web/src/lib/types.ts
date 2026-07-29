@@ -8,6 +8,9 @@ export interface Carta {
   nome_en: string
   raridade: string | null
   imagem_url: string | null
+  /** Vêm do join com `sets`. Opcionais porque nem toda leitura de carta os traz. */
+  set_nome?: string | null
+  set_sigla?: string | null
 }
 
 /** Projeção usada em toda leitura de `cards` — mantém os selects em sintonia.
@@ -40,7 +43,13 @@ export function nomeCarta(c: Carta): string {
   return c.nome_pt ?? c.nome_en
 }
 
-/** Código de set no vernáculo do colecionador: "PRE 059/131". */
+/**
+ * Código de set no vernáculo do colecionador: "PRE 059".
+ *
+ * A sigla é o que está impresso no canto da carta, e é por ela que o jogador
+ * reconhece a expansão. O `set_code` da fonte ("sv08.5") só aparece quando a
+ * sigla não existe — alguns sets de promo não têm.
+ */
 export function codigoSet(c: Carta): string {
-  return `${c.set_code.toUpperCase()} ${c.numero}`
+  return `${(c.set_sigla ?? c.set_code).toUpperCase()} ${c.numero}`
 }
