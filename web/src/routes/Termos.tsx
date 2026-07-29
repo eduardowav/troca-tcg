@@ -136,10 +136,10 @@ export default function Termos() {
         </Secao>
 
         <Secao titulo="14. Por quanto tempo">
-          Enquanto sua conta existir. Ao apagar a conta, seus dados pessoais são
-          removidos; o histórico de trocas é anonimizado, porque a reputação da
-          outra pessoa depende dele. O registro de aceite dos termos é guardado
-          pelo prazo legal.
+          Enquanto sua conta existir. Ao apagar a conta, tudo que é seu vai
+          junto: perfil, listas, trocas em aberto, inscrições de notificação e o
+          registro do seu aceite. Quem já trocou com você mantém a contagem de
+          trocas concluídas dele, que não guarda nenhum dado seu.
         </Secao>
 
         <Secao titulo="15. Seus direitos">
@@ -157,8 +157,8 @@ export default function Termos() {
         </Secao>
 
         <Secao titulo="16. Como apagar sua conta">
-          Peça pelo e-mail acima, a partir do endereço cadastrado. A remoção
-          acontece em até 15 dias e não pode ser desfeita.
+          No próprio app, em Perfil → “Apagar minha conta”. A remoção é imediata
+          e não pode ser desfeita — não precisa pedir para ninguém nem esperar.
         </Secao>
       </div>
     </div>

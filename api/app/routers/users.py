@@ -53,3 +53,12 @@ async def atualizar_meu_perfil(
     session: AsyncSession = Depends(get_session),
 ) -> PerfilOut:
     return await profiles.atualizar_perfil(session, user_id, dados)
+
+
+@router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
+async def excluir_minha_conta(
+    user_id: UUID = Depends(usuario_atual),
+    session: AsyncSession = Depends(get_session),
+) -> None:
+    """Direito do titular (LGPD art. 18) — sem passar por e-mail nem por nós."""
+    await profiles.excluir_conta(session, user_id)

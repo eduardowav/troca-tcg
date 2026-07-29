@@ -1,6 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 import { z } from 'zod'
 
@@ -10,6 +9,7 @@ import { usePerfil } from '@/hooks/usePerfil'
 import { ApiError } from '@/lib/api'
 import {
   atualizarPerfil,
+  excluirConta,
   type Perfil,
   type PerfilEdicao,
   usernameDisponivel,
@@ -65,14 +65,9 @@ export default function PerfilTela() {
         >
           Sair da conta
         </button>
-        <p className="mt-4 text-[13px] leading-relaxed text-faint">
-          Quer apagar sua conta? Veja como em{' '}
-          <Link to="/termos" className="underline underline-offset-2">
-            termos e privacidade
-          </Link>
-          .
-        </p>
       </div>
+
+      <ExcluirConta perfil={perfil} />
     </Moldura>
   )
 }
@@ -227,6 +222,98 @@ function Formulario({ perfil }: { perfil: Perfil }) {
         Salvar alterações
       </Button>
     </form>
+  )
+}
+
+/**
+ * Exclusão de conta.
+ *
+ * A fricção é proporcional ao estrago: fica recolhida atrás de um link, e para
+ * confirmar é preciso digitar o próprio @. Um "tem certeza?" seria clicado no
+ * automático; digitar o @ obriga a ler o que está escrito.
+ */
+function ExcluirConta({ perfil }: { perfil: Perfil }) {
+  const [aberto, setAberto] = useState(false)
+  const [confirmacao, setConfirmacao] = useState('')
+
+  const excluir = useMutation({
+    mutationFn: () => excluirConta(),
+    onSuccess: async () => {
+      toast.success('Conta apagada. Obrigado por ter usado o TrocaTCG.')
+      // Encerra a sessão: o token continuaria válido até expirar, e sem conta
+      // do outro lado o app entraria num limbo de "perfil não encontrado".
+      await sair()
+    },
+    onError: (erro) =>
+      toast.error(
+        erro instanceof ApiError
+          ? erro.message
+          : 'Não foi possível apagar a conta agora.',
+      ),
+  })
+
+  if (!aberto) {
+    return (
+      <div className="mt-8 mb-4">
+        <button
+          onClick={() => setAberto(true)}
+          className="text-[13px] text-faint underline underline-offset-4 hover:text-alert"
+        >
+          Apagar minha conta
+        </button>
+      </div>
+    )
+  }
+
+  const confere = confirmacao.trim().toLowerCase() === perfil.username
+
+  return (
+    <div className="mt-8 mb-4 rounded-card border border-[color-mix(in_oklab,var(--color-alert)_40%,transparent)] bg-[color-mix(in_oklab,var(--color-alert)_8%,transparent)] p-5">
+      <p className="text-[15px] font-medium text-alert">Apagar sua conta</p>
+      <p className="mt-2 text-[14px] leading-relaxed text-muted">
+        Some tudo: perfil, suas listas de Ofereço e Procuro, e as trocas em
+        aberto. Quem já trocou com você mantém a reputação dele. Não dá para
+        desfazer.
+      </p>
+
+      <label className="mt-4 block text-[13px] text-muted">
+        Digite <span className="text-paper">{perfil.username}</span> para
+        confirmar
+        <input
+          value={confirmacao}
+          onChange={(e) => setConfirmacao(e.target.value)}
+          autoCapitalize="none"
+          spellCheck={false}
+          className="mt-1.5 h-11 w-full rounded-[var(--radius-control)] border border-edge bg-surface-2 px-3 text-[15px] text-paper"
+        />
+      </label>
+
+      <div className="mt-4 flex flex-col gap-2">
+        <Button
+          variant="ghost"
+          size="md"
+          block
+          disabled={!confere}
+          loading={excluir.isPending}
+          onClick={() => excluir.mutate()}
+          className="text-alert hover:text-alert"
+        >
+          Apagar definitivamente
+        </Button>
+        <Button
+          variant="subtle"
+          size="md"
+          block
+          disabled={excluir.isPending}
+          onClick={() => {
+            setAberto(false)
+            setConfirmacao('')
+          }}
+        >
+          Cancelar
+        </Button>
+      </div>
+    </div>
   )
 }
 

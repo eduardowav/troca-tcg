@@ -40,6 +40,9 @@ export const criarPerfil = (dados: PerfilNovo) => api.post<Perfil>('/me', dados)
 export const atualizarPerfil = (dados: PerfilEdicao) =>
   api.patch<Perfil>('/me', dados)
 
+/** Apaga a conta no servidor. Irreversível — a sessão é encerrada depois. */
+export const excluirConta = () => api.del('/me')
+
 /**
  * Dados do cadastro que ficam no user_metadata do Supabase até virarem perfil.
  *

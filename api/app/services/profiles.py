@@ -131,6 +131,36 @@ async def atualizar_perfil(
     return _para_out(dict(row))
 
 
+async def excluir_conta(session: AsyncSession, user_id: UUID) -> None:
+    """Apaga a conta e tudo que está preso a ela. Não tem volta.
+
+    A ordem importa: `match_items` e `match_events` apontam para `profiles` sem
+    ON DELETE, então bloqueiam a remoção. Apagar antes os matches em que a pessoa
+    participou resolve — e faz sentido de produto, porque uma troca combinada com
+    quem saiu não vai acontecer.
+
+    A reputação de quem fica não é afetada: `trocas_concluidas` e `trocas_furadas`
+    são contadores na própria linha do perfil, não uma soma dos matches.
+
+    Por fim removemos a linha em `auth.users`; o ON DELETE CASCADE dela leva
+    junto o perfil, os anúncios, o aceite dos termos e as inscrições de push.
+    """
+    await session.execute(
+        text("""
+            delete from matches
+            where id in (
+              select match_id from match_participants where user_id = :id
+            )
+        """),
+        {"id": str(user_id)},
+    )
+    await session.execute(
+        text("delete from auth.users where id = :id"),
+        {"id": str(user_id)},
+    )
+    await session.commit()
+
+
 def _traduzir_conflito(exc: IntegrityError) -> RegraNegocio:
     constraint = getattr(exc.orig, "constraint_name", "") or str(exc.orig)
     if "username" in constraint:
