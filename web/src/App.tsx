@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 
+import { LayoutApp } from '@/components/Navegacao'
 import { ExigePerfil, ExigeSessao } from '@/components/RotaProtegida'
 import { usePerfil } from '@/hooks/usePerfil'
 import CompletarCadastro from '@/routes/CompletarCadastro'
@@ -26,10 +27,12 @@ export default function App() {
           <Route path="/app" element={<Inicio />} />
           <Route path="/onboarding" element={<Onboarding />} />
           <Route path="/pronto" element={<Pronto />} />
-          <Route path="/minhas-cartas" element={<MinhasCartas />} />
-          <Route path="/matches" element={<Matches />} />
-          <Route path="/matches/:id" element={<MatchDetalhe />} />
-          {/* Próximas fases: /perfil */}
+          <Route element={<LayoutApp />}>
+            <Route path="/minhas-cartas" element={<MinhasCartas />} />
+            <Route path="/matches" element={<Matches />} />
+            <Route path="/matches/:id" element={<MatchDetalhe />} />
+            {/* Próximas fases: /perfil */}
+          </Route>
         </Route>
       </Route>
 
