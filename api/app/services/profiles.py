@@ -14,9 +14,13 @@ from app.core.config import settings
 from app.core.errors import RegraNegocio
 from app.schemas.profile import PerfilAtualizar, PerfilCriar, PerfilOut
 
+# contato_visivel entra aqui porque estas colunas só alimentam o PerfilOut, que
+# só é servido em /me — é o dono vendo o próprio contato para poder editá-lo. A
+# regra de nunca revelar contato de terceiros vive em schemas/match.py, e é lá
+# que ela precisa continuar valendo.
 _COLUNAS = """
   id::text, username, nome_exibicao, cidade, bairro, avatar_url, bio,
-  trocas_concluidas, trocas_furadas, plano, onboarding_ok
+  contato_visivel, trocas_concluidas, trocas_furadas, plano, onboarding_ok
 """
 
 
@@ -100,6 +104,7 @@ async def atualizar_perfil(
         return perfil
 
     mapa = {
+        "username": "username",
         "nome_exibicao": "nome_exibicao",
         "bairro": "bairro",
         "bio": "bio",
@@ -108,12 +113,17 @@ async def atualizar_perfil(
     }
     sets = ", ".join(f"{mapa[k]} = :{k}" for k in campos)
     campos["id"] = str(user_id)
-    res = await session.execute(
-        text(f"update profiles set {sets} where id = :id returning {_COLUNAS}"),
-        campos,
-    )
-    row = res.mappings().first()
-    await session.commit()
+    try:
+        res = await session.execute(
+            text(f"update profiles set {sets} where id = :id returning {_COLUNAS}"),
+            campos,
+        )
+        row = res.mappings().first()
+        await session.commit()
+    except IntegrityError as exc:
+        # Desde que o @ virou editável, trocar para um já tomado passa por aqui.
+        await session.rollback()
+        raise _traduzir_conflito(exc) from exc
     if row is None:
         raise RegraNegocio(
             "PERFIL_NAO_ENCONTRADO", "Perfil não encontrado.", status_code=404

@@ -10,6 +10,8 @@ export interface Perfil {
   bairro: string | null
   avatar_url: string | null
   bio: string | null
+  /** Só vem em /me — o dono vendo o próprio contato. */
+  contato_visivel: string | null
   trocas_concluidas: number
   trocas_furadas: number
   reputacao: number | null
@@ -25,8 +27,18 @@ export interface PerfilNovo {
   aceite_termos: boolean
 }
 
+/** Campos que a tela de perfil edita. PATCH parcial: ausente = não mexer. */
+export interface PerfilEdicao {
+  username?: string
+  nome_exibicao?: string
+  contato_visivel?: string
+  bio?: string | null
+}
+
 export const obterPerfil = () => api.get<Perfil>('/me')
 export const criarPerfil = (dados: PerfilNovo) => api.post<Perfil>('/me', dados)
+export const atualizarPerfil = (dados: PerfilEdicao) =>
+  api.patch<Perfil>('/me', dados)
 
 /**
  * Dados do cadastro que ficam no user_metadata do Supabase até virarem perfil.

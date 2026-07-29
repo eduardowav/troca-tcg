@@ -10,6 +10,7 @@ import MatchDetalhe from '@/routes/Match'
 import Matches from '@/routes/Matches'
 import MinhasCartas from '@/routes/MinhasCartas'
 import Onboarding from '@/routes/Onboarding'
+import PerfilTela from '@/routes/Perfil'
 import Pronto from '@/routes/Pronto'
 import Termos from '@/routes/Termos'
 
@@ -31,7 +32,7 @@ export default function App() {
             <Route path="/minhas-cartas" element={<MinhasCartas />} />
             <Route path="/matches" element={<Matches />} />
             <Route path="/matches/:id" element={<MatchDetalhe />} />
-            {/* Próximas fases: /perfil */}
+            <Route path="/perfil" element={<PerfilTela />} />
           </Route>
         </Route>
       </Route>

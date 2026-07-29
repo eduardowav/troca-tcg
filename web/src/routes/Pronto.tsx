@@ -2,7 +2,6 @@ import { Link } from 'react-router-dom'
 
 import { useAnuncios } from '@/hooks/useAnuncios'
 import { usePerfil } from '@/hooks/usePerfil'
-import { sair } from '@/stores/auth'
 
 /**
  * Confirmação pós-onboarding.
@@ -48,12 +47,7 @@ export default function Pronto() {
         Ver e editar minhas cartas
       </Link>
 
-      <button
-        onClick={sair}
-        className="mx-auto mt-8 text-[13px] text-muted underline underline-offset-2 hover:text-paper"
-      >
-        Sair da conta
-      </button>
+      {/* Sair da conta agora mora no perfil, alcançável pela barra de navegação. */}
     </div>
   )
 }

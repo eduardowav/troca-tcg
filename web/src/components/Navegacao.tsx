@@ -1,6 +1,6 @@
 import { NavLink, Outlet } from 'react-router-dom'
 
-import { IconeCartas, IconeTroca } from '@/components/ui/Icone'
+import { IconeCartas, IconePerfil, IconeTroca } from '@/components/ui/Icone'
 import { cn } from '@/lib/cn'
 
 /**
@@ -14,6 +14,7 @@ import { cn } from '@/lib/cn'
 const ABAS = [
   { para: '/matches', rotulo: 'Trocas', Icone: IconeTroca },
   { para: '/minhas-cartas', rotulo: 'Minhas cartas', Icone: IconeCartas },
+  { para: '/perfil', rotulo: 'Perfil', Icone: IconePerfil },
 ]
 
 export function LayoutApp() {
