@@ -405,11 +405,33 @@ create type match_status   as enum (
 --   alter table cards add unique (jogo, external_id);
 -- Uma migração, sem refatoração de código.
 
+-- Hierarquia da fonte: série (bloco) → set (expansão) → carta. As duas primeiras
+-- vieram na migração 12; até lá o set era só um par de colunas em `cards`.
+create table series (
+  code        text primary key,             -- id no TCGdex (ex.: 'sv')
+  nome        text not null,
+  logo_url    text,
+  criado_em   timestamptz not null default now()
+);
+
+create table sets (
+  code           text primary key,          -- id no TCGdex (ex.: 'sv03')
+  serie_code     text references series(code) on delete restrict,
+  nome           text not null,
+  sigla          text,                      -- abreviação impressa: 'OBF'
+  total_oficial  integer,                   -- denominador impresso (197)
+  total_impresso integer,                   -- com secretas (230)
+  logo_url       text,
+  simbolo_url    text,
+  lancado_em     date,
+  criado_em      timestamptz not null default now(),
+  atualizado_em  timestamptz not null default now()
+);
+
 create table cards (
   id            uuid primary key default uuid_generate_v4(),
   external_id   text not null unique,        -- id no TCGdex (ex.: 'sv3-125')
-  set_code      text not null,
-  set_nome      text,
+  set_code      text not null references sets(code) on delete restrict,
   numero        text not null,
   nome_pt       text,                        -- nome em português (Copag)
   nome_en       text not null,               -- fallback e busca cruzada
