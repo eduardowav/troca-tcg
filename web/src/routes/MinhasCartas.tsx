@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'motion/react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 
 import { CartaThumb } from '@/components/carta/CartaThumb'
@@ -91,23 +91,27 @@ export default function MinhasCartas() {
 
       <Adicionar emOferta={porTipo.OFERTA} emProcura={porTipo.PROCURA} />
 
-      <div className="mt-5 w-full max-w-xl flex-1">
+      <div className="mt-5 w-full flex-1">
         {isPending ? (
           <Esqueleto />
         ) : isError ? (
-          <Recuperavel onTentar={() => refetch()} />
+          <div className="max-w-xl">
+            <Recuperavel onTentar={() => refetch()} />
+          </div>
         ) : daAba.length === 0 ? (
-          <Vazio aba={aba} />
+          <div className="max-w-xl">
+            <Vazio aba={aba} />
+          </div>
         ) : (
-          <ul className="flex flex-col gap-2">
+          <GradeDeCartas>
             {daAba.map((anuncio) => (
-              <Linha
+              <CartaDaLista
                 key={anuncio.id}
                 anuncio={anuncio}
                 carta={cartas?.get(anuncio.card_id)}
               />
             ))}
-          </ul>
+          </GradeDeCartas>
         )}
       </div>
     </div>
@@ -335,14 +339,94 @@ function Adicionar({
   )
 }
 
-/* ---------- Linha da carta, com editor inline ---------- */
+/* ---------- Carta da lista ---------- */
 
-function Linha({ anuncio, carta }: { anuncio: Anuncio; carta?: Carta }) {
-  const [aberto, setAberto] = useState(false)
+/**
+ * A carta como ela aparece na busca — mesma célula, mesma arte grande.
+ *
+ * O editor saiu de dentro da célula: numa coluna de ~240px, cinco botões de
+ * condição e três de prioridade viravam sopa de letrinhas. Ele agora abre numa
+ * folha por cima, que é onde há largura para os controles respirarem — e é o
+ * gesto que o texto da tela já prometia ("toque numa carta para ajustar").
+ */
+function CartaDaLista({ anuncio, carta }: { anuncio: Anuncio; carta?: Carta }) {
+  const [editando, setEditando] = useState(false)
+
+  if (!carta) return <CelulaEsqueleto />
+
+  return (
+    <CelulaCarta carta={carta} destaque={anuncio.tipo}>
+      <button
+        type="button"
+        onClick={() => setEditando(true)}
+        aria-haspopup="dialog"
+        className={cn(
+          'flex h-9 w-full items-center justify-between gap-2 px-2.5',
+          'rounded-[var(--radius-control)] border border-edge bg-surface-2',
+          'text-[13px] text-muted transition-colors hover:text-paper',
+          'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-volt',
+        )}
+      >
+        <span className="truncate">{resumo(anuncio)}</span>
+        <IconeLapis className="size-3.5 shrink-0" />
+      </button>
+
+      <EditorAnuncio
+        aberto={editando}
+        onFechar={() => setEditando(false)}
+        anuncio={anuncio}
+        carta={carta}
+      />
+    </CelulaCarta>
+  )
+}
+
+function CelulaEsqueleto() {
+  return (
+    <li
+      aria-hidden
+      className="flex flex-col gap-2 rounded-card border border-edge-soft p-2"
+    >
+      <div className="aspect-[2.5/3.5] w-full animate-pulse rounded-[10px] bg-surface-2" />
+      <div className="space-y-1.5 px-0.5">
+        <div className="h-3.5 w-3/5 animate-pulse rounded bg-surface-2" />
+        <div className="h-2.5 w-4/5 animate-pulse rounded bg-surface-2" />
+      </div>
+      <div className="h-9 animate-pulse rounded-[var(--radius-control)] bg-surface-2" />
+    </li>
+  )
+}
+
+/* ---------- Editor em folha ---------- */
+
+function EditorAnuncio({
+  aberto,
+  onFechar,
+  anuncio,
+  carta,
+}: {
+  aberto: boolean
+  onFechar: () => void
+  anuncio: Anuncio
+  carta: Carta
+}) {
   const editar = useEditarAnuncio()
   const remover = useRemoverAnuncio()
 
-  const cor = anuncio.tipo === 'OFERTA' ? 'ring-offer' : 'ring-want'
+  // Esc fecha, e a página não rola atrás da folha aberta.
+  useEffect(() => {
+    if (!aberto) return
+    const aoTeclar = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onFechar()
+    }
+    document.addEventListener('keydown', aoTeclar)
+    const overflowAnterior = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.removeEventListener('keydown', aoTeclar)
+      document.body.style.overflow = overflowAnterior
+    }
+  }, [aberto, onFechar])
 
   function aplicar(dados: Parameters<typeof editar.mutate>[0]['dados']) {
     editar.mutate(
@@ -359,124 +443,151 @@ function Linha({ anuncio, carta }: { anuncio: Anuncio; carta?: Carta }) {
   }
 
   return (
-    <li className="overflow-hidden rounded-[var(--radius-card)] border border-edge bg-surface">
-      <button
-        type="button"
-        onClick={() => setAberto((v) => !v)}
-        aria-expanded={aberto}
-        className="flex w-full items-center gap-3 p-3 text-left hover:bg-surface-2"
-      >
-        {carta ? (
-          <CartaThumb carta={carta} className={cn('w-11 shrink-0 ring-2', cor)} />
-        ) : (
-          <div className="aspect-[2.5/3.5] w-11 shrink-0 animate-pulse rounded-[10px] bg-surface-2" />
-        )}
-
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-[15px] text-paper">
-            {carta ? nomeCarta(carta) : 'Carregando…'}
-          </span>
-          <span className="set-code mt-0.5 block text-[11px] text-muted">
-            {carta ? codigoSet(carta) : '—'}
-          </span>
-          <span className="mt-1 block text-[13px] text-muted">
-            {resumo(anuncio)}
-          </span>
-        </span>
-
-        <span
-          aria-hidden
-          className={cn(
-            'shrink-0 text-muted transition-transform duration-200',
-            aberto && 'rotate-180',
-          )}
-        >
-          ⌄
-        </span>
-      </button>
-
-      <AnimatePresence initial={false}>
-        {aberto && (
+    <AnimatePresence>
+      {aberto && (
+        <>
           <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.18, ease: 'easeOut' }}
-            className="overflow-hidden"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.18 }}
+            onClick={onFechar}
+            className="fixed inset-0 z-40 bg-ink-deep/75 backdrop-blur-[2px]"
+          />
+          <motion.div
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Ajustar ${nomeCarta(carta)}`}
+            initial={{ y: '100%' }}
+            animate={{ y: 0 }}
+            exit={{ y: '100%' }}
+            transition={{ type: 'spring', stiffness: 320, damping: 34 }}
+            className={cn(
+              'fixed inset-x-0 bottom-0 z-50 max-h-[85dvh] overflow-y-auto',
+              'rounded-t-[20px] border-t border-edge bg-surface',
+              'shadow-[var(--shadow-pop)]',
+            )}
           >
-            <div className="flex flex-col gap-4 border-t border-edge-soft px-3 py-4">
-              <Quantidade
-                valor={anuncio.quantidade}
-                onMudar={(quantidade) => aplicar({ quantidade })}
+            <div className="mx-auto w-full max-w-xl px-5 pt-3 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
+              {/* Puxador: diz "isso arrasta/fecha" sem precisar de texto. */}
+              <div
+                aria-hidden
+                className="mx-auto mb-4 h-1 w-10 rounded-full bg-edge"
               />
 
-              <Escolha
-                rotulo="Condição"
-                opcoes={CONDICOES.map((c) => ({
-                  valor: c.valor,
-                  rotulo: c.rotulo,
-                  titulo: c.dica,
-                }))}
-                valor={anuncio.condicao}
-                onMudar={(condicao) => aplicar({ condicao: condicao as Condicao })}
-              />
+              <div className="flex items-center gap-3">
+                <CartaThumb
+                  carta={carta}
+                  className={cn(
+                    'w-12 shrink-0 ring-2',
+                    anuncio.tipo === 'OFERTA' ? 'ring-offer' : 'ring-want',
+                  )}
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[16px] font-medium text-paper">
+                    {nomeCarta(carta)}
+                  </p>
+                  <p className="set-code mt-0.5 text-[12px] text-muted">
+                    {codigoSet(carta)}
+                  </p>
+                </div>
+                <Button variant="ghost" size="sm" onClick={onFechar}>
+                  Fechar
+                </Button>
+              </div>
 
-              <Escolha
-                rotulo="Prioridade"
-                opcoes={PRIORIDADES.map((p) => ({
-                  valor: p.valor,
-                  rotulo: p.rotulo,
-                }))}
-                valor={anuncio.prioridade}
-                onMudar={(prioridade) =>
-                  aplicar({ prioridade: prioridade as number })
-                }
-              />
+              <div className="mt-5 flex flex-col gap-5">
+                <Quantidade
+                  valor={anuncio.quantidade}
+                  onMudar={(quantidade) => aplicar({ quantidade })}
+                />
 
-              {/* Só faz sentido em PROCURA: é o matcher que pode sugerir outro
-                  acabamento (db/schema/05_listings.sql). */}
-              {anuncio.tipo === 'PROCURA' && (
-                <label className="flex cursor-pointer items-start gap-3">
-                  <input
-                    type="checkbox"
-                    checked={anuncio.aceita_qualquer_finish}
-                    onChange={(e) =>
-                      aplicar({ aceita_qualquer_finish: e.target.checked })
-                    }
-                    className="mt-0.5 size-5 shrink-0 accent-[var(--color-volt)]"
-                  />
-                  <span className="text-[14px] leading-relaxed text-muted">
-                    Aceito qualquer acabamento — aparecem mais trocas possíveis,
-                    marcadas quando o acabamento for diferente.
-                  </span>
-                </label>
-              )}
+                <Escolha
+                  rotulo="Condição"
+                  opcoes={CONDICOES.map((c) => ({
+                    valor: c.valor,
+                    rotulo: c.rotulo,
+                    titulo: c.dica,
+                  }))}
+                  valor={anuncio.condicao}
+                  onMudar={(condicao) =>
+                    aplicar({ condicao: condicao as Condicao })
+                  }
+                />
 
-              <div className="flex justify-end pt-1">
+                <Escolha
+                  rotulo="Prioridade"
+                  opcoes={PRIORIDADES.map((p) => ({
+                    valor: p.valor,
+                    rotulo: p.rotulo,
+                  }))}
+                  valor={anuncio.prioridade}
+                  onMudar={(prioridade) =>
+                    aplicar({ prioridade: prioridade as number })
+                  }
+                />
+
+                {/* Só faz sentido em PROCURA: é o matcher que pode sugerir outro
+                    acabamento (db/schema/05_listings.sql). */}
+                {anuncio.tipo === 'PROCURA' && (
+                  <label className="flex cursor-pointer items-start gap-3">
+                    <input
+                      type="checkbox"
+                      checked={anuncio.aceita_qualquer_finish}
+                      onChange={(e) =>
+                        aplicar({ aceita_qualquer_finish: e.target.checked })
+                      }
+                      className="mt-0.5 size-5 shrink-0 accent-[var(--color-volt)]"
+                    />
+                    <span className="text-[14px] leading-relaxed text-muted">
+                      Aceito qualquer acabamento — aparecem mais trocas
+                      possíveis, marcadas quando o acabamento for diferente.
+                    </span>
+                  </label>
+                )}
+
                 <Button
                   variant="ghost"
                   size="sm"
                   loading={remover.isPending}
                   onClick={() =>
                     remover.mutate(anuncio.id, {
-                      onSuccess: () =>
-                        toast.success(
-                          `${carta ? nomeCarta(carta) : 'Carta'} saiu da lista.`,
-                        ),
+                      onSuccess: () => {
+                        toast.success(`${nomeCarta(carta)} saiu da lista.`)
+                        onFechar()
+                      },
                       onError: () =>
                         toast.error('Não foi possível remover agora.'),
                     })
                   }
-                  className="text-alert hover:text-alert"
+                  className="self-end text-alert hover:text-alert"
                 >
                   Remover da lista
                 </Button>
               </div>
             </div>
           </motion.div>
-        )}
-      </AnimatePresence>
-    </li>
+        </>
+      )}
+    </AnimatePresence>
+  )
+}
+
+function IconeLapis({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden
+    >
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+    </svg>
   )
 }
 
@@ -592,20 +703,11 @@ function Escolha<T extends string | number>({
 
 function Esqueleto() {
   return (
-    <ul className="flex flex-col gap-2" aria-hidden>
-      {[0, 1, 2].map((i) => (
-        <li
-          key={i}
-          className="flex items-center gap-3 rounded-[var(--radius-card)] border border-edge bg-surface p-3"
-        >
-          <div className="aspect-[2.5/3.5] w-11 shrink-0 animate-pulse rounded-[10px] bg-surface-2" />
-          <div className="flex-1">
-            <div className="h-3.5 w-2/5 animate-pulse rounded bg-surface-2" />
-            <div className="mt-2 h-3 w-1/5 animate-pulse rounded bg-surface-2" />
-          </div>
-        </li>
+    <GradeDeCartas>
+      {[0, 1, 2, 3, 4, 5].map((i) => (
+        <CelulaEsqueleto key={i} />
       ))}
-    </ul>
+    </GradeDeCartas>
   )
 }
 
