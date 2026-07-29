@@ -90,6 +90,37 @@ def _hash_grupo(a: UUID | str, b: UUID | str) -> str:
     return f"DIRETO:{x}:{y}"
 
 
+async def expirar_vencidos(session: AsyncSession) -> int:
+    """Fecha as trocas que passaram do prazo. Devolve quantas expiraram.
+
+    Só expira o que alguém chegou a responder (PENDENTE/ACEITO). Sugestão que
+    ninguém tocou não vira EXPIRADO de propósito: a métrica-mãe é
+    CONCLUIDO/(CONCLUIDO+FURADO+EXPIRADO), e contar toda sugestão ignorada como
+    fracasso afogaria o sinal em ruído. Sugestão vencida de par que ainda casa é
+    renovada no upsert do sincronizar; a de par que não casa mais é apagada.
+
+    A varredura é global, não só do usuário da vez — senão um match entre duas
+    pessoas que sumiram do app ficaria pendurado para sempre. Sai barato porque
+    o índice idx_matches_status é exatamente (status, expira_em).
+    """
+    res = await session.execute(
+        text("""
+            update matches set status = 'EXPIRADO'
+            where status in ('PENDENTE', 'ACEITO') and expira_em <= now()
+            returning id::text
+        """)
+    )
+    ids = [linha["id"] for linha in res.mappings().all()]
+
+    for match_id in ids:
+        await session.execute(
+            text("insert into match_events (match_id, evento) values (:m, 'EXPIRADO')"),
+            {"m": match_id},
+        )
+
+    return len(ids)
+
+
 async def sincronizar_matches(session: AsyncSession, user_id: UUID) -> int:
     """Recalcula os matches diretos do usuário. Devolve quantos estão vigentes.
 
@@ -97,6 +128,11 @@ async def sincronizar_matches(session: AsyncSession, user_id: UUID) -> int:
     histórico, e histórico não se reescreve — inclusive porque a métrica-mãe
     depende de conseguir contar o que furou.
     """
+    # Varre os vencidos antes de recalcular: sem isso, um match ACEITO que
+    # passou do prazo continuaria bloqueando o hash_grupo do par e a dupla nunca
+    # receberia uma sugestão nova.
+    await expirar_vencidos(session)
+
     pares = (await session.execute(_PARES, {"eu": str(user_id)})).mappings().all()
     vigentes = {_hash_grupo(user_id, p["parceiro"]) for p in pares}
 
@@ -134,8 +170,10 @@ async def _gravar_match(session: AsyncSession, eu: UUID, par: dict) -> None:
             insert into matches (tipo, status, score, hash_grupo)
             values ('DIRETO', 'SUGERIDO', :score, :hash)
             on conflict (hash_grupo) do update
-              set score = excluded.score
-              where matches.status = 'SUGERIDO'
+              set score = excluded.score,
+                  status = 'SUGERIDO',
+                  expira_em = now() + interval '7 days'
+              where matches.status in ('SUGERIDO', 'EXPIRADO')
             returning id::text
         """),
         {"score": par["score"], "hash": hash_grupo},
@@ -145,6 +183,19 @@ async def _gravar_match(session: AsyncSession, eu: UUID, par: dict) -> None:
         return  # já existe e alguém respondeu: não é mais sugestão, deixa quieto
 
     match_id = linha["id"]
+
+    # Se este match está ressuscitando de um EXPIRADO, os participantes ainda
+    # carregam o aceite da rodada anterior — sem zerar, a tela mostraria uma
+    # troca "já combinada" que na verdade acabou de ser sugerida de novo. No
+    # caminho normal (match ainda SUGERIDO) isto é inócuo: ninguém respondeu.
+    await session.execute(
+        text("""
+            update match_participants
+            set aceitou = null, respondeu_em = null, confirmou_conclusao = false
+            where match_id = :m
+        """),
+        {"m": match_id},
+    )
 
     # Participantes em ordem estável, para "posicao" não variar entre execuções.
     for posicao, uid in enumerate(sorted([str(eu), str(parceiro)])):
