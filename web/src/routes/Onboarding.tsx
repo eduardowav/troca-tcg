@@ -50,7 +50,7 @@ export default function Onboarding() {
     // A grade quer a tela inteira no desktop; o texto e os controles, não —
     // linha longa demais cansa de ler e barra de busca de 1200px é grotesca.
     // Daí a coluna de `max-w-xl` por cima de um container largo.
-    <div className="mx-auto flex min-h-[100dvh] w-full max-w-[100rem] flex-col px-5 pb-32">
+    <div className="mx-auto flex min-h-[100dvh] w-full max-w-[100rem] 2xl:max-w-[120rem] flex-col px-5 pb-32">
       <div className="w-full max-w-xl">
         <Cabecalho total={totalSelecionado} />
 
@@ -284,7 +284,7 @@ function BandejaSelecao({ total }: { total: number }) {
           transition={{ type: 'spring', stiffness: 300, damping: 32 }}
           className="fixed inset-x-0 bottom-0 z-30 border-t border-edge bg-ink/85 backdrop-blur-md"
         >
-          <div className="mx-auto w-full max-w-[100rem] px-5 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+          <div className="mx-auto w-full max-w-[100rem] 2xl:max-w-[120rem] px-5 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
             <ul className="mb-3 flex gap-2 overflow-x-auto pb-1">
               {lista.map(({ carta, tipo }) => (
                 <li key={carta.id} className="relative shrink-0">

@@ -56,7 +56,7 @@ export default function MinhasCartas() {
   )
 
   return (
-    <div className="mx-auto flex min-h-[100dvh] w-full max-w-[100rem] flex-col px-5">
+    <div className="mx-auto flex min-h-[100dvh] w-full max-w-[100rem] 2xl:max-w-[120rem] flex-col px-5">
       <header className="w-full max-w-xl pt-10">
         <p className="set-code text-xs tracking-wide text-muted">TROCATCG</p>
         <h1 className="mt-3 text-[28px] leading-[1.1] lg:text-[34px]">Minhas cartas</h1>

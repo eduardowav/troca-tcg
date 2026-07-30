@@ -76,10 +76,10 @@ export function CelulaCarta({
       <CartaThumb carta={carta} className="carta-cresce w-full" />
 
       <div className="min-w-0 px-0.5">
-        <p className="truncate text-[15px] leading-tight font-medium text-paper lg:text-[16px]">
+        <p className="truncate text-[15px] leading-tight font-medium text-paper lg:text-[16px] 2xl:text-[17px]">
           {nomeCarta(carta)}
         </p>
-        <p className="mt-1 flex min-w-0 items-baseline gap-1 text-[12px] text-muted lg:text-[13px]">
+        <p className="mt-1 flex min-w-0 items-baseline gap-1 text-[12px] text-muted lg:text-[13px] 2xl:text-[14px]">
           <span className="set-code shrink-0">{codigoSet(carta)}</span>
           {carta.set_nome && (
             <>
@@ -148,7 +148,7 @@ export function SeloPreco({
   if (!valor) return null
 
   return (
-    <p className={cn('mt-1 text-[12px] text-muted lg:text-[13px]', className)}>
+    <p className={cn('mt-1 text-[12px] text-muted lg:text-[13px] 2xl:text-[14px]', className)}>
       <span className="text-paper tabular-nums">{valor}</span>
       <span className="text-faint"> · TCGplayer</span>
     </p>

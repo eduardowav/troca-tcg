@@ -96,7 +96,7 @@ function Lado({
               // estreita. Na grade larga ela ficava minúscula ao lado das
               // células de Ofereço e Procuro, onde a arte é o que identifica a
               // carta — é o mesmo argumento de GradeDeCartas.
-              grande ? 'w-44 lg:w-52' : 'w-20 lg:w-28',
+              grande ? 'w-44 lg:w-52 2xl:w-60' : 'w-20 lg:w-28 2xl:w-32',
               cor === 'offer' ? 'ring-offer' : 'ring-want',
             )}
           />
