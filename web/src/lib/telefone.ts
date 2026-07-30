@@ -31,6 +31,25 @@ export function formatarTelefone(valor: string): string {
   return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`
 }
 
+/**
+ * Link de conversa direta no WhatsApp, com a primeira mensagem já escrita.
+ *
+ * Devolve `null` quando o contato guardado não dá um WhatsApp confiável, e aí a
+ * tela mostra só o texto puro, como sempre mostrou. Dois casos caem aqui:
+ * `contato_visivel` é texto livre e pode ser um @ de outra rede; e telefone
+ * fixo, que `telefoneValido` aceita mas quase nunca tem WhatsApp — o link
+ * abriria a tela de "número inválido", que é pior que não ter botão.
+ *
+ * O 55 entra aqui e não no banco de propósito — o que a pessoa cadastrou é o
+ * número como ela o escreve, e é assim que ele continua sendo exibido.
+ */
+export function linkWhatsApp(contato: string, mensagem: string): string | null {
+  if (!telefoneValido(contato)) return null
+  const digitos = apenasDigitos(contato)
+  if (digitos.length !== 11) return null
+  return `https://wa.me/55${digitos}?text=${encodeURIComponent(mensagem)}`
+}
+
 export const telefoneSchema = z
   .string()
   .trim()

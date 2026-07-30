@@ -3,7 +3,13 @@ import { forwardRef } from 'react'
 
 import { cn } from '@/lib/cn'
 
-const button = cva(
+/**
+ * Exportado porque nem toda ação é um `<button>`: abrir o WhatsApp é uma
+ * navegação de verdade e precisa ser `<a href>` (abrir em nova aba, copiar
+ * link, menu de contexto). Compartilhar o cva evita um segundo botão primário
+ * com valores copiados que envelhecem separado deste.
+ */
+export const estiloBotao = cva(
   [
     'inline-flex items-center justify-center gap-2 select-none',
     'font-medium whitespace-nowrap rounded-[var(--radius-control)]',
@@ -38,7 +44,7 @@ const button = cva(
 
 export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof button> {
+    VariantProps<typeof estiloBotao> {
   loading?: boolean
 }
 
@@ -49,7 +55,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ) => (
     <button
       ref={ref}
-      className={cn(button({ variant, size, block }), className)}
+      className={cn(estiloBotao({ variant, size, block }), className)}
       disabled={disabled || loading}
       aria-busy={loading || undefined}
       {...props}
