@@ -7,12 +7,18 @@ Backend FastAPI (Python 3.12, async). Fonte da verdade do matching e gate de pla
 ```bash
 uv sync
 cp .env.example .env      # preencha DATABASE_URL, SUPABASE_JWT_SECRET, etc.
-uv run uvicorn app.main:app --reload
+uv run python -m uvicorn app.main:app --reload
 ```
 
 - API: http://localhost:8000
 - Docs (OpenAPI): http://localhost:8000/docs
 - Health: http://localhost:8000/v1/health
+
+**Por que `python -m uvicorn` e não `uv run uvicorn`:** no Windows com App Control
+ligado, o `uvicorn.exe` que o uv gera dentro da `.venv` é barrado por não ter
+assinatura — o erro é `Uma política de Controle de Aplicativo bloqueou este arquivo`
+(os error 4551), e não diz o que fazer. Chamar pelo módulo usa o `python.exe`
+assinado e passa. `ruff` e `pytest` não sofrem disso; só o uvicorn.
 
 ## Testes e lint
 
