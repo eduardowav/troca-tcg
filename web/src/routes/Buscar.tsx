@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { toast } from 'sonner'
 
 import { FiltroCatalogo } from '@/components/carta/FiltroCatalogo'
 import {
@@ -11,19 +10,14 @@ import {
 } from '@/components/carta/GradeDeCartas'
 import { Button } from '@/components/ui/Button'
 import { IconeBusca } from '@/components/ui/Icone'
-import {
-  useAdicionarAnuncio,
-  useAnuncios,
-  usePrecosPorId,
-} from '@/hooks/useAnuncios'
+import { FolhaAdicionar } from '@/components/carta/FolhaAdicionar'
+import { useAnuncios, usePrecosPorId } from '@/hooks/useAnuncios'
 import { useCardSearch } from '@/hooks/useCardSearch'
 import { useDebounced } from '@/hooks/useDebounced'
-import { ApiError } from '@/lib/api'
 import {
   type Carta,
   type FiltrosBusca,
   type ListingKind,
-  nomeCarta,
   SEM_FILTRO,
 } from '@/lib/types'
 
@@ -54,7 +48,11 @@ export default function Buscar() {
 
   const { data: anuncios } = useAnuncios()
   const precos = usePrecosPorId((resultados ?? []).map((c) => c.id)).data
-  const adicionar = useAdicionarAnuncio()
+  // A carta escolhida e a lista de destino; `null` mantém a folha fechada.
+  const [aAdicionar, setAAdicionar] = useState<{
+    carta: Carta
+    tipo: ListingKind
+  } | null>(null)
 
   const porTipo = useMemo(
     () => ({
@@ -69,22 +67,6 @@ export default function Buscar() {
     }),
     [anuncios],
   )
-
-  function incluir(carta: Carta, tipo: ListingKind) {
-    const rotulo = tipo === 'OFERTA' ? 'Ofereço' : 'Procuro'
-    adicionar.mutate(
-      { card_id: carta.id, tipo },
-      {
-        onSuccess: () => toast.success(`${nomeCarta(carta)} entrou em ${rotulo}.`),
-        onError: (erro) =>
-          toast.error(
-            erro instanceof ApiError
-              ? erro.message
-              : 'Não foi possível adicionar agora.',
-          ),
-      },
-    )
-  }
 
   return (
     <div className="mx-auto flex min-h-[100dvh] w-full max-w-[100rem] flex-col px-5 pb-8">
@@ -160,16 +142,16 @@ export default function Buscar() {
                       <BotaoLista
                         tipo="OFERTA"
                         ativo={naOferta}
-                        disabled={naOferta || adicionar.isPending}
+                        disabled={naOferta}
                         rotulo={naOferta ? 'Na lista' : undefined}
-                        onClick={() => incluir(carta, 'OFERTA')}
+                        onClick={() => setAAdicionar({ carta, tipo: 'OFERTA' })}
                       />
                       <BotaoLista
                         tipo="PROCURA"
                         ativo={naProcura}
-                        disabled={naProcura || adicionar.isPending}
+                        disabled={naProcura}
                         rotulo={naProcura ? 'Na lista' : undefined}
-                        onClick={() => incluir(carta, 'PROCURA')}
+                        onClick={() => setAAdicionar({ carta, tipo: 'PROCURA' })}
                       />
                     </AcoesDeLista>
                   </CelulaCarta>
@@ -194,6 +176,12 @@ export default function Buscar() {
           </p>
         )}
       </div>
+
+      <FolhaAdicionar
+        carta={aAdicionar?.carta ?? null}
+        tipo={aAdicionar?.tipo ?? 'OFERTA'}
+        onFechar={() => setAAdicionar(null)}
+      />
     </div>
   )
 }

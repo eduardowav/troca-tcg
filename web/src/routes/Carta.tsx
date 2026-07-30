@@ -1,16 +1,11 @@
+import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { toast } from 'sonner'
 
 import { CartaThumb } from '@/components/carta/CartaThumb'
+import { FolhaAdicionar } from '@/components/carta/FolhaAdicionar'
 import { Button } from '@/components/ui/Button'
-import {
-  useAdicionarAnuncio,
-  useAnuncios,
-  useCartasPorId,
-  usePrecosPorId,
-} from '@/hooks/useAnuncios'
+import { useAnuncios, useCartasPorId, usePrecosPorId } from '@/hooks/useAnuncios'
 import { useCatalogo } from '@/hooks/useCatalogo'
-import { ApiError } from '@/lib/api'
 import {
   formatarPreco,
   type ListingKind,
@@ -33,7 +28,7 @@ export default function CartaDetalhe() {
   const { data: precos } = usePrecosPorId(ids)
   const { data: catalogo } = useCatalogo()
   const { data: anuncios } = useAnuncios()
-  const adicionar = useAdicionarAnuncio()
+  const [aAdicionar, setAAdicionar] = useState<ListingKind | null>(null)
 
   const carta = id ? cartas?.get(id) : undefined
   const preco = id ? precos?.get(id) : undefined
@@ -41,23 +36,6 @@ export default function CartaDetalhe() {
 
   const jaEm = (tipo: ListingKind) =>
     (anuncios ?? []).some((a) => a.card_id === id && a.tipo === tipo)
-
-  function incluir(tipo: ListingKind) {
-    if (!carta) return
-    const rotulo = tipo === 'OFERTA' ? 'Ofereço' : 'Procuro'
-    adicionar.mutate(
-      { card_id: carta.id, tipo },
-      {
-        onSuccess: () => toast.success(`${nomeCarta(carta)} entrou em ${rotulo}.`),
-        onError: (erro) =>
-          toast.error(
-            erro instanceof ApiError
-              ? erro.message
-              : 'Não foi possível adicionar agora.',
-          ),
-      },
-    )
-  }
 
   if (isPending) {
     return (
@@ -126,26 +104,32 @@ export default function CartaDetalhe() {
               <Button
                 variant="offer"
                 size="lg"
-                disabled={jaEm('OFERTA') || adicionar.isPending}
-                onClick={() => incluir('OFERTA')}
+                disabled={jaEm('OFERTA')}
+                onClick={() => setAAdicionar('OFERTA')}
               >
                 {jaEm('OFERTA') ? 'Já ofereço' : 'Ofereço'}
               </Button>
               <Button
                 variant="want"
                 size="lg"
-                disabled={jaEm('PROCURA') || adicionar.isPending}
-                onClick={() => incluir('PROCURA')}
+                disabled={jaEm('PROCURA')}
+                onClick={() => setAAdicionar('PROCURA')}
               >
                 {jaEm('PROCURA') ? 'Já procuro' : 'Procuro'}
               </Button>
             </div>
             <p className="text-[12px] leading-relaxed text-faint">
-              Condição e quantidade você ajusta depois, em Minhas cartas.
+              Você escolhe condição e quantidade no passo seguinte.
             </p>
           </div>
         </div>
       </div>
+
+      <FolhaAdicionar
+        carta={aAdicionar ? carta : null}
+        tipo={aAdicionar ?? 'OFERTA'}
+        onFechar={() => setAAdicionar(null)}
+      />
     </Moldura>
   )
 }
