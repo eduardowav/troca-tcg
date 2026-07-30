@@ -27,8 +27,12 @@ export interface ParticipanteMatch {
  * carrega o próprio denominador — "1 troca ok" já se anuncia como amostra
  * pequena, sem precisar de aviso.
  */
-export function reputacaoTexto(p: ParticipanteMatch): string {
+export function reputacaoTexto(p: ParticipanteMatch): string | null {
   const { trocas_concluidas: ok, trocas_furadas: furos } = p
+  // Contadores ausentes é cliente e API fora de passo — acontece de verdade num
+  // PWA que se atualiza sozinho. Sem número, não se diz nada: "undefined de NaN"
+  // ao lado do nome de um estranho é pior que a linha sem reputação alguma.
+  if (typeof ok !== 'number' || typeof furos !== 'number') return null
   if (ok + furos === 0) return 'novo por aqui'
   if (furos === 0) return ok === 1 ? '1 troca ok' : `${ok} trocas ok`
   const total = ok + furos

@@ -60,6 +60,7 @@ export default function MatchDetalhe() {
   const dou = match.itens.find((i) => i.de_user_id === meuId)
   const recebo = match.itens.find((i) => i.para_user_id === meuId)
   const jaAceitei = euAceitei(match, meuId)
+  const reputacao = outro && reputacaoTexto(outro)
 
   function registrarDesfecho(aconteceu: boolean) {
     desfecho.mutate(
@@ -119,7 +120,7 @@ export default function MatchDetalhe() {
       </h1>
       <p className="mt-2 text-[15px] leading-relaxed text-muted">
         @{outro?.username}
-        {outro && ` · ${reputacaoTexto(outro)}`}
+        {reputacao && ` · ${reputacao}`}
       </p>
 
       <div className="mt-8 rounded-[var(--radius-card)] border border-edge bg-surface p-5">

@@ -73,6 +73,7 @@ function CartaoMatch({
   const dou = match.itens.find((i) => i.de_user_id === meuId)
   const recebo = match.itens.find((i) => i.para_user_id === meuId)
   const dias = diasParaExpirar(match)
+  const reputacao = outro && reputacaoTexto(outro)
 
   return (
     <Link
@@ -86,7 +87,7 @@ function CartaoMatch({
           </span>
           <span className="set-code block text-[11px] text-muted">
             @{outro?.username}
-            {outro && ` · ${reputacaoTexto(outro)}`}
+            {reputacao && ` · ${reputacao}`}
           </span>
         </span>
         <Selo status={match.status} />
