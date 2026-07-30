@@ -128,10 +128,10 @@ export default function MatchDetalhe() {
         ← Trocas
       </Link>
 
-      <h1 className="mt-5 text-[26px] leading-[1.15]">
+      <h1 className="mt-5 text-[26px] leading-[1.15] lg:text-[32px]">
         Troca com {outro?.nome_exibicao ?? 'alguém'}.
       </h1>
-      <p className="mt-2 text-[15px] leading-relaxed text-muted">
+      <p className="mt-2 text-[15px] leading-relaxed text-muted lg:text-[16px]">
         @{outro?.username}
         {reputacao && ` · ${reputacao}`}
       </p>
@@ -144,7 +144,7 @@ export default function MatchDetalhe() {
           tamanho="grande"
         />
 
-        <dl className="mt-6 grid grid-cols-2 gap-3 border-t border-edge-soft pt-4 text-[13px]">
+        <dl className="mt-6 grid grid-cols-2 gap-3 border-t border-edge-soft pt-4 text-[13px] lg:text-[15px]">
           <Detalhe rotulo="Você entrega" condicao={dou?.condicao} />
           <Detalhe rotulo="Você recebe" condicao={recebo?.condicao} />
         </dl>
@@ -499,7 +499,7 @@ function Moldura({ children }: { children: React.ReactNode }) {
     // Um pouco mais larga que a coluna de leitura das outras telas: aqui o
     // conteúdo é a troca em si, e as duas cartas frente a frente são o que a
     // pessoa veio ver — não texto corrido, que é o que pede linha curta.
-    <div className="mx-auto flex min-h-[100dvh] w-full max-w-2xl flex-col px-5 py-10">
+    <div className="mx-auto flex min-h-[100dvh] w-full max-w-2xl flex-col px-5 py-10 lg:max-w-3xl">
       {children}
     </div>
   )

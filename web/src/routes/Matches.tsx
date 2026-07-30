@@ -81,7 +81,7 @@ function CartaoMatch({
   return (
     <Link
       to={`/matches/${match.id}`}
-      className="block rounded-[var(--radius-card)] border border-edge bg-surface p-4 transition-colors hover:border-[var(--color-faint)]"
+      className="block rounded-[var(--radius-card)] border border-edge bg-surface p-4 transition-colors hover:border-[var(--color-faint)] lg:p-5"
     >
       <div className="flex items-baseline justify-between gap-3">
         <span className="min-w-0">
@@ -103,7 +103,7 @@ function CartaoMatch({
         />
       </div>
 
-      <p className="mt-4 text-[12px] text-faint">
+      <p className="mt-4 text-[12px] text-faint lg:text-[13px]">
         {dias === 0
           ? 'Expira hoje'
           : dias === 1
@@ -200,8 +200,8 @@ function Vazio() {
         <div className="grid size-12 place-items-center rounded-2xl border border-edge bg-surface text-muted">
           <IconeTroca className="size-6" />
         </div>
-        <p className="mt-4 text-[15px] text-paper">Nenhuma troca possível ainda.</p>
-        <p className="mt-1.5 max-w-xs text-[14px] leading-relaxed text-muted">
+        <p className="mt-4 text-[15px] text-paper lg:text-[16px]">Nenhuma troca possível ainda.</p>
+        <p className="mt-1.5 max-w-xs text-[14px] leading-relaxed text-muted lg:text-[15px]">
           Uma troca aparece quando alguém tem o que você procura e quer o que
           você oferece. Quanto mais cartas nas suas listas, mais chances.
         </p>
@@ -218,11 +218,11 @@ function Vazio() {
   return (
     <div className="pb-6">
       <div className="w-full max-w-xl">
-        <p className="text-[15px] text-paper">
+        <p className="text-[15px] text-paper lg:text-[16px]">
           Nenhuma troca fechada ainda — mas tem gente de olho no que você
           oferece.
         </p>
-        <p className="mt-1.5 text-[14px] leading-relaxed text-muted">
+        <p className="mt-1.5 text-[14px] leading-relaxed text-muted lg:text-[15px]">
           Falta a outra metade: a troca só aparece quando você também quer
           alguma carta de quem procura a sua.
         </p>
@@ -266,12 +266,12 @@ function QuemQuer({ procurada }: { procurada: CartaProcurada }) {
 
   return (
     <div className="rounded-[var(--radius-control)] border border-[color-mix(in_oklab,var(--color-want)_32%,transparent)] bg-[color-mix(in_oklab,var(--color-want)_10%,transparent)] px-2 py-1.5">
-      <p className="text-[11px] font-medium text-want">
+      <p className="text-[11px] font-medium text-want lg:text-[12px]">
         {procurada.procurando === 1
           ? '1 pessoa procura'
           : `${procurada.procurando} pessoas procuram`}
       </p>
-      <p className="set-code mt-1 text-[10px] leading-relaxed break-words text-muted">
+      <p className="set-code mt-1 text-[10px] leading-relaxed break-words text-muted lg:text-[11px]">
         {procurada.pessoas.map((q) => `@${q.username}`).join(', ')}
         {restantes > 0 && ` e mais ${restantes}`}
       </p>
