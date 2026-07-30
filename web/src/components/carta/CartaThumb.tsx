@@ -8,6 +8,13 @@ interface CartaThumbProps {
   className?: string
   /** Realce foil para acabamentos especiais (Master Ball etc.). Só no lugar certo. */
   foil?: boolean
+  /**
+   * Pede a arte em alta à fonte. Só para a página da carta: o catálogo guarda a
+   * versão `low` porque uma grade com 24 delas em alta seria megabytes por
+   * rolagem — mas ampliada a 480px ela borra, e a página existe justamente para
+   * a pessoa conferir se é aquela versão.
+   */
+  alta?: boolean
 }
 
 /**
@@ -15,7 +22,13 @@ interface CartaThumbProps {
  * (moldura + anel interno). Skeleton enquanto carrega; sem imagem, cai para
  * a arte tipográfica com o código de set — nunca uma caixa quebrada.
  */
-export function CartaThumb({ carta, className, foil }: CartaThumbProps) {
+export function CartaThumb({ carta, className, foil, alta }: CartaThumbProps) {
+  // A TCGdex serve o mesmo caminho em duas resoluções; o sync grava a baixa.
+  const fonte =
+    alta && carta.imagem_url
+      ? carta.imagem_url.replace(/\/low\.webp$/, '/high.webp')
+      : carta.imagem_url
+
   const [estado, setEstado] = useState<'carregando' | 'ok' | 'erro'>(
     carta.imagem_url ? 'carregando' : 'erro',
   )
@@ -41,11 +54,11 @@ export function CartaThumb({ carta, className, foil }: CartaThumbProps) {
         <div className="absolute inset-0 animate-pulse bg-surface-2" />
       )}
 
-      {carta.imagem_url && estado !== 'erro' && (
+      {fonte && estado !== 'erro' && (
         <img
-          src={carta.imagem_url}
+          src={fonte}
           alt={nomeCarta(carta)}
-          loading="lazy"
+          loading={alta ? 'eager' : 'lazy'}
           decoding="async"
           onLoad={() => setEstado('ok')}
           onError={() => setEstado('erro')}

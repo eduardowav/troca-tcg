@@ -40,7 +40,7 @@ export default function CartaDetalhe() {
   if (isPending) {
     return (
       <Moldura>
-        <div className="mx-auto aspect-[2.5/3.5] w-64 animate-pulse rounded-[14px] bg-surface" />
+        <div className="mx-auto aspect-[2.5/3.5] w-[22rem] max-w-full animate-pulse rounded-[14px] bg-surface" />
       </Moldura>
     )
   }
@@ -72,20 +72,21 @@ export default function CartaDetalhe() {
 
       {/* Empilhado no celular, lado a lado a partir de sm: a arte é o assunto,
           e no telefone ela merece a largura inteira antes dos dados. */}
-      <div className="mt-5 flex flex-col gap-6 sm:flex-row sm:items-start">
+      <div className="mt-6 flex flex-col gap-8 sm:flex-row sm:items-start">
         <CartaThumb
           carta={carta}
-          className="w-full max-w-[17rem] self-center sm:w-64 sm:self-start"
+          alta
+          className="w-full max-w-[20rem] self-center sm:w-[22rem] sm:max-w-none sm:self-start lg:w-[26rem] xl:w-[30rem]"
         />
 
         <div className="min-w-0 flex-1">
-          <h1 className="text-[26px] leading-[1.15]">{nomeCarta(carta)}</h1>
-          <p className="set-code mt-1 text-[13px] text-muted">
+          <h1 className="text-[32px] leading-[1.1]">{nomeCarta(carta)}</h1>
+          <p className="set-code mt-2 text-[14px] text-muted">
             {numeroImpresso(carta, set?.total_oficial)}
             {set && ` · ${set.sigla ?? set.code}`}
           </p>
 
-          <dl className="mt-6 space-y-3 border-t border-edge-soft pt-4 text-[14px]">
+          <dl className="mt-7 space-y-3.5 border-t border-edge-soft pt-5 text-[15px]">
             <Linha rotulo="Expansão" valor={set?.nome ?? carta.set_code} />
             <Linha rotulo="Raridade" valor={carta.raridade} />
             <Linha
@@ -99,7 +100,7 @@ export default function CartaDetalhe() {
           </dl>
 
           <div className="mt-7 flex flex-col gap-2">
-            <p className="text-[13px] text-muted">Colocar esta carta em:</p>
+            <p className="text-[14px] text-muted">Colocar esta carta em:</p>
             <div className="grid grid-cols-2 gap-2">
               <Button
                 variant="offer"
@@ -118,7 +119,7 @@ export default function CartaDetalhe() {
                 {jaEm('PROCURA') ? 'Já procuro' : 'Procuro'}
               </Button>
             </div>
-            <p className="text-[12px] leading-relaxed text-faint">
+            <p className="text-[13px] leading-relaxed text-faint">
               Você escolhe condição e quantidade no passo seguinte.
             </p>
           </div>
@@ -148,7 +149,7 @@ function Linha({
       <dt className="shrink-0 text-muted">{rotulo}</dt>
       <dd className="min-w-0 text-right text-paper">
         {valor ?? <span className="text-faint">não informado</span>}
-        {dica && <span className="block text-[11px] text-faint">{dica}</span>}
+        {dica && <span className="block text-[12px] text-faint">{dica}</span>}
       </dd>
     </div>
   )
@@ -156,7 +157,7 @@ function Linha({
 
 function Moldura({ children }: { children: React.ReactNode }) {
   return (
-    <div className="mx-auto flex min-h-[100dvh] w-full max-w-2xl flex-col px-5 py-10">
+    <div className="mx-auto flex min-h-[100dvh] w-full max-w-4xl flex-col px-5 py-10 xl:max-w-5xl">
       {children}
     </div>
   )
