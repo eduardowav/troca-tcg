@@ -151,6 +151,39 @@
     }
   }
 
+  /* ---------- Carta que cresce sob o cursor ----------
+     Serve para enxergar melhor a arte sem sair da grade. Três cuidados:
+
+     1. **Só onde há cursor de verdade.** Em tela de toque o `:hover` dispara no
+        tap e fica grudado até tocar em outro lugar — a carta cresceria e não
+        voltaria. Como o alvo do app é celular, isto não é detalhe.
+     2. **Discreto e rápido.** Hover é gesto de dezenas de vezes por sessão;
+        animação vistosa aqui cansa em vez de ajudar. 4% e 180ms.
+     3. **Só `transform`.** Roda na GPU, não recalcula layout e não empurra as
+        cartas vizinhas — o `z-index` põe a carta ampliada por cima delas. */
+  @media (hover: hover) and (pointer: fine) {
+    .carta-cresce {
+      transition: transform 180ms cubic-bezier(0.23, 1, 0.32, 1);
+    }
+
+    .grupo-carta:hover .carta-cresce {
+      transform: scale(1.04);
+    }
+
+    .grupo-carta:hover {
+      z-index: 10;
+    }
+  }
+
+  /* Movimento é justamente o que incomoda quem pediu menos movimento. O bloco
+     geral abaixo zera a duração, mas o salto de escala continuaria — aqui ele
+     some de vez. */
+  @media (prefers-reduced-motion: reduce) {
+    .grupo-carta:hover .carta-cresce {
+      transform: none;
+    }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .holo-sweep {
       animation: none;

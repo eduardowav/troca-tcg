@@ -73,7 +73,7 @@ export function CelulaCarta({
 }) {
   const identidade = (
     <>
-      <CartaThumb carta={carta} className="w-full" />
+      <CartaThumb carta={carta} className="carta-cresce w-full" />
 
       <div className="min-w-0 px-0.5">
         <p className="truncate text-[13px] leading-tight font-medium text-paper">
@@ -105,7 +105,8 @@ export function CelulaCarta({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.18, ease: 'easeOut' }}
       className={cn(
-        'flex flex-col gap-2 rounded-card border p-2 transition-colors',
+        'grupo-carta relative flex flex-col gap-2 rounded-card border p-2',
+        'transition-colors',
         destaque ? DESTAQUE[destaque] : 'border-edge-soft bg-surface/50',
       )}
     >

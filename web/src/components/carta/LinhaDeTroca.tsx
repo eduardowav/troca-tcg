@@ -73,7 +73,7 @@ function Lado({
   return (
     <div
       className={cn(
-        'flex min-w-0 flex-1 flex-col gap-2',
+        'grupo-carta relative flex min-w-0 flex-1 flex-col gap-2',
         alinhamento === 'end' ? 'items-end text-right' : 'items-start text-left',
       )}
     >
@@ -91,7 +91,7 @@ function Lado({
           <CartaThumb
             carta={carta}
             className={cn(
-              'ring-2',
+              'carta-cresce ring-2',
               // A miniatura de 56px vinha de quando o feed era uma coluna
               // estreita. Na grade larga ela ficava minúscula ao lado das
               // células de Ofereço e Procuro, onde a arte é o que identifica a
