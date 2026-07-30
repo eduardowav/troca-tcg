@@ -79,7 +79,11 @@ function Lado({
             carta={carta}
             className={cn(
               'ring-2',
-              grande ? 'w-24' : 'w-14',
+              // A miniatura de 56px vinha de quando o feed era uma coluna
+              // estreita. Na grade larga ela ficava minúscula ao lado das
+              // células de Ofereço e Procuro, onde a arte é o que identifica a
+              // carta — é o mesmo argumento de GradeDeCartas.
+              grande ? 'w-28' : 'w-20',
               cor === 'offer' ? 'ring-offer' : 'ring-want',
             )}
           />
@@ -101,7 +105,7 @@ function Lado({
         <div
           className={cn(
             'aspect-[2.5/3.5] animate-pulse rounded-[10px] bg-surface-2',
-            grande ? 'w-24' : 'w-14',
+            grande ? 'w-28' : 'w-20',
           )}
         />
       )}

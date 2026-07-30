@@ -5,7 +5,7 @@ from uuid import uuid4
 from fastapi.testclient import TestClient
 
 from app.main import app
-from app.schemas.listing import CartaProcurada
+from app.schemas.listing import CartaProcurada, QuemProcura
 from app.schemas.match import MatchOut, ParticipanteCompleto, ParticipanteResumo
 from app.services import matching
 
@@ -109,14 +109,26 @@ def test_responder_exige_autenticacao():
     assert resp.status_code in (401, 403)
 
 
-def test_demanda_conta_pessoas_sem_dizer_quem():
-    """A tela vazia mostra "3 pessoas procuram", nunca *quem* procura.
+def test_demanda_nomeia_quem_procura():
+    """A tela vazia diz quem procura, não só quantos (decisão de 2026-07-30)."""
+    assert set(CartaProcurada.model_fields) == {"card_id", "procurando", "pessoas"}
+    assert set(QuemProcura.model_fields) == {"user_id", "username", "nome_exibicao"}
 
-    Nome ou @ ali permitiria procurar a pessoa por fora e furar o aceite mútuo,
-    que é o que protege os dois lados — a mesma regra que ParticipanteResumo
-    aplica ao contato.
-    """
-    assert set(CartaProcurada.model_fields) == {"card_id", "procurando"}
+
+def test_demanda_nao_expoe_contato():
+    """Identidade sim, contato não: nomear é decisão de produto, revelar o
+    telefone antes do aceite mútuo continua sendo a regra inviolável."""
+    assert "contato_visivel" not in QuemProcura.model_fields
+    # Nas propriedades publicadas, não no texto: a docstring do schema fala de
+    # contato justamente para explicar por que ele não está aqui.
+    propriedades = app.openapi()["components"]["schemas"]["QuemProcura"]["properties"]
+    assert not [c for c in propriedades if "contato" in c]
+
+
+def test_demanda_conta_pessoa_uma_vez_so():
+    """Duas PROCURAs da mesma carta (condições diferentes) são uma pessoa
+    interessada, não duas — daí o distinct na CTE."""
+    assert "select distinct o.card_id, p.user_id" in matching._DEMANDA.text
 
 
 def test_demanda_usa_a_mesma_regra_do_matching():
@@ -125,7 +137,7 @@ def test_demanda_usa_a_mesma_regra_do_matching():
     demanda, é falsa esperança."""
     assert matching._COMPATIVEL in matching._DEMANDA.text
     assert "pr.bloqueado = false" in matching._DEMANDA.text
-    assert "count(distinct p.user_id)" in matching._DEMANDA.text
+    assert "count(*) as procurando" in matching._DEMANDA.text
 
 
 def test_demanda_serializa_carta_procurada():

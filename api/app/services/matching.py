@@ -22,7 +22,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import RegraNegocio
-from app.schemas.listing import CartaProcurada
+from app.schemas.listing import CartaProcurada, QuemProcura
 from app.schemas.match import (
     ItemMatch,
     MatchOut,
@@ -277,16 +277,34 @@ async def listar_matches(session: AsyncSession, user_id: UUID) -> list[MatchOut]
     ]
 
 
+# Uma linha por (carta minha, pessoa que procura). O `distinct` importa: quem
+# tem duas PROCURAs da mesma carta — condições diferentes, por exemplo — é uma
+# pessoa só interessada, não duas.
 _DEMANDA = text(f"""
-select o.card_id::text as card_id, count(distinct p.user_id) as procurando
-from listings o
-join listings p on {_COMPATIVEL}
-join profiles pr on pr.id = p.user_id
-where o.user_id = :eu and pr.bloqueado = false
-group by o.card_id
-order by count(distinct p.user_id) desc, o.card_id
-limit :limite
+with demanda as (
+  select distinct o.card_id, p.user_id, pr.username, pr.nome_exibicao
+  from listings o
+  join listings p on {_COMPATIVEL}
+  join profiles pr on pr.id = p.user_id
+  where o.user_id = :eu and pr.bloqueado = false
+),
+mais_procuradas as (
+  select card_id, count(*) as procurando
+  from demanda
+  group by card_id
+  order by count(*) desc, card_id
+  limit :limite
+)
+select m.card_id::text as card_id, m.procurando,
+       d.user_id::text as user_id, d.username, d.nome_exibicao
+from mais_procuradas m
+join demanda d on d.card_id = m.card_id
+order by m.procurando desc, m.card_id, d.username
 """)
+
+# Quantas pessoas a tela nomeia por carta. O resto vira "e mais N" — a lista é
+# para dar rosto à demanda, não para virar diretório de usuários.
+_NOMES_POR_CARTA = 6
 
 
 async def demanda_pelas_minhas_ofertas(
@@ -304,15 +322,35 @@ async def demanda_pelas_minhas_ofertas(
     contagem solta por carta. Contar todo mundo que procura a carta em qualquer
     condição inflaria o número com gente que nunca daria match — prometer demanda
     que não existe é pior do que a tela vazia honesta que estava aqui antes.
+
+    A consulta volta achatada, uma linha por (carta, pessoa), e o agrupamento
+    acontece aqui: agregar em JSON no Postgres devolveria texto que ainda
+    precisaria ser desserializado, e o volume é pequeno demais para pagar isso.
     """
     linhas = (
         (await session.execute(_DEMANDA, {"eu": str(user_id), "limite": limite}))
         .mappings()
         .all()
     )
-    return [
-        CartaProcurada(card_id=r["card_id"], procurando=r["procurando"]) for r in linhas
-    ]
+
+    # dict preserva a ordem de inserção, que é a do SQL (mais procuradas antes).
+    por_carta: dict[str, CartaProcurada] = {}
+    for r in linhas:
+        carta = por_carta.get(r["card_id"])
+        if carta is None:
+            carta = CartaProcurada(
+                card_id=r["card_id"], procurando=r["procurando"], pessoas=[]
+            )
+            por_carta[r["card_id"]] = carta
+        if len(carta.pessoas) < _NOMES_POR_CARTA:
+            carta.pessoas.append(
+                QuemProcura(
+                    user_id=r["user_id"],
+                    username=r["username"],
+                    nome_exibicao=r["nome_exibicao"],
+                )
+            )
+    return list(por_carta.values())
 
 
 async def _participantes(

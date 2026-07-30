@@ -1,13 +1,13 @@
 import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 
-import { CartaThumb } from '@/components/carta/CartaThumb'
+import { CelulaCarta, GradeDeCartas } from '@/components/carta/GradeDeCartas'
 import { LinhaDeTroca } from '@/components/carta/LinhaDeTroca'
 import { IconeTroca } from '@/components/ui/Icone'
 import { useCartasPorId, useProcuradas } from '@/hooks/useAnuncios'
 import { useMatches } from '@/hooks/useMatches'
+import type { CartaProcurada } from '@/lib/anuncios'
 import { cn } from '@/lib/cn'
-import { codigoSet, nomeCarta } from '@/lib/types'
 import {
   diasParaExpirar,
   type Match,
@@ -27,8 +27,10 @@ export default function Matches() {
   const { data: cartas } = useCartasPorId(ids)
 
   return (
-    <div className="mx-auto flex min-h-[100dvh] w-full max-w-xl flex-col px-5">
-      <header className="pt-10">
+    // Mesma moldura de Minhas cartas e do Onboarding: container largo para as
+    // cartas respirarem, coluna estreita para o texto — linha longa cansa de ler.
+    <div className="mx-auto flex min-h-[100dvh] w-full max-w-[100rem] flex-col px-5">
+      <header className="w-full max-w-xl pt-10">
         <p className="set-code text-xs tracking-wide text-muted">TROCATCG</p>
         <h1 className="mt-3 text-[28px] leading-[1.1]">Trocas possíveis</h1>
         <p className="mt-2 text-[15px] leading-relaxed text-muted">
@@ -45,14 +47,12 @@ export default function Matches() {
         ) : !matches?.length ? (
           <Vazio />
         ) : (
-          <ul className="flex flex-col gap-3">
+          // Grade como nas outras telas: no desktop as trocas ficam lado a lado
+          // em vez de uma coluna estreita com metade da tela vazia.
+          <ul className="grid gap-3 lg:grid-cols-2 2xl:grid-cols-3">
             {matches.map((match) => (
               <li key={match.id}>
-                <CartaoMatch
-                  match={match}
-                  meuId={meuId}
-                  cartas={cartas}
-                />
+                <CartaoMatch match={match} meuId={meuId} cartas={cartas} />
               </li>
             ))}
           </ul>
@@ -202,8 +202,8 @@ function Vazio() {
   }
 
   return (
-    <div className="py-6">
-      <div className="rounded-[var(--radius-card)] border border-edge bg-surface p-5">
+    <div className="pb-6">
+      <div className="w-full max-w-xl">
         <p className="text-[15px] text-paper">
           Nenhuma troca fechada ainda — mas tem gente de olho no que você
           oferece.
@@ -212,42 +212,55 @@ function Vazio() {
           Falta a outra metade: a troca só aparece quando você também quer
           alguma carta de quem procura a sua.
         </p>
-
-        <ul className="mt-5 flex flex-col gap-3">
-          {procuradas.map((p) => {
-            const carta = cartas?.get(p.card_id)
-            return (
-              <li key={p.card_id} className="flex items-center gap-3">
-                {carta ? (
-                  <CartaThumb carta={carta} className="w-11 shrink-0" />
-                ) : (
-                  <div className="aspect-[2.5/3.5] w-11 shrink-0 rounded-[10px] bg-surface-2" />
-                )}
-                <div className="min-w-0">
-                  <p className="truncate text-[14px] text-paper">
-                    {carta ? nomeCarta(carta) : 'Carta sua'}
-                  </p>
-                  <p className="set-code text-[11px] text-muted">
-                    {carta && `${codigoSet(carta)} · `}
-                    <span className="text-want">
-                      {p.procurando === 1
-                        ? '1 pessoa procura'
-                        : `${p.procurando} pessoas procuram`}
-                    </span>
-                  </p>
-                </div>
-              </li>
-            )
-          })}
-        </ul>
       </div>
+
+      {/* Mesma grade e mesma célula das telas de Ofereço e Procuro — são cartas
+          suas, e ler diferente aqui faria parecer outra coisa. O destaque de
+          OFERTA é o mesmo que Minhas cartas usa para o que você oferece. */}
+      <GradeDeCartas className="mt-5">
+        {procuradas.map((p) => {
+          const carta = cartas?.get(p.card_id)
+          if (!carta) return null
+          return (
+            <CelulaCarta key={p.card_id} carta={carta} destaque="OFERTA">
+              <QuemQuer procurada={p} />
+            </CelulaCarta>
+          )
+        })}
+      </GradeDeCartas>
 
       <Link
         to="/minhas-cartas"
-        className="mt-3 flex h-13 items-center justify-center rounded-[var(--radius-control)] border border-edge bg-surface-2 text-[15px] text-paper transition-colors hover:border-[var(--color-faint)]"
+        className="mt-4 flex h-13 w-full max-w-xl items-center justify-center rounded-[var(--radius-control)] border border-edge bg-surface-2 text-[15px] text-paper transition-colors hover:border-[var(--color-faint)]"
       >
         Adicionar cartas que eu procuro
       </Link>
+    </div>
+  )
+}
+
+/**
+ * Quem procura esta carta.
+ *
+ * Nomeia as pessoas em vez de só contar — decisão do Eduardo: a tela fica
+ * concreta com gente, e um número não dá vontade de voltar. Contato continua
+ * fora: a API não manda, e quem quiser falar precisa do aceite mútuo, que é o
+ * que protege os dois lados.
+ */
+function QuemQuer({ procurada }: { procurada: CartaProcurada }) {
+  const restantes = procurada.procurando - procurada.pessoas.length
+
+  return (
+    <div className="rounded-[var(--radius-control)] border border-[color-mix(in_oklab,var(--color-want)_32%,transparent)] bg-[color-mix(in_oklab,var(--color-want)_10%,transparent)] px-2 py-1.5">
+      <p className="text-[11px] font-medium text-want">
+        {procurada.procurando === 1
+          ? '1 pessoa procura'
+          : `${procurada.procurando} pessoas procuram`}
+      </p>
+      <p className="set-code mt-1 text-[10px] leading-relaxed break-words text-muted">
+        {procurada.pessoas.map((q) => `@${q.username}`).join(', ')}
+        {restantes > 0 && ` e mais ${restantes}`}
+      </p>
     </div>
   )
 }

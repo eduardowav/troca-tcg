@@ -68,10 +68,18 @@ export const criarAnunciosEmLote = (itens: AnuncioNovo[]) =>
 
 export const removerAnuncio = (id: string) => api.del(`/me/listings/${id}`)
 
-/** Quantas pessoas procuram cada carta que eu ofereço. Só contagem, nunca quem. */
+/** Quem procura uma carta minha. A API não manda contato aqui — só depois do aceite. */
+export interface QuemProcura {
+  user_id: string
+  username: string
+  nome_exibicao: string
+}
+
+/** Demanda por uma carta que eu ofereço. `pessoas` vem no máximo com 6 nomes. */
 export interface CartaProcurada {
   card_id: string
   procurando: number
+  pessoas: QuemProcura[]
 }
 
 export const listarProcuradas = () =>

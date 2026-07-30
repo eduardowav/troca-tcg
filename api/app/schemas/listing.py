@@ -38,17 +38,24 @@ class AnuncioBulkIn(BaseModel):
     itens: list[AnuncioItem] = Field(min_length=1, max_length=300)
 
 
-class CartaProcurada(BaseModel):
-    """Quantas pessoas procuram uma carta que eu ofereço.
+class QuemProcura(BaseModel):
+    """Quem procura uma carta minha: identidade sim, contato não.
 
-    Só a contagem, nunca quem. Saber o nome de quem procura permitiria procurar a
-    pessoa por fora e furar o aceite mútuo, que é justamente o que protege os
-    dois lados aqui — e é a regra que o resto da API já segue (ver
-    ParticipanteResumo em schemas/match.py).
+    Mostrar nome e @ é decisão de produto do Eduardo (2026-07-30) — a tela vazia
+    fica mais concreta com gente do que com número. O que **não** muda é o
+    contato: continua saindo só depois do aceite mútuo, e por isso este schema
+    não tem onde guardá-lo, do mesmo jeito que ParticipanteResumo.
     """
 
+    user_id: str
+    username: str
+    nome_exibicao: str
+
+
+class CartaProcurada(BaseModel):
     card_id: str
     procurando: int
+    pessoas: list[QuemProcura] = []
 
 
 class AnuncioOut(BaseModel):
