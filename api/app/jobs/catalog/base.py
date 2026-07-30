@@ -9,7 +9,7 @@ A hierarquia é série (bloco) → set (expansão) → carta, espelhando `db/sch
 """
 
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 from typing import Protocol
 
 
@@ -64,6 +64,36 @@ class CartaCatalogo:
     imagem_url: str | None = None
 
 
+@dataclass(frozen=True)
+class PrecoCarta:
+    """Preço de uma carta num acabamento da TCGplayer.
+
+    `tipo` é o balde da fonte ('normal', 'holofoil', 'reverse-holofoil'), não o
+    nosso `finishes` — ver o comentário em `db/schema/15_precos_tcgplayer.sql`.
+    `mercado` (marketPrice) é o número que o jogador reconhece; `baixo`
+    (lowPrice) é o piso dos anúncios e serve de contraponto.
+    """
+
+    tipo: str
+    moeda: str
+    baixo: float | None
+    mercado: float | None
+    fonte_atualizada_em: datetime | None
+
+
+@dataclass(frozen=True)
+class DetalheCarta:
+    """O que só a carta individual traz, e o brief do set não.
+
+    Raridade e preço viajam juntos de propósito: são a mesma requisição. O caro
+    aqui é a ida à fonte — uma por carta, quinze mil e novecentas e noventa e
+    sete delas — então separar em dois jobs dobraria o custo do que já é caro.
+    """
+
+    raridade: str | None
+    precos: list[PrecoCarta]
+
+
 class FonteCatalogo(Protocol):
     """Provedor de catálogo de cartas. Implemente para trocar de fonte."""
 
@@ -77,4 +107,8 @@ class FonteCatalogo(Protocol):
 
     async def obter_set(self, set_code: str) -> tuple[SetCatalogo, list[CartaCatalogo]]:
         """Set e cartas juntos: os dois saem da mesma resposta da fonte."""
+        ...
+
+    async def obter_detalhe(self, external_id: str) -> DetalheCarta:
+        """Raridade e preços de uma carta. Uma requisição por carta."""
         ...

@@ -11,7 +11,13 @@ import {
   removerAnuncio,
 } from '@/lib/anuncios'
 import { supabase } from '@/lib/supabase'
-import { COLUNAS_CARTA, type Carta } from '@/lib/types'
+import {
+  COLUNAS_CARTA,
+  COLUNAS_PRECO,
+  type Carta,
+  precoPrincipal,
+  type PrecoTCGplayer,
+} from '@/lib/types'
 
 const CHAVE = ['anuncios'] as const
 
@@ -41,6 +47,45 @@ export function useProcuradas(ativo: boolean) {
     enabled: ativo,
     staleTime: 60 * 1000,
     queryFn: () => listarProcuradas(),
+  })
+}
+
+/**
+ * Preço de referência por carta, já resolvido para um acabamento só.
+ *
+ * Consulta separada de `useCartasPorId` de propósito: preço é a única coisa do
+ * catálogo que vence, então tem cache próprio e prazo próprio. Juntar no mesmo
+ * select faria o nome e a arte — que não mudam nunca — expirarem junto com ele.
+ */
+export function usePrecosPorId(ids: string[]) {
+  const chave = [...new Set(ids)].sort()
+
+  return useQuery({
+    queryKey: ['precos', 'porId', chave],
+    enabled: chave.length > 0,
+    staleTime: 30 * 60 * 1000,
+    queryFn: async (): Promise<Map<string, PrecoTCGplayer>> => {
+      const { data, error } = await supabase
+        .from('card_prices')
+        .select(COLUNAS_PRECO)
+        .in('card_id', chave)
+
+      if (error) throw error
+
+      const porCarta = new Map<string, PrecoTCGplayer[]>()
+      for (const preco of (data ?? []) as PrecoTCGplayer[]) {
+        const lista = porCarta.get(preco.card_id)
+        if (lista) lista.push(preco)
+        else porCarta.set(preco.card_id, [preco])
+      }
+
+      const principais = new Map<string, PrecoTCGplayer>()
+      for (const [card_id, lista] of porCarta) {
+        const escolhido = precoPrincipal(lista)
+        if (escolhido) principais.set(card_id, escolhido)
+      }
+      return principais
+    },
   })
 }
 

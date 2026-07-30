@@ -4,7 +4,7 @@ import { toast } from 'sonner'
 
 import { LinhaDeTroca } from '@/components/carta/LinhaDeTroca'
 import { Button, estiloBotao } from '@/components/ui/Button'
-import { useCartasPorId } from '@/hooks/useAnuncios'
+import { useCartasPorId, usePrecosPorId } from '@/hooks/useAnuncios'
 import { useDesfechoMatch, useMatch, useResponderMatch } from '@/hooks/useMatches'
 import { CONDICOES } from '@/lib/anuncios'
 import { ApiError } from '@/lib/api'
@@ -33,6 +33,7 @@ export default function MatchDetalhe() {
     [match],
   )
   const { data: cartas } = useCartasPorId(ids)
+  const { data: precos } = usePrecosPorId(ids)
 
   if (isPending) {
     return (
@@ -127,6 +128,7 @@ export default function MatchDetalhe() {
         <LinhaDeTroca
           dou={dou && cartas?.get(dou.card_id)}
           recebo={recebo && cartas?.get(recebo.card_id)}
+          precos={precos}
           tamanho="grande"
         />
 

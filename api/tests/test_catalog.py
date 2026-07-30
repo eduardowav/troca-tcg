@@ -58,6 +58,38 @@ _RESPOSTAS = {
             }
         ],
     },
+    # Carta única: é daqui que saem raridade e preço, uma requisição por carta.
+    "/v2/pt/cards/sv03-125": {
+        "id": "sv03-125",
+        "name": "Charizard ex",
+        "rarity": "Rara Dupla",
+        "pricing": {
+            "cardmarket": {"unit": "EUR", "avg": 3.86, "low": 2},
+            "tcgplayer": {
+                "unit": "USD",
+                "updated": "2026-07-30T08:02:45.229Z",
+                "holofoil": {
+                    "productId": 509879,
+                    "lowPrice": 3.49,
+                    "marketPrice": 5.27,
+                },
+            },
+        },
+    },
+    # Sem versão PT: só existe em inglês, como todo bloco anterior a Black & White.
+    "/v2/en/cards/base1-4": {
+        "id": "base1-4",
+        "name": "Charizard",
+        "rarity": "Rare Holo",
+        "pricing": {
+            "tcgplayer": {
+                "unit": "USD",
+                "holofoil": {"lowPrice": 510, "marketPrice": 800.43},
+            }
+        },
+    },
+    # Carta que a fonte conhece mas que não tem preço nenhum.
+    "/v2/pt/cards/svp-001": {"id": "svp-001", "name": "Promo", "rarity": "Promo"},
 }
 
 
@@ -148,3 +180,50 @@ async def test_obter_cartas_mescla_pt_e_en(fonte: TCGdex):
     assert prof.nome_pt == "Pesquisa do Professor"
     assert prof.nome_en == "Professor's Research"
     assert prof.imagem_url is None  # sem 'image' no brief
+
+
+async def test_detalhe_traz_raridade_e_preco_da_tcgplayer(fonte: TCGdex):
+    detalhe = await fonte.obter_detalhe("sv03-125")
+
+    assert detalhe.raridade == "Rara Dupla"
+    assert len(detalhe.precos) == 1
+    preco = detalhe.precos[0]
+    assert preco.tipo == "holofoil"
+    assert preco.moeda == "USD"
+    assert preco.baixo == 3.49
+    assert preco.mercado == 5.27
+    assert preco.fonte_atualizada_em is not None
+
+
+async def test_detalhe_ignora_a_cardmarket(fonte: TCGdex):
+    """Dois números discordando na tela não ajudam ninguém a decidir se a troca é
+    justa. A Cardmarket vem na mesma resposta e fica de fora — em euro, ainda por
+    cima."""
+    detalhe = await fonte.obter_detalhe("sv03-125")
+
+    assert [p.moeda for p in detalhe.precos] == ["USD"]
+    assert all(p.tipo != "cardmarket" for p in detalhe.precos)
+
+
+async def test_detalhe_nao_confunde_metadado_com_acabamento(fonte: TCGdex):
+    """`unit` e `updated` moram no mesmo nível dos acabamentos; só o que vier
+    como objeto é acabamento."""
+    detalhe = await fonte.obter_detalhe("sv03-125")
+
+    assert {p.tipo for p in detalhe.precos} == {"holofoil"}
+
+
+async def test_detalhe_cai_para_o_ingles_quando_nao_ha_pt(fonte: TCGdex):
+    """Preço não tem idioma: a carta é a mesma mercadoria."""
+    detalhe = await fonte.obter_detalhe("base1-4")
+
+    assert detalhe.raridade == "Rare Holo"
+    assert detalhe.precos[0].mercado == 800.43
+
+
+async def test_detalhe_de_carta_sem_preco_nao_quebra(fonte: TCGdex):
+    """Boa parte do catálogo não existe na TCGplayer — é resposta, não falha."""
+    detalhe = await fonte.obter_detalhe("svp-001")
+
+    assert detalhe.raridade == "Promo"
+    assert detalhe.precos == []

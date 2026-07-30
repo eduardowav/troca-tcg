@@ -2,7 +2,14 @@ import { motion } from 'motion/react'
 
 import { CartaThumb } from '@/components/carta/CartaThumb'
 import { cn } from '@/lib/cn'
-import { type Carta, codigoSet, type ListingKind, nomeCarta } from '@/lib/types'
+import {
+  type Carta,
+  codigoSet,
+  formatarPreco,
+  type ListingKind,
+  nomeCarta,
+  type PrecoTCGplayer,
+} from '@/lib/types'
 
 /**
  * Grade de resultados: a arte primeiro, as ações embaixo.
@@ -45,11 +52,14 @@ const DESTAQUE: Record<ListingKind, string> = {
 export function CelulaCarta({
   carta,
   destaque,
+  preco,
   children,
 }: {
   carta: Carta
   /** Lista em que a carta já está, se estiver em alguma. */
   destaque?: ListingKind | null
+  /** Preço de referência, quando a tela o carrega. Ausente não vira traço. */
+  preco?: PrecoTCGplayer
   /** Ações da célula — mudam por tela: duas listas no onboarding, uma em Minhas cartas. */
   children: React.ReactNode
 }) {
@@ -81,10 +91,40 @@ export function CelulaCarta({
             </>
           )}
         </p>
+        <SeloPreco preco={preco} />
       </div>
 
       {children}
     </motion.li>
+  )
+}
+
+/**
+ * Preço de referência da carta.
+ *
+ * Fica discreto de propósito: serve para perceber que uma carta vale bem mais
+ * que a outra, não para virar tabela de mercado. Quem quiser precisão vai à
+ * TCGplayer — daí a fonte estar dita, e o valor sair em dólar como ela publica.
+ *
+ * Sem preço, não desenha nada. Boa parte do catálogo (promos, cartas só em PT)
+ * simplesmente não existe na TCGplayer, e um "—" em metade da grade seria ruído
+ * dizendo "faltou dado" onde a resposta honesta é "não se aplica".
+ */
+export function SeloPreco({
+  preco,
+  className,
+}: {
+  preco?: PrecoTCGplayer
+  className?: string
+}) {
+  const valor = formatarPreco(preco)
+  if (!valor) return null
+
+  return (
+    <p className={cn('mt-1 text-[11px] text-muted', className)}>
+      <span className="text-paper tabular-nums">{valor}</span>
+      <span className="text-faint"> · TCGplayer</span>
+    </p>
   )
 }
 

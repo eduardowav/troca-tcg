@@ -26,12 +26,14 @@ import {
   type FiltrosBusca,
   type ListingKind,
   nomeCarta,
+  type PrecoTCGplayer,
   SEM_FILTRO,
 } from '@/lib/types'
 import {
   useAdicionarAnuncio,
   useAnuncios,
   useCartasPorId,
+  usePrecosPorId,
   useEditarAnuncio,
   useRemoverAnuncio,
 } from '@/hooks/useAnuncios'
@@ -44,6 +46,7 @@ export default function MinhasCartas() {
 
   const ids = useMemo(() => (anuncios ?? []).map((a) => a.card_id), [anuncios])
   const { data: cartas } = useCartasPorId(ids)
+  const { data: precos } = usePrecosPorId(ids)
 
   const daAba = useMemo(
     () => (anuncios ?? []).filter((a) => a.tipo === aba),
@@ -109,6 +112,7 @@ export default function MinhasCartas() {
                 key={anuncio.id}
                 anuncio={anuncio}
                 carta={cartas?.get(anuncio.card_id)}
+                preco={precos?.get(anuncio.card_id)}
               />
             ))}
           </GradeDeCartas>
@@ -201,6 +205,7 @@ function Adicionar({
     carregandoMais,
     ativa,
   } = useCardSearch(termo, filtros)
+  const precos = usePrecosPorId((resultados ?? []).map((c) => c.id)).data
   const adicionar = useAdicionarAnuncio()
 
   function incluir(carta: Carta, tipo: ListingKind) {
@@ -294,6 +299,7 @@ function Adicionar({
                       destaque={
                         naOferta ? 'OFERTA' : naProcura ? 'PROCURA' : null
                       }
+                      preco={precos?.get(carta.id)}
                     >
                       <AcoesDeLista>
                         <BotaoLista
@@ -349,13 +355,21 @@ function Adicionar({
  * folha por cima, que é onde há largura para os controles respirarem — e é o
  * gesto que o texto da tela já prometia ("toque numa carta para ajustar").
  */
-function CartaDaLista({ anuncio, carta }: { anuncio: Anuncio; carta?: Carta }) {
+function CartaDaLista({
+  anuncio,
+  carta,
+  preco,
+}: {
+  anuncio: Anuncio
+  carta?: Carta
+  preco?: PrecoTCGplayer
+}) {
   const [editando, setEditando] = useState(false)
 
   if (!carta) return <CelulaEsqueleto />
 
   return (
-    <CelulaCarta carta={carta} destaque={anuncio.tipo}>
+    <CelulaCarta carta={carta} destaque={anuncio.tipo} preco={preco}>
       <button
         type="button"
         onClick={() => setEditando(true)}

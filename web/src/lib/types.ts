@@ -56,6 +56,65 @@ export function temFiltro(f: FiltrosBusca): boolean {
   return f.serie !== null || f.set !== null
 }
 
+/**
+ * Preço de referência da TCGplayer, espelhando `card_prices`.
+ *
+ * Em dólar porque a fonte é americana e não existe preço em real ali —
+ * converter exigiria uma fonte de câmbio, que vence junto e daria falsa
+ * precisão a um número que já é estimativa.
+ */
+export interface PrecoTCGplayer {
+  card_id: string
+  tipo_tcgplayer: string
+  moeda: string
+  baixo: number | null
+  mercado: number | null
+}
+
+export const COLUNAS_PRECO = 'card_id, tipo_tcgplayer, moeda, baixo, mercado'
+
+// A mesma carta tem preços diferentes por acabamento, e a fonte usa sete baldes.
+// A ordem abaixo escolhe qual representa a carta, e o critério é **assumir a
+// impressão mais comum**: entre a 1st edition de uma Base Set a US$ 101 e a
+// unlimited a US$ 35, mostrar a primeira inflaria o valor de quase todo mundo,
+// porque quase ninguém tem a 1st. Errar para baixo é o erro barato aqui — quem
+// tem a versão cara sabe que tem, e diz.
+const ORDEM_ACABAMENTO = [
+  'normal',
+  'unlimited',
+  'holofoil',
+  'unlimited-holofoil',
+  'reverse-holofoil',
+  '1st-edition',
+  '1st-edition-holofoil',
+]
+
+export function precoPrincipal(
+  precos: PrecoTCGplayer[],
+): PrecoTCGplayer | undefined {
+  for (const tipo of ORDEM_ACABAMENTO) {
+    const achado = precos.find((p) => p.tipo_tcgplayer === tipo)
+    if (achado) return achado
+  }
+  // Balde novo na fonte: escolhe o mais barato, que é o mesmo critério de
+  // assumir a impressão comum — e é determinístico, ao contrário da ordem em
+  // que o banco devolveu as linhas.
+  return [...precos].sort(
+    (a, b) => (a.mercado ?? a.baixo ?? 0) - (b.mercado ?? b.baixo ?? 0),
+  )[0]
+}
+
+const MOEDA = new Intl.NumberFormat('pt-BR', {
+  style: 'currency',
+  currency: 'USD',
+})
+
+/** "US$ 5,27". Devolve null quando não há número — preço ausente não vira "—". */
+export function formatarPreco(preco?: PrecoTCGplayer): string | null {
+  const valor = preco?.mercado ?? preco?.baixo
+  return valor == null ? null : MOEDA.format(valor)
+}
+
 /** As duas listas — nunca "coleção". */
 export type ListingKind = 'OFERTA' | 'PROCURA'
 

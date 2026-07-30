@@ -126,9 +126,52 @@ frontend (`interpretarAtalho` em `useCardSearch`), onde dá para *mostrar* o que
 foi entendido. Exige a parte numérica de propósito — várias siglas são também
 nome de Pokémon (`MEW` é a sigla de 151), e quem digita só "mew" quer o Mew.
 
-⚠️ **Filtro por raridade não existe porque o dado não existe:** `cards.raridade`
-é 100% nulo. A TCGdex não traz raridade no brief do set — sairia uma request por
-carta, ~16 mil. Enriquecer isso é uma decisão à parte.
+### Preço (TCGplayer) e raridade
+
+Os dois vêm da **mesma** requisição — a rota de carta única, `/{idioma}/cards/{id}`
+— e por isso são um job só. O brief do set não traz nenhum dos dois, então o
+custo é uma ida à fonte por carta: **15.997 requisições** para varrer tudo.
+
+```bash
+cd api
+uv run python -m app.jobs.catalog.run_precos --limite 2000   # em pedaços
+uv run python -m app.jobs.catalog.run_precos --tudo          # o catálogo inteiro
+```
+
+Estado da primeira varredura completa (2026-07-30):
+
+| | |
+|---|---|
+| Cartas verificadas | 15.997 (100%) |
+| **Raridade preenchida** | **15.997 (100%)** — era 0% |
+| Cartas com preço | 14.316 (89,5%) |
+| Linhas em `card_prices` | 24.607, em 7 acabamentos |
+
+As 1.681 cartas sem preço não são falha: promos e cartas que a TCGplayer não
+lista simplesmente não existem lá. `cards.precos_verificado_em` marca "já
+tentei", que é diferente de "tem preço" — sem essa distinção o job varreria as
+mesmas cartas para sempre e nunca terminaria.
+
+**Só TCGplayer, por decisão do Eduardo.** A Cardmarket vem na mesma resposta e é
+descartada: dois números discordando na tela não ajudam ninguém a decidir se a
+troca é justa. O valor fica **em dólar**, como a fonte publica — converter
+exigiria uma fonte de câmbio, que vence junto e daria falsa precisão a um número
+que já é estimativa.
+
+Um acabamento por linha, porque a mesma carta sai por US$ 0,13 em `normal` e
+US$ 0,22 em `reverse-holofoil`. A tela escolhe **um** para representar a carta, e
+o critério é assumir a impressão mais comum (`precoPrincipal`, em
+`web/src/lib/types.ts`): entre a 1st edition de uma Base Set a US$ 101 e a
+unlimited a US$ 35, mostrar a primeira inflaria o valor de quase todo mundo.
+
+⚠️ **A raridade vem no idioma da resposta**: "Comum"/"Rara Dupla" nas cartas
+modernas, "Common"/"Rare Holo" nas antigas, que só existem no endpoint inglês.
+Normalizar isso é decisão à parte — hoje o dado é guardado como veio, e ainda não
+há filtro por raridade na busca.
+
+**Preço vence.** Diferente de nome e raridade, isto pede rodada periódica: rodar
+o job de novo num catálogo já varrido é o que atualiza os valores, começando
+pelos mais antigos (`card_prices.sincronizado_em`).
 
 `sets.sigla` guarda a abreviação impressa na carta (`OBF`, `PRE`, `MEW`), que é
 como o jogador lê o canto — "OBF 125/197". A UI ainda mostra o `set_code`

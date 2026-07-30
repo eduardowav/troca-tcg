@@ -236,9 +236,10 @@ segunda carta — que é o achado 1.
 
 Estado em 2026-07-30: **1, 2 e 3 implementados** (`7d7a0ff`, `9cafac6`, `1fed13a`).
 O 3 nomeia quem procura, por decisão do Eduardo (`0aae1e7`) — contato segue só
-depois do aceite mútuo. O 7 depende de enriquecer a raridade
-carta a carta na TCGdex — o dado existe no endpoint de carta única, não no brief
-do set — e ficou parado por decisão do Eduardo.
+depois do aceite mútuo. O **7 foi resolvido por outro caminho**: em vez de
+raridade, entrou **preço da TCGplayer** na linha de troca, em Minhas cartas e na
+busca. A varredura carta a carta trouxe a raridade de carona — `cards.raridade`
+saiu de 0% para **100%** do catálogo — e ela está no banco esperando uso.
 
 | # | Achado | Custo | Impacto | Onde |
 |---|---|---|---|---|

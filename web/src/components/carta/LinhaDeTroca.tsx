@@ -1,6 +1,12 @@
 import { CartaThumb } from '@/components/carta/CartaThumb'
+import { SeloPreco } from '@/components/carta/GradeDeCartas'
 import { cn } from '@/lib/cn'
-import { type Carta, codigoSet, nomeCarta } from '@/lib/types'
+import {
+  type Carta,
+  codigoSet,
+  nomeCarta,
+  type PrecoTCGplayer,
+} from '@/lib/types'
 
 /**
  * A linha de troca: o que sai de você, o que chega até você.
@@ -13,10 +19,13 @@ import { type Carta, codigoSet, nomeCarta } from '@/lib/types'
 export function LinhaDeTroca({
   dou,
   recebo,
+  precos,
   tamanho = 'compacto',
 }: {
   dou?: Carta
   recebo?: Carta
+  /** Preço de referência por carta. Só o detalhe do match passa isto. */
+  precos?: Map<string, PrecoTCGplayer>
   tamanho?: 'compacto' | 'grande'
 }) {
   const grande = tamanho === 'grande'
@@ -29,6 +38,7 @@ export function LinhaDeTroca({
         cor="offer"
         grande={grande}
         alinhamento="end"
+        preco={dou && precos?.get(dou.id)}
       />
 
       <Direcao grande={grande} />
@@ -39,6 +49,7 @@ export function LinhaDeTroca({
         cor="want"
         grande={grande}
         alinhamento="start"
+        preco={recebo && precos?.get(recebo.id)}
       />
     </div>
   )
@@ -50,12 +61,14 @@ function Lado({
   cor,
   grande,
   alinhamento,
+  preco,
 }: {
   carta?: Carta
   rotulo: string
   cor: 'offer' | 'want'
   grande: boolean
   alinhamento: 'start' | 'end'
+  preco?: PrecoTCGplayer
 }) {
   return (
     <div
@@ -99,6 +112,7 @@ function Lado({
             <span className="set-code block text-[10px] text-muted">
               {codigoSet(carta)}
             </span>
+            <SeloPreco preco={preco} className="mt-0.5" />
           </span>
         </>
       ) : (

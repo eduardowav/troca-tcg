@@ -5,13 +5,15 @@ Copag distribui as cartas traduzidas, e a busca quebra nas cartas de treinador s
 o nome em PT. Busca em PT e cai para EN quando a tradução não existe.
 """
 
-from datetime import date
+from datetime import date, datetime
 
 import httpx
 
 from app.jobs.catalog.base import (
     CartaCatalogo,
+    DetalheCarta,
     FonteCatalogo,
+    PrecoCarta,
     SerieCatalogo,
     SetCatalogo,
 )
@@ -23,6 +25,17 @@ def montar_imagem(base: str | None) -> str | None:
     Usamos a versão pequena (`low.webp`) nas listas — ver seção 15 da doc (banda).
     """
     return f"{base}/low.webp" if base else None
+
+
+def _instante(valor: str | None) -> datetime | None:
+    """`updated` vem em ISO com 'Z'; o fromisoformat do 3.11+ aceita, mas o 'Z'
+    literal só a partir do 3.11 — trocar por +00:00 funciona em qualquer versão."""
+    if not valor:
+        return None
+    try:
+        return datetime.fromisoformat(valor.replace("Z", "+00:00"))
+    except ValueError:
+        return None
 
 
 def _data(valor: str | None) -> date | None:
@@ -115,6 +128,54 @@ class TCGdex(FonteCatalogo):
                 )
             )
         return cartas
+
+    async def obter_detalhe(self, external_id: str) -> DetalheCarta:
+        """Raridade e preços da TCGplayer, da rota de carta única.
+
+        Cai para o inglês em 404: os blocos anteriores a Black & White não têm
+        card-a-card em português (o mesmo motivo que faz `nome_pt` ser nulo em
+        2152 cartas), e preço não tem idioma — a carta é a mesma mercadoria.
+        """
+        try:
+            dados = await self._get(f"{self._idioma}/cards/{external_id}")
+        except httpx.HTTPStatusError as erro:
+            if erro.response.status_code != 404 or self._idioma == "en":
+                raise
+            dados = await self._get(f"en/cards/{external_id}")
+
+        assert isinstance(dados, dict)
+        return DetalheCarta(
+            raridade=dados.get("rarity"),
+            precos=self._montar_precos(dados),
+        )
+
+    @staticmethod
+    def _montar_precos(dados: dict) -> list[PrecoCarta]:
+        """Extrai só a TCGplayer — a Cardmarket vem junto e é ignorada.
+
+        Dois números discordando na tela não ajudam ninguém a decidir se a troca
+        é justa; a decisão de ficar só na TCGplayer é do Eduardo.
+        """
+        tcgplayer = (dados.get("pricing") or {}).get("tcgplayer") or {}
+        moeda = tcgplayer.get("unit") or "USD"
+        atualizado = _instante(tcgplayer.get("updated"))
+
+        precos: list[PrecoCarta] = []
+        for tipo, valores in tcgplayer.items():
+            # `unit` e `updated` são metadados no mesmo nível dos acabamentos;
+            # acabamento é o que vier como objeto.
+            if not isinstance(valores, dict):
+                continue
+            precos.append(
+                PrecoCarta(
+                    tipo=tipo,
+                    moeda=moeda,
+                    baixo=valores.get("lowPrice"),
+                    mercado=valores.get("marketPrice"),
+                    fonte_atualizada_em=atualizado,
+                )
+            )
+        return precos
 
     async def _get(self, caminho: str) -> list | dict:
         resp = await self._client.get(f"{self._base}/{caminho}")
