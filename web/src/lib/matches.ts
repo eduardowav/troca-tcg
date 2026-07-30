@@ -12,10 +12,27 @@ export interface ParticipanteMatch {
   user_id: string
   username: string
   nome_exibicao: string
-  reputacao: number | null
+  trocas_concluidas: number
+  trocas_furadas: number
   aceitou: boolean | null
   confirmou_conclusao: boolean
   contato_visivel?: string | null
+}
+
+/**
+ * Como a reputação de um estranho é dita em uma linha.
+ *
+ * Nunca em porcentagem: "100% de trocas ok" com uma troca só é a mesma etiqueta
+ * de quem tem quarenta, e "0%" condena quem levou um furo na estreia. Contagem
+ * carrega o próprio denominador — "1 troca ok" já se anuncia como amostra
+ * pequena, sem precisar de aviso.
+ */
+export function reputacaoTexto(p: ParticipanteMatch): string {
+  const { trocas_concluidas: ok, trocas_furadas: furos } = p
+  if (ok + furos === 0) return 'novo por aqui'
+  if (furos === 0) return ok === 1 ? '1 troca ok' : `${ok} trocas ok`
+  const total = ok + furos
+  return `${ok} de ${total} ${total === 1 ? 'troca' : 'trocas'} ok`
 }
 
 /** Uma carta indo de alguém para alguém. */

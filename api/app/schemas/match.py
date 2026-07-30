@@ -11,10 +11,21 @@ from pydantic import BaseModel
 
 
 class ParticipanteResumo(BaseModel):
+    """
+    Reputação vai em contadores, não em porcentagem.
+
+    Porcentagem sozinha mente com amostra pequena: quem concluiu uma única troca
+    vira "100%", indistinguível de quem concluiu quarenta, e quem levou um furo
+    na estreia fica marcado com "0%" para sempre. Mandando os dois inteiros, a
+    tela mostra o denominador — e é o denominador que deixa a pessoa julgar
+    quanto peso dar ao número.
+    """
+
     user_id: str
     username: str
     nome_exibicao: str
-    reputacao: float | None = None
+    trocas_concluidas: int = 0
+    trocas_furadas: int = 0
     aceitou: bool | None = None
     confirmou_conclusao: bool = False
 

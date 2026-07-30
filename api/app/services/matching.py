@@ -280,7 +280,8 @@ async def _participantes(
     session: AsyncSession, match_id: str, *, completo: bool
 ) -> list:
     colunas = (
-        "p.id::text as user_id, p.username, p.nome_exibicao, reputacao(p), "
+        "p.id::text as user_id, p.username, p.nome_exibicao, "
+        "p.trocas_concluidas, p.trocas_furadas, "
         "mp.aceitou, mp.confirmou_conclusao"
     )
     if completo:
@@ -307,7 +308,8 @@ async def _participantes(
             user_id=r["user_id"],
             username=r["username"],
             nome_exibicao=r["nome_exibicao"],
-            reputacao=float(r["reputacao"]) if r["reputacao"] is not None else None,
+            trocas_concluidas=r["trocas_concluidas"],
+            trocas_furadas=r["trocas_furadas"],
             aceitou=r["aceitou"],
             confirmou_conclusao=r["confirmou_conclusao"],
             **({"contato_visivel": r["contato_visivel"]} if completo else {}),

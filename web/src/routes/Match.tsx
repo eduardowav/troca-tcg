@@ -15,6 +15,7 @@ import {
   euConfirmei,
   type Match,
   parceiro,
+  reputacaoTexto,
 } from '@/lib/matches'
 import { linkWhatsApp } from '@/lib/telefone'
 import { type Carta, codigoSet, nomeCarta } from '@/lib/types'
@@ -118,7 +119,7 @@ export default function MatchDetalhe() {
       </h1>
       <p className="mt-2 text-[15px] leading-relaxed text-muted">
         @{outro?.username}
-        {outro?.reputacao != null && ` · ${outro.reputacao}% de trocas concluídas`}
+        {outro && ` · ${reputacaoTexto(outro)}`}
       </p>
 
       <div className="mt-8 rounded-[var(--radius-card)] border border-edge bg-surface p-5">

@@ -6,7 +6,12 @@ import { IconeTroca } from '@/components/ui/Icone'
 import { useCartasPorId } from '@/hooks/useAnuncios'
 import { useMatches } from '@/hooks/useMatches'
 import { cn } from '@/lib/cn'
-import { diasParaExpirar, type Match, parceiro } from '@/lib/matches'
+import {
+  diasParaExpirar,
+  type Match,
+  parceiro,
+  reputacaoTexto,
+} from '@/lib/matches'
 import { useUsuarioId } from '@/stores/auth'
 
 export default function Matches() {
@@ -81,7 +86,7 @@ function CartaoMatch({
           </span>
           <span className="set-code block text-[11px] text-muted">
             @{outro?.username}
-            {outro?.reputacao != null && ` · ${outro.reputacao}% de trocas ok`}
+            {outro && ` · ${reputacaoTexto(outro)}`}
           </span>
         </span>
         <Selo status={match.status} />
