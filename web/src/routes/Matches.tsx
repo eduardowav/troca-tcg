@@ -10,6 +10,7 @@ import type { CartaProcurada } from '@/lib/anuncios'
 import { cn } from '@/lib/cn'
 import {
   diasParaExpirar,
+  euAceitei,
   type Match,
   parceiro,
   reputacaoTexto,
@@ -92,7 +93,7 @@ function CartaoMatch({
             {reputacao && ` · ${reputacao}`}
           </span>
         </span>
-        <Selo status={match.status} />
+        <Selo status={match.status} jaAceitei={euAceitei(match, meuId)} />
       </div>
 
       <div className="mt-4">
@@ -113,11 +114,24 @@ function CartaoMatch({
   )
 }
 
-function Selo({ status }: { status: Match['status'] }) {
+/**
+ * PENDENTE quer dizer "alguém aceitou e falta alguém", e isso é coisa oposta
+ * conforme quem aceitou: se fui eu, a bola está com a outra pessoa; se foi ela,
+ * a bola está comigo — e aí é uma chamada para agir, não um aviso de espera.
+ * O detalhe já fazia essa distinção; o feed dizia "esperando o outro" nos dois
+ * casos, e mandava a pessoa esperar justamente quando faltava ela.
+ */
+function Selo({
+  status,
+  jaAceitei,
+}: {
+  status: Match['status']
+  jaAceitei: boolean
+}) {
   const mapa: Partial<Record<Match['status'], { texto: string; cor: string }>> = {
     SUGERIDO: { texto: 'nova', cor: 'text-muted border-edge' },
     PENDENTE: {
-      texto: 'esperando o outro',
+      texto: jaAceitei ? 'esperando o outro' : 'falta você',
       cor: 'text-want border-[color-mix(in_oklab,var(--color-want)_40%,transparent)]',
     },
     ACEITO: {
