@@ -203,6 +203,17 @@ export function nomeCarta(c: Carta): string {
 }
 
 /**
+ * O número como está impresso no rodapé da carta: "086/131".
+ *
+ * É assim que o colecionador identifica a carta — "regigigas (086/131)" — e é a
+ * notação que a Liga Pokémon usa. O total vem de `sets`, não da carta, então
+ * quem chama passa o set; sem ele, sobra o número sozinho.
+ */
+export function numeroImpresso(c: Carta, total?: number | null): string {
+  return total ? `${c.numero}/${total}` : c.numero
+}
+
+/**
  * Código de set no vernáculo do colecionador: "PRE 059".
  *
  * A sigla é o que está impresso no canto da carta, e é por ela que o jogador

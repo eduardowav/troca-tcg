@@ -16,6 +16,8 @@ export interface Catalogo {
   sets: SetCatalogo[]
   /** Sets por série, para o segundo seletor depender do primeiro. */
   setsPorSerie: Map<string, SetCatalogo[]>
+  /** Set por código, para resolver o total impresso de uma carta. */
+  setsPorCodigo: Map<string, SetCatalogo>
   /** Raridades distintas, do mais comum ao mais raro. */
   raridades: Raridade[]
 }
@@ -71,6 +73,7 @@ export function useCatalogo() {
         series: (rSeries.data ?? []) as SerieCatalogo[],
         sets,
         setsPorSerie,
+        setsPorCodigo: new Map(sets.map((s) => [s.code, s])),
         raridades,
       }
     },

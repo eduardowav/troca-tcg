@@ -1,15 +1,11 @@
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 
+import { BuscaRapida } from '@/components/carta/BuscaRapida'
 import { CartaThumb } from '@/components/carta/CartaThumb'
-import { FiltroCatalogo } from '@/components/carta/FiltroCatalogo'
-import {
-  AcoesDeLista,
-  BotaoLista,
-  CelulaCarta,
-  GradeDeCartas,
-} from '@/components/carta/GradeDeCartas'
+import { CelulaCarta, GradeDeCartas } from '@/components/carta/GradeDeCartas'
 import { Button } from '@/components/ui/Button'
 import { IconeBusca, IconeCartas } from '@/components/ui/Icone'
 import {
@@ -23,22 +19,17 @@ import { cn } from '@/lib/cn'
 import {
   type Carta,
   codigoSet,
-  type FiltrosBusca,
   type ListingKind,
   nomeCarta,
   type PrecoTCGplayer,
-  SEM_FILTRO,
 } from '@/lib/types'
 import {
-  useAdicionarAnuncio,
   useAnuncios,
   useCartasPorId,
   usePrecosPorId,
   useEditarAnuncio,
   useRemoverAnuncio,
 } from '@/hooks/useAnuncios'
-import { useCardSearch } from '@/hooks/useCardSearch'
-import { useDebounced } from '@/hooks/useDebounced'
 
 export default function MinhasCartas() {
   const { data: anuncios, isPending, isError, refetch } = useAnuncios()
@@ -55,20 +46,6 @@ export default function MinhasCartas() {
     [anuncios],
   )
 
-  const porTipo = useMemo(
-    () => ({
-      OFERTA: new Set(
-        (anuncios ?? []).filter((a) => a.tipo === 'OFERTA').map((a) => a.card_id),
-      ),
-      PROCURA: new Set(
-        (anuncios ?? [])
-          .filter((a) => a.tipo === 'PROCURA')
-          .map((a) => a.card_id),
-      ),
-    }),
-    [anuncios],
-  )
-
   return (
     <div className="mx-auto flex min-h-[100dvh] w-full max-w-[100rem] flex-col px-5">
       <header className="w-full max-w-xl pt-10">
@@ -80,7 +57,18 @@ export default function MinhasCartas() {
         </p>
       </header>
 
-      <Adicionar emOferta={porTipo.OFERTA} emProcura={porTipo.PROCURA} />
+      {/* A busca compacta resolve o caso comum (achar uma carta pelo nome) sem
+          tomar a tela; quem quer explorar cai na página de busca pelo Enter ou
+          pelo link ao lado. */}
+      <div className="mt-4 flex w-full max-w-xl items-center gap-2">
+        <BuscaRapida className="flex-1" />
+        <Link
+          to="/buscar"
+          className="shrink-0 rounded-[var(--radius-control)] px-2 py-2 text-[13px] text-muted transition-colors hover:text-paper"
+        >
+          Explorar
+        </Link>
+      </div>
 
       <div className="mt-6 w-full flex-1 pb-6">
         {isError ? (
@@ -183,176 +171,6 @@ function Coluna({
         )}
       </div>
     </section>
-  )
-}
-
-/* ---------- Adicionar carta ---------- */
-
-/**
- * Uma busca só para as duas listas.
- *
- * Antes a busca herdava a aba aberta: para pôr uma carta em Procuro estando em
- * Ofereço, era preciso fechar, trocar de aba e buscar de novo — e quem acabou de
- * achar a carta já sabe para qual lista ela vai. Agora cada resultado traz os
- * dois botões e a decisão acontece na hora, na própria carta.
- */
-function Adicionar({
-  emOferta,
-  emProcura,
-}: {
-  emOferta: Set<string>
-  emProcura: Set<string>
-}) {
-  const [aberto, setAberto] = useState(false)
-  const [busca, setBusca] = useState('')
-  const [filtros, setFiltros] = useState<FiltrosBusca>(SEM_FILTRO)
-  const termo = useDebounced(busca)
-  const {
-    cartas: resultados,
-    total,
-    carregando,
-    temMais,
-    carregarMais,
-    carregandoMais,
-    ativa,
-  } = useCardSearch(termo, filtros)
-  const precos = usePrecosPorId((resultados ?? []).map((c) => c.id)).data
-  const adicionar = useAdicionarAnuncio()
-
-  function incluir(carta: Carta, tipo: ListingKind) {
-    const rotulo = tipo === 'OFERTA' ? 'Ofereço' : 'Procuro'
-    adicionar.mutate(
-      { card_id: carta.id, tipo },
-      {
-        onSuccess: () => {
-          // O termo continua: com os dois botões na carta, é comum adicionar
-          // várias do mesmo resultado antes de buscar outra coisa.
-          toast.success(`${nomeCarta(carta)} entrou em ${rotulo}.`)
-        },
-        onError: (erro) =>
-          toast.error(
-            erro instanceof ApiError
-              ? erro.message
-              : 'Não foi possível adicionar agora.',
-          ),
-      },
-    )
-  }
-
-  if (!aberto) {
-    return (
-      <Button
-        variant="subtle"
-        size="md"
-        block
-        className="mt-3 max-w-xl"
-        onClick={() => setAberto(true)}
-      >
-        Adicionar carta
-      </Button>
-    )
-  }
-
-  return (
-    <div className="mt-3 rounded-[var(--radius-card)] border border-edge bg-surface p-3">
-      <div className="flex items-center gap-2">
-        <input
-          autoFocus
-          type="search"
-          value={busca}
-          onChange={(e) => setBusca(e.target.value)}
-          aria-label="Buscar carta para adicionar"
-          placeholder="Busque: Pikachu, Umbreon, Pesquisa…"
-          className="h-11 min-w-0 max-w-xl flex-1 rounded-[var(--radius-control)] border border-edge bg-surface-2 px-3 text-[15px] text-paper placeholder:text-muted"
-        />
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => {
-            setAberto(false)
-            setBusca('')
-            setFiltros(SEM_FILTRO)
-          }}
-        >
-          Fechar
-        </Button>
-      </div>
-
-      <FiltroCatalogo
-        filtros={filtros}
-        onFiltros={setFiltros}
-        className="mt-2.5"
-      />
-
-      {ativa && (
-        <div className="mt-3">
-          {carregando ? (
-            <p className="py-3 text-center text-[14px] text-muted">Buscando…</p>
-          ) : resultados?.length ? (
-            <>
-              {total > resultados.length && (
-                <p role="status" className="mb-2 text-[11px] text-muted">
-                  Mostrando {resultados.length} de {total} cartas
-                </p>
-              )}
-              {/* Sem altura máxima e sem rolagem própria: com a grade ocupando a
-                  largura toda, o painel virou seção da página, não dropdown. Um
-                  `overflow-y-auto` aqui só produziria uma segunda barra de
-                  rolagem dentro da primeira. */}
-              <GradeDeCartas>
-                {resultados.map((carta) => {
-                  const naOferta = emOferta.has(carta.id)
-                  const naProcura = emProcura.has(carta.id)
-                  return (
-                    <CelulaCarta
-                      key={carta.id}
-                      carta={carta}
-                      destaque={
-                        naOferta ? 'OFERTA' : naProcura ? 'PROCURA' : null
-                      }
-                      preco={precos?.get(carta.id)}
-                    >
-                      <AcoesDeLista>
-                        <BotaoLista
-                          tipo="OFERTA"
-                          ativo={naOferta}
-                          disabled={naOferta || adicionar.isPending}
-                          rotulo={naOferta ? 'Na lista' : undefined}
-                          onClick={() => incluir(carta, 'OFERTA')}
-                        />
-                        <BotaoLista
-                          tipo="PROCURA"
-                          ativo={naProcura}
-                          disabled={naProcura || adicionar.isPending}
-                          rotulo={naProcura ? 'Na lista' : undefined}
-                          onClick={() => incluir(carta, 'PROCURA')}
-                        />
-                      </AcoesDeLista>
-                    </CelulaCarta>
-                  )
-                })}
-              </GradeDeCartas>
-              {temMais && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  block
-                  className="mt-2"
-                  loading={carregandoMais}
-                  onClick={() => carregarMais()}
-                >
-                  Mostrar mais
-                </Button>
-              )}
-            </>
-          ) : (
-            <p className="py-3 text-center text-[14px] text-muted">
-              Nenhuma carta com esse nome.
-            </p>
-          )}
-        </div>
-      )}
-    </div>
   )
 }
 

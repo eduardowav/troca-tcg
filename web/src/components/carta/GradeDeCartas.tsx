@@ -1,4 +1,5 @@
 import { motion } from 'motion/react'
+import { Link } from 'react-router-dom'
 
 import { CartaThumb } from '@/components/carta/CartaThumb'
 import { cn } from '@/lib/cn'
@@ -53,6 +54,7 @@ export function CelulaCarta({
   carta,
   destaque,
   preco,
+  para,
   children,
 }: {
   carta: Carta
@@ -60,20 +62,17 @@ export function CelulaCarta({
   destaque?: ListingKind | null
   /** Preço de referência, quando a tela o carrega. Ausente não vira traço. */
   preco?: PrecoTCGplayer
+  /**
+   * Destino ao tocar na arte. Só as telas de descoberta passam isto: em Minhas
+   * cartas o toque já abre o editor, e dois destinos no mesmo gesto seria pior
+   * que nenhum.
+   */
+  para?: string
   /** Ações da célula — mudam por tela: duas listas no onboarding, uma em Minhas cartas. */
   children: React.ReactNode
 }) {
-  return (
-    <motion.li
-      layout
-      initial={{ opacity: 0, y: 6 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.18, ease: 'easeOut' }}
-      className={cn(
-        'flex flex-col gap-2 rounded-card border p-2 transition-colors',
-        destaque ? DESTAQUE[destaque] : 'border-edge-soft bg-surface/50',
-      )}
-    >
+  const identidade = (
+    <>
       <CartaThumb carta={carta} className="w-full" />
 
       <div className="min-w-0 px-0.5">
@@ -96,6 +95,30 @@ export function CelulaCarta({
         )}
         <SeloPreco preco={preco} />
       </div>
+    </>
+  )
+
+  return (
+    <motion.li
+      layout
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.18, ease: 'easeOut' }}
+      className={cn(
+        'flex flex-col gap-2 rounded-card border p-2 transition-colors',
+        destaque ? DESTAQUE[destaque] : 'border-edge-soft bg-surface/50',
+      )}
+    >
+      {para ? (
+        <Link
+          to={para}
+          className="flex flex-col gap-2 rounded-[10px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-volt"
+        >
+          {identidade}
+        </Link>
+      ) : (
+        identidade
+      )}
 
       {children}
     </motion.li>

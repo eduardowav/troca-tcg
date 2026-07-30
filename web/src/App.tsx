@@ -4,6 +4,8 @@ import { LayoutApp } from '@/components/Navegacao'
 import { ExigePerfil, ExigeSessao } from '@/components/RotaProtegida'
 import { usePerfil } from '@/hooks/usePerfil'
 import CompletarCadastro from '@/routes/CompletarCadastro'
+import Buscar from '@/routes/Buscar'
+import CartaDetalhe from '@/routes/Carta'
 import Entrar from '@/routes/Entrar'
 import Home from '@/routes/Home'
 import MatchDetalhe from '@/routes/Match'
@@ -30,6 +32,8 @@ export default function App() {
           <Route path="/pronto" element={<Pronto />} />
           <Route element={<LayoutApp />}>
             <Route path="/minhas-cartas" element={<MinhasCartas />} />
+            <Route path="/buscar" element={<Buscar />} />
+            <Route path="/carta/:id" element={<CartaDetalhe />} />
             <Route path="/matches" element={<Matches />} />
             <Route path="/matches/:id" element={<MatchDetalhe />} />
             <Route path="/perfil" element={<PerfilTela />} />
