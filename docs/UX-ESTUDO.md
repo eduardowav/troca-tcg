@@ -170,10 +170,14 @@ próprio, rodado uma vez em lote.
 
 O parágrafo acima envelheceu em um dia, e vale registrar em que direção.
 
-**Preço entrou, não raridade.** O Eduardo optou pelo preço de referência da
-TCGplayer (`078e9dc`), e a varredura carta a carta trouxe a raridade junto — o
-caro era a requisição, e ela carregava as duas coisas. `cards.raridade` saiu de
-0% para 100% do catálogo e está no banco **sem uso na tela**. A ressalva que eu
+**Preço entrou primeiro, raridade logo depois.** O Eduardo optou pelo preço de
+referência da TCGplayer (`078e9dc`), e a varredura carta a carta trouxe a
+raridade junto — o caro era a requisição, e ela carregava as duas coisas.
+`cards.raridade` saiu de 0% para 100% do catálogo, e a raridade virou tela
+também: rótulo nas células e na linha de troca, e **filtro na busca**, que este
+documento registrava como impossível. Os 36 valores em dois idiomas que a fonte
+devolve viraram 28 rótulos por um mapa no banco — sem isso o seletor listaria
+"Comum" e "Common" como opções separadas, cada uma achando metade das cartas. A ressalva que eu
 tinha feito ("preço traz um mundo de problemas") continua de pé e foi endereçada
 com o desenho, não ignorada: valor em dólar, fonte declarada, e a frase de que
 condição, idioma e vontade valem mais que a tabela.

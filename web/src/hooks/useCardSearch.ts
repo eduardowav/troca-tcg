@@ -73,10 +73,12 @@ export function useCardSearch(
   const q = atalho ? atalho.numero : bruto
   const serie = filtros.serie
   const set = atalho ? atalho.set.code : filtros.set
+  const raridade = filtros.raridade
 
   const query = useInfiniteQuery({
-    queryKey: ['cards', 'busca', q, serie, set],
-    enabled: q.length >= 2 || serie !== null || set !== null,
+    queryKey: ['cards', 'busca', q, serie, set, raridade],
+    enabled:
+      q.length >= 2 || serie !== null || set !== null || raridade !== null,
     staleTime: 5 * 60 * 1000,
     initialPageParam: 0,
     queryFn: async ({ pageParam }): Promise<CartaBusca[]> => {
@@ -86,6 +88,7 @@ export function useCardSearch(
         deslocamento: pageParam,
         filtro_serie: serie,
         filtro_set: set,
+        filtro_raridade: raridade,
       })
       if (error) throw error
       return (data ?? []) as CartaBusca[]
@@ -113,6 +116,10 @@ export function useCardSearch(
     /** Preenchido quando o termo foi lido como "SIGLA NÚMERO". */
     atalho,
     /** Falso quando falta termo e não há filtro — a tela mostra o estado vazio. */
-    ativa: q.length >= 2 || serie !== null || set !== null,
+    // Mesma condição do `enabled` acima, e precisa continuar sendo: `enabled`
+    // decide se a consulta roda, `ativa` decide se a tela desenha o resultado.
+    // Quando as duas discordam, a busca acontece e é jogada fora.
+    ativa:
+      q.length >= 2 || serie !== null || set !== null || raridade !== null,
   }
 }

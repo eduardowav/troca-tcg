@@ -9,7 +9,7 @@ interface FiltroCatalogoProps {
 }
 
 /**
- * Filtro por série (bloco) e expansão.
+ * Filtro por série (bloco), expansão e raridade.
  *
  * `<select>` nativo de propósito: no celular ele abre o seletor do sistema, que
  * ganha de qualquer dropdown que a gente desenhasse — e a lista tem 112
@@ -39,6 +39,15 @@ export function FiltroCatalogo({
         >
           <option value="">Todas as expansões</option>
         </Seletor>
+        <Seletor
+          rotulo="Raridade"
+          valor=""
+          onValor={() => {}}
+          ativo={false}
+          carregando
+        >
+          <option value="">Todas as raridades</option>
+        </Seletor>
       </div>
     )
   }
@@ -55,7 +64,11 @@ export function FiltroCatalogo({
     const setAtual = catalogo!.sets.find((s) => s.code === filtros.set)
     const mantemSet =
       setAtual && (!novaSerie || setAtual.serie_code === novaSerie)
-    onFiltros({ serie: novaSerie, set: mantemSet ? filtros.set : null })
+    onFiltros({
+      ...filtros,
+      serie: novaSerie,
+      set: mantemSet ? filtros.set : null,
+    })
   }
 
   function escolherSet(code: string) {
@@ -66,7 +79,11 @@ export function FiltroCatalogo({
     // Escolher a expansão fixa a série junto: some a chance de o par ficar
     // incoerente ("série sv" + "expansão me01") e devolver zero sem explicação.
     const set = catalogo!.sets.find((s) => s.code === code)
-    onFiltros({ serie: set?.serie_code ?? filtros.serie, set: code })
+    onFiltros({
+      ...filtros,
+      serie: set?.serie_code ?? filtros.serie,
+      set: code,
+    })
   }
 
   return (
@@ -95,6 +112,23 @@ export function FiltroCatalogo({
         {setsVisiveis.map((s) => (
           <option key={s.code} value={s.code}>
             {rotuloSet(s)}
+          </option>
+        ))}
+      </Seletor>
+
+      {/* Raridade não conversa com os outros dois: qualquer combinação é
+          coerente, e "as Ilustração Rara desta expansão" é uma pergunta comum.
+          Por isso não derruba nem é derrubada por série e expansão. */}
+      <Seletor
+        rotulo="Raridade"
+        valor={filtros.raridade ?? ''}
+        onValor={(v) => onFiltros({ ...filtros, raridade: v || null })}
+        ativo={filtros.raridade !== null}
+      >
+        <option value="">Todas as raridades</option>
+        {catalogo.raridades.map((r) => (
+          <option key={r.rotulo} value={r.rotulo}>
+            {r.rotulo}
           </option>
         ))}
       </Seletor>

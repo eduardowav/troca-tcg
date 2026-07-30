@@ -2,8 +2,10 @@ import { useQuery } from '@tanstack/react-query'
 
 import { supabase } from '@/lib/supabase'
 import {
+  COLUNAS_RARIDADE,
   COLUNAS_SERIE,
   COLUNAS_SET,
+  type Raridade,
   type SerieCatalogo,
   type SetCatalogo,
 } from '@/lib/types'
@@ -14,6 +16,8 @@ export interface Catalogo {
   sets: SetCatalogo[]
   /** Sets por série, para o segundo seletor depender do primeiro. */
   setsPorSerie: Map<string, SetCatalogo[]>
+  /** Raridades distintas, do mais comum ao mais raro. */
+  raridades: Raridade[]
 }
 
 /**
@@ -29,17 +33,19 @@ export function useCatalogo() {
     staleTime: Infinity,
     gcTime: Infinity,
     queryFn: async (): Promise<Catalogo> => {
-      const [rSeries, rSets] = await Promise.all([
+      const [rSeries, rSets, rRaridades] = await Promise.all([
         supabase.from('series').select(COLUNAS_SERIE).order('nome'),
         supabase
           .from('sets')
           .select(COLUNAS_SET)
           .order('lancado_em', { ascending: false, nullsFirst: false })
           .order('code'),
+        supabase.from('raridades').select(COLUNAS_RARIDADE).order('ordem'),
       ])
 
       if (rSeries.error) throw rSeries.error
       if (rSets.error) throw rSets.error
+      if (rRaridades.error) throw rRaridades.error
 
       const sets = (rSets.data ?? []) as SetCatalogo[]
       const setsPorSerie = new Map<string, SetCatalogo[]>()
@@ -50,10 +56,22 @@ export function useCatalogo() {
         else setsPorSerie.set(s.serie_code, [s])
       }
 
+      // O mapa tem uma linha por valor da fonte, e dois valores podem virar o
+      // mesmo rótulo ("Comum" e "Common"). O seletor mostra rótulo, então a
+      // repetição sai aqui — se ficasse, "Comum" apareceria duas vezes na lista.
+      const raridades: Raridade[] = []
+      const vistos = new Set<string>()
+      for (const r of (rRaridades.data ?? []) as Raridade[]) {
+        if (vistos.has(r.rotulo)) continue
+        vistos.add(r.rotulo)
+        raridades.push({ rotulo: r.rotulo, ordem: r.ordem })
+      }
+
       return {
         series: (rSeries.data ?? []) as SerieCatalogo[],
         sets,
         setsPorSerie,
+        raridades,
       }
     },
   })

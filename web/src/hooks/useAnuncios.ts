@@ -101,18 +101,28 @@ export function useCartasPorId(ids: string[]) {
     queryFn: async (): Promise<Map<string, Carta>> => {
       // Traz o set junto para a lista mostrar o mesmo "PRE 059" da busca — sem
       // isso, a mesma carta apareceria como "SV08.5 059" aqui e "PRE 059" lá.
+      // `raridades` entra por embed graças à FK criada na migração 16: sem ela,
+      // a lista mostraria "Rare Holo" em português no meio das outras telas.
       const { data, error } = await supabase
         .from('cards')
-        .select(`${COLUNAS_CARTA}, sets(nome, sigla)`)
+        .select(`${COLUNAS_CARTA}, sets(nome, sigla), raridades(rotulo)`)
         .in('id', chave)
 
       if (error) throw error
 
-      type ComSet = Carta & { sets: { nome: string; sigla: string | null } | null }
+      type ComSet = Carta & {
+        sets: { nome: string; sigla: string | null } | null
+        raridades: { rotulo: string } | null
+      }
       return new Map(
-        (data as unknown as ComSet[]).map(({ sets, ...carta }) => [
+        (data as unknown as ComSet[]).map(({ sets, raridades, ...carta }) => [
           carta.id,
-          { ...carta, set_nome: sets?.nome ?? null, set_sigla: sets?.sigla ?? null },
+          {
+            ...carta,
+            raridade: raridades?.rotulo ?? carta.raridade,
+            set_nome: sets?.nome ?? null,
+            set_sigla: sets?.sigla ?? null,
+          },
         ]),
       )
     },

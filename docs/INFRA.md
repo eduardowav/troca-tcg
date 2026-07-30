@@ -164,10 +164,39 @@ o critério é assumir a impressão mais comum (`precoPrincipal`, em
 `web/src/lib/types.ts`): entre a 1st edition de uma Base Set a US$ 101 e a
 unlimited a US$ 35, mostrar a primeira inflaria o valor de quase todo mundo.
 
+### Raridade: um nome só
+
 ⚠️ **A raridade vem no idioma da resposta**: "Comum"/"Rara Dupla" nas cartas
 modernas, "Common"/"Rare Holo" nas antigas, que só existem no endpoint inglês.
-Normalizar isso é decisão à parte — hoje o dado é guardado como veio, e ainda não
-há filtro por raridade na busca.
+Deu 36 valores distintos para o que deveria ser bem menos — e "Rare Secreta"
+mistura os dois idiomas numa string só.
+
+A migração 16 resolve com um **mapa** (`raridades`), não com uma coluna nova:
+`cards.raridade` continua sendo exatamente o que a fonte disse, e a tela lê o
+rótulo traduzido daqui. Mapa é dado, então raridade nova amanhã é uma linha
+inserida, não um deploy. **36 valores viraram 28 rótulos.**
+
+| | |
+|---|---|
+| Entradas no mapa | 35 |
+| Rótulos distintos | 28 |
+| Cartas sem raridade | 40 (a fonte devolvia a string `"None"`) |
+
+`cards.raridade` é FK para `raridades`, e o job de preço **cadastra sozinho** uma
+raridade desconhecida (com o próprio nome e `ordem` 99) antes de encostar na
+carta — sem isso, um nome novo num set novo derrubaria a varredura inteira.
+Depois é só traduzir a linha com calma.
+
+A busca ganhou `filtro_raridade` na migração 17, e ele casa por **rótulo**: quem
+escolhe "Comum" pega as 3.549 cartas que vieram como "Comum" e as 626 que vieram
+como "Common". Como série e expansão, raridade sozinha dispensa o termo — dá para
+navegar as 493 Ilustração Rara do catálogo sem digitar nada.
+
+⚠️ **A busca está em ~240 ms, não nos ~16 ms registrados acima.** Medido com
+`explain analyze` no servidor, com e sem o join de raridades (o join custa 2–6 ms,
+não é ele). A medida antiga não vale mais e a causa não foi investigada —
+provavelmente o custo do trigram sobre 16 mil linhas na instância free. Fica
+anotado como dívida, não como regressão desta mudança.
 
 **Preço vence.** Diferente de nome e raridade, isto pede rodada periódica: rodar
 o job de novo num catálogo já varrido é o que atualiza os valores, começando

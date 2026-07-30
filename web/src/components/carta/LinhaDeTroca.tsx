@@ -112,6 +112,11 @@ function Lado({
             <span className="set-code block text-[10px] text-muted">
               {codigoSet(carta)}
             </span>
+            {grande && carta.raridade && (
+              <span className="mt-0.5 block text-[11px] text-faint">
+                {carta.raridade}
+              </span>
+            )}
             <SeloPreco preco={preco} className="mt-0.5" />
           </span>
         </>

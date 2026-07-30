@@ -48,9 +48,24 @@ _UPSERT_PRECO = text("""
       sincronizado_em     = now()
 """)
 
+# Duas coisas numa ida só, e a ordem entre elas importa: `cards.raridade` é FK
+# para `raridades`, então uma raridade que a TCGdex invente amanhã precisa existir
+# no mapa antes de encostar na carta. Cadastrar sozinho (com o próprio nome e
+# ordem 99, no fim da lista) é o que impede a varredura inteira de morrer por
+# causa de um nome novo num set novo — depois alguém traduz a linha com calma.
+#
 # `coalesce` na raridade pelo mesmo motivo do upsert de cartas: se a fonte não
 # trouxer, não apaga o que já estava lá.
 _MARCAR_CARTA = text("""
+    with mapeada as (
+        insert into raridades (fonte, rotulo, ordem)
+        -- Os casts não são enfeite: sem eles o Postgres não consegue inferir o
+        -- tipo do parâmetro num `select` sem tabela, e a query morre com
+        -- "could not determine data type of parameter".
+        select cast(:raridade as text), cast(:raridade as text), 99
+         where cast(:raridade as text) is not null
+        on conflict (fonte) do nothing
+    )
     update cards
        set raridade = coalesce(:raridade, raridade),
            precos_verificado_em = now()

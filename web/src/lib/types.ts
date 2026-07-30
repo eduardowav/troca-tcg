@@ -44,16 +44,35 @@ export interface SerieCatalogo {
 
 export const COLUNAS_SERIE = 'code, nome, logo_url'
 
-/** Filtro da busca de cartas. `null` nos dois = catálogo inteiro. */
+/**
+ * Raridade, já traduzida. Espelha `raridades` (db/schema/16_raridades.sql).
+ *
+ * A fonte devolve o nome no idioma da resposta — "Comum" nas cartas modernas e
+ * "Common" nas antigas, que só existem no endpoint inglês. O mapa no banco junta
+ * os dois num rótulo só; aqui já chega resolvido.
+ */
+export interface Raridade {
+  rotulo: string
+  ordem: number
+}
+
+export const COLUNAS_RARIDADE = 'fonte, rotulo, ordem'
+
+/** Filtro da busca de cartas. `null` em todos = catálogo inteiro. */
 export interface FiltrosBusca {
   serie: string | null
   set: string | null
+  raridade: string | null
 }
 
-export const SEM_FILTRO: FiltrosBusca = { serie: null, set: null }
+export const SEM_FILTRO: FiltrosBusca = {
+  serie: null,
+  set: null,
+  raridade: null,
+}
 
 export function temFiltro(f: FiltrosBusca): boolean {
-  return f.serie !== null || f.set !== null
+  return f.serie !== null || f.set !== null || f.raridade !== null
 }
 
 /**

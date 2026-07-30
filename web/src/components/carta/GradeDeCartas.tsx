@@ -91,6 +91,9 @@ export function CelulaCarta({
             </>
           )}
         </p>
+        {carta.raridade && (
+          <p className="mt-1 truncate text-[11px] text-faint">{carta.raridade}</p>
+        )}
         <SeloPreco preco={preco} />
       </div>
 
