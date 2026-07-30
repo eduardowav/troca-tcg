@@ -166,6 +166,46 @@ deixar visível é o que permite a pessoa negociar em vez de sumir.
 **Impacto:** médio-alto, e cresce à medida que a base cresce. Vale como projeto
 próprio, rodado uma vez em lote.
 
+### O que foi feito, e a decisão sobre o resto (2026-07-30)
+
+O parágrafo acima envelheceu em um dia, e vale registrar em que direção.
+
+**Preço entrou, não raridade.** O Eduardo optou pelo preço de referência da
+TCGplayer (`078e9dc`), e a varredura carta a carta trouxe a raridade junto — o
+caro era a requisição, e ela carregava as duas coisas. `cards.raridade` saiu de
+0% para 100% do catálogo e está no banco **sem uso na tela**. A ressalva que eu
+tinha feito ("preço traz um mundo de problemas") continua de pé e foi endereçada
+com o desenho, não ignorada: valor em dólar, fonte declarada, e a frase de que
+condição, idioma e vontade valem mais que a tabela.
+
+**O aviso de desequilíbrio** (`eb4ba7f`) veio logo depois, quando o dado real
+mostrou uma troca de **104x** entre as contas de demonstração — Dragonite V a
+US$ 557 saindo por uma Drakloak a US$ 5. Ele fala dos dois lados e não bloqueia
+nada. As duas travas (3x **e** US$ 5) existem porque razão sozinha grita em carta
+de centavos e diferença sozinha cala em carta cara.
+
+**A troca múltipla ficou de fora, por decisão do Eduardo.** A alternativa
+considerada era deixar a pessoa acrescentar cartas do outro lado até equilibrar o
+valor. Ela resolve o problema melhor que um aviso, e é a **Fase 5** do roadmap —
+não uma tela, mas o motor mudando de forma: hoje ele resolve "uma carta minha por
+uma sua" com um `row_number()` escolhendo o melhor par, e compensar valor vira
+seleção de subconjunto (quais cartas dela somam perto de US$ 557?), com escolha
+do usuário no meio, proposta e contraproposta, e `match_items` deixando de ter
+dois itens fixos. Somando motor, schema, API e uma tela de composição que não
+existe, é maior que tudo o que foi feito nesta rodada junto.
+
+**O critério para voltar ao assunto** — e ele é mensurável, não é "quando
+parecer": se a taxa de furo continuar alta **nas trocas que dispararam o aviso**,
+o aviso não bastou e a compensação precisa ser construída dentro do app. Se cair,
+a compensação já está acontecendo por fora, no WhatsApp, que é onde essas duas
+pessoas vão conversar de qualquer jeito. O dado para essa conta já existe:
+`matches` guarda o desfecho, e o desequilíbrio é recalculável a partir de
+`match_items` e `card_prices`.
+
+Nota de vocabulário para quando isso for construído: **"pasta"** cai na mesma
+regra de "coleção" e "binder" e não pode aparecer na UI. O termo é "acrescentar à
+troca".
+
 ---
 
 ## 5. Cadastro: o telefone está sendo pedido cedo demais
@@ -238,8 +278,11 @@ Estado em 2026-07-30: **1, 2 e 3 implementados** (`7d7a0ff`, `9cafac6`, `1fed13a
 O 3 nomeia quem procura, por decisão do Eduardo (`0aae1e7`) — contato segue só
 depois do aceite mútuo. O **7 foi resolvido por outro caminho**: em vez de
 raridade, entrou **preço da TCGplayer** na linha de troca, em Minhas cartas e na
-busca. A varredura carta a carta trouxe a raridade de carona — `cards.raridade`
-saiu de 0% para **100%** do catálogo — e ela está no banco esperando uso.
+busca, mais o aviso de troca desequilibrada (`eb4ba7f`). A varredura carta a
+carta trouxe a raridade de carona — `cards.raridade` saiu de 0% para **100%** do
+catálogo — e ela está no banco esperando uso. A troca múltipla, que resolveria o
+desequilíbrio de vez, ficou de fora por decisão do Eduardo: é a Fase 5, e o
+critério para retomá-la está no fim da seção 4.
 
 | # | Achado | Custo | Impacto | Onde |
 |---|---|---|---|---|
