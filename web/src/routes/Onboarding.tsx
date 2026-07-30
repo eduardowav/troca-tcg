@@ -28,8 +28,6 @@ import {
 } from '@/lib/types'
 import { contar, type Selecao, useOnboarding } from '@/stores/onboarding'
 
-const META = 10
-
 export default function Onboarding() {
   const [termo, setTermo] = useState('')
   const [filtros, setFiltros] = useState<FiltrosBusca>(SEM_FILTRO)
@@ -47,7 +45,6 @@ export default function Onboarding() {
 
   const selecoes = useOnboarding((s) => s.selecoes)
   const { total: totalSelecionado } = contar(selecoes)
-  const faltam = Math.max(0, META - totalSelecionado)
 
   return (
     // A grade quer a tela inteira no desktop; o texto e os controles, não —
@@ -55,7 +52,7 @@ export default function Onboarding() {
     // Daí a coluna de `max-w-xl` por cima de um container largo.
     <div className="mx-auto flex min-h-[100dvh] w-full max-w-[100rem] flex-col px-5 pb-32">
       <div className="w-full max-w-xl">
-        <Cabecalho total={totalSelecionado} faltam={faltam} />
+        <Cabecalho total={totalSelecionado} />
 
         <BuscaCartas termo={termo} onTermo={setTermo} />
 
@@ -104,15 +101,14 @@ export default function Onboarding() {
         )}
       </div>
 
-      <BandejaSelecao total={totalSelecionado} faltam={faltam} />
+      <BandejaSelecao total={totalSelecionado} />
     </div>
   )
 }
 
 /* ---------- Cabeçalho + progresso ---------- */
 
-function Cabecalho({ total, faltam }: { total: number; faltam: number }) {
-  const pronto = faltam === 0
+function Cabecalho({ total }: { total: number }) {
   return (
     <header className="pt-8">
       <p className="set-code text-xs tracking-wide text-muted">TROCATCG</p>
@@ -123,32 +119,18 @@ function Cabecalho({ total, faltam }: { total: number; faltam: number }) {
         Tudo que você colocar aqui fica disponível para troca. Monte suas listas
         de <span className="font-medium text-offer">Ofereço</span> e{' '}
         <span className="font-medium text-want">Procuro</span> — o app encontra
-        com quem trocar.
+        com quem trocar. Uma carta já basta para começar; o resto você
+        acrescenta quando quiser.
       </p>
 
-      <div className="mt-5 flex items-center gap-3">
-        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-2">
-          <motion.div
-            className="h-full rounded-full bg-volt"
-            initial={false}
-            animate={{ width: `${Math.min(100, (total / META) * 100)}%` }}
-            transition={{ type: 'spring', stiffness: 240, damping: 30 }}
-          />
-        </div>
-        <p className="shrink-0 text-sm text-muted">
-          {pronto ? (
-            <span className="font-medium text-paper">Pronto para o 1º match</span>
-          ) : (
-            <>
-              <NumberFlow
-                value={total}
-                className="font-semibold text-paper"
-              />{' '}
-              / {META} cartas
-            </>
-          )}
+      {/* Contagem só aparece depois da 1ª escolha: com a lista vazia ela não
+          informa nada, e um "0" fixo no alto da tela lê como cobrança. */}
+      {total > 0 && (
+        <p role="status" className="mt-5 text-sm text-muted">
+          <NumberFlow value={total} className="font-semibold text-paper" />{' '}
+          {total === 1 ? 'carta escolhida' : 'cartas escolhidas'}
         </p>
-      </div>
+      )}
     </header>
   )
 }
@@ -286,11 +268,10 @@ function ListaSkeleton() {
 
 /* ---------- Bandeja de seleção (sticky) ---------- */
 
-function BandejaSelecao({ total, faltam }: { total: number; faltam: number }) {
+function BandejaSelecao({ total }: { total: number }) {
   const selecoes = useOnboarding((s) => s.selecoes)
   const remover = useOnboarding((s) => s.remover)
   const lista = Object.values(selecoes)
-  const pronto = faltam === 0
   const { salvar, salvando } = useSalvarListas(lista)
 
   return (
@@ -325,26 +306,17 @@ function BandejaSelecao({ total, faltam }: { total: number; faltam: number }) {
               ))}
             </ul>
 
-            {pronto ? (
-              <Button
-                variant="primary"
-                size="lg"
-                block
-                loading={salvando}
-                onClick={salvar}
-              >
-                {salvando ? 'Salvando suas listas…' : 'Ver meus matches'}
-              </Button>
-            ) : (
-              <div
-                role="status"
-                className="flex h-13 items-center justify-center gap-1.5 rounded-[var(--radius-control)] border border-edge bg-surface-2 text-[15px] text-muted"
-              >
-                Faltam
-                <NumberFlow value={faltam} className="font-bold text-paper" />
-                {faltam === 1 ? 'carta' : 'cartas'} para o 1º match
-              </div>
-            )}
+            {/* A bandeja só existe com ao menos uma carta escolhida, então o
+                botão nunca precisa estar travado: a 1ª carta já conclui. */}
+            <Button
+              variant="primary"
+              size="lg"
+              block
+              loading={salvando}
+              onClick={salvar}
+            >
+              {salvando ? 'Salvando suas listas…' : 'Ver meus matches'}
+            </Button>
           </div>
         </motion.div>
       )}
