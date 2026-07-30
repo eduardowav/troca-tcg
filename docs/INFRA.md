@@ -101,7 +101,9 @@ sobre `unaccent(nome_pt)`). Os termos viram um padrão único `%a%b%`, então as
 palavras não precisam ser contíguas. Quem não casa por LIKE ainda pode entrar
 pela similaridade trigram, sempre ranqueada **depois** de qualquer casamento
 literal. A ordem final é relevância → set mais recente → número natural
-('2' antes de '10'). ~16 ms com 16 mil cartas.
+('2' antes de '10') → id, este último como desempate estável para a paginação.
+Custo atual: ~4,8 ms com 16 mil cartas (ver a seção da migração 18 abaixo — já
+esteve em 245 ms).
 
 `total` volta em cada linha (janela calculada antes do LIMIT), e é o que o app
 usa para dizer "Mostrando 24 de 87 cartas" e decidir se mostra "Mostrar mais".
@@ -192,11 +194,35 @@ escolhe "Comum" pega as 3.549 cartas que vieram como "Comum" e as 626 que vieram
 como "Common". Como série e expansão, raridade sozinha dispensa o termo — dá para
 navegar as 493 Ilustração Rara do catálogo sem digitar nada.
 
-⚠️ **A busca está em ~240 ms, não nos ~16 ms registrados acima.** Medido com
-`explain analyze` no servidor, com e sem o join de raridades (o join custa 2–6 ms,
-não é ele). A medida antiga não vale mais e a causa não foi investigada —
-provavelmente o custo do trigram sobre 16 mil linhas na instância free. Fica
-anotado como dívida, não como regressão desta mudança.
+### A lentidão que a cláusula `SET` causava (migração 18)
+
+A busca chegou a levar **~245 ms**. A investigação, medindo em vez de supondo:
+
+| | |
+|---|---|
+| Corpo da função, solto como statement preparado | **2,6 ms** |
+| O mesmo, chamado pela função | **245 ms** |
+| Função sem a cláusula `SET` | **2,8 ms** |
+| Função com outro `SET` qualquer (`set jit = off`) | **266 ms** |
+
+Não era o `search_path`: era **haver um `SET`**. Função SQL com cláusula `SET`
+não pode ser *inlined* na consulta que a chama; sem inlining, o corpo é planejado
+uma vez com o parâmetro opaco, e **índice GIN de trigrama só serve quando o
+planejador enxerga o texto** — é dele que os trigramas saem. Com `$1` desconhecido
+não há o que procurar no índice, e sobra varredura sequencial em 16 mil linhas.
+
+Largar o `SET search_path` resolveria e devolveria o inlining, mas é o
+endurecimento que a 10 adotou. A saída que preserva as duas coisas é **plpgsql com
+`EXECUTE ... USING`**: o `EXECUTE` monta um plano *one-shot* por chamada, já com o
+valor real, que é justamente o que faltava.
+
+Depois: **4,8 ms** na busca por nome (era 245), 2,3 a 12,4 ms nos outros casos.
+
+Junto veio um empate de ordenação que já estava lá e só apareceu com o plano
+novo: `sv10.5w` e `sv10.5b` saíram no mesmo dia e ambas têm uma carta 087, então
+as chaves de ordenação empatavam e a ordem entre elas era arbitrária — o que, com
+paginação por offset, faz o "Mostrar mais" repetir ou pular carta. O desempate
+final por `id` fecha isso.
 
 **Preço vence.** Diferente de nome e raridade, isto pede rodada periódica: rodar
 o job de novo num catálogo já varrido é o que atualiza os valores, começando
