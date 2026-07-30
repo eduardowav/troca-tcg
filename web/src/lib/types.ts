@@ -109,10 +109,70 @@ const MOEDA = new Intl.NumberFormat('pt-BR', {
   currency: 'USD',
 })
 
-/** "US$ 5,27". Devolve null quando não há número — preço ausente não vira "—". */
+/** "US$ 5,27". */
+export function formatarMoeda(valor: number): string {
+  return MOEDA.format(valor)
+}
+
+/** Devolve null quando não há número — preço ausente não vira "—". */
 export function formatarPreco(preco?: PrecoTCGplayer): string | null {
   const valor = preco?.mercado ?? preco?.baixo
-  return valor == null ? null : MOEDA.format(valor)
+  return valor == null ? null : formatarMoeda(valor)
+}
+
+/**
+ * Quão desigual é uma troca, pela referência de preço.
+ *
+ * Duas travas, e as duas importam. **Razão** sozinha grita em carta barata: uma
+ * comum de US$ 0,13 contra outra de US$ 0,50 é quase 4x e não é problema de
+ * ninguém. **Diferença absoluta** sozinha cala em carta cara: US$ 300 contra
+ * US$ 290 são dez dólares de distância e troca perfeitamente normal. Só quando
+ * as duas disparam é que há desequilíbrio de verdade.
+ *
+ * `null` quando falta preço de algum lado — não dá para afirmar desequilíbrio
+ * sem os dois números, e chutar seria pior que calar.
+ */
+const RAZAO_MINIMA = 3
+const DIFERENCA_MINIMA = 5
+
+export interface Desequilibrio {
+  /** Quantas vezes o lado caro cabe no barato. */
+  razao: number
+  diferenca: number
+  valorDou: number
+  valorRecebo: number
+  /** true quando quem lê é o lado que entrega mais valor. */
+  euEntregoMais: boolean
+}
+
+export function desequilibrio(
+  precoDou?: PrecoTCGplayer,
+  precoRecebo?: PrecoTCGplayer,
+): Desequilibrio | null {
+  const dou = precoDou?.mercado ?? precoDou?.baixo
+  const recebo = precoRecebo?.mercado ?? precoRecebo?.baixo
+  if (dou == null || recebo == null || dou <= 0 || recebo <= 0) return null
+
+  const maior = Math.max(dou, recebo)
+  const menor = Math.min(dou, recebo)
+  const razao = maior / menor
+  const diferenca = maior - menor
+  if (razao < RAZAO_MINIMA || diferenca < DIFERENCA_MINIMA) return null
+
+  return {
+    razao,
+    diferenca,
+    valorDou: dou,
+    valorRecebo: recebo,
+    euEntregoMais: dou > recebo,
+  }
+}
+
+/** "104x" ou "3,5x" — inteiro quando é grande, porque a casa decimal não informa. */
+export function formatarRazao(razao: number): string {
+  return razao >= 10
+    ? `${Math.round(razao)}x`
+    : `${razao.toFixed(1).replace('.', ',')}x`
 }
 
 /** As duas listas — nunca "coleção". */

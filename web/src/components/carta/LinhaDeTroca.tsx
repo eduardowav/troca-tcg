@@ -96,7 +96,7 @@ function Lado({
               // estreita. Na grade larga ela ficava minúscula ao lado das
               // células de Ofereço e Procuro, onde a arte é o que identifica a
               // carta — é o mesmo argumento de GradeDeCartas.
-              grande ? 'w-28' : 'w-20',
+              grande ? 'w-44' : 'w-20',
               cor === 'offer' ? 'ring-offer' : 'ring-want',
             )}
           />
@@ -104,7 +104,7 @@ function Lado({
             <span
               className={cn(
                 'block truncate text-paper',
-                grande ? 'text-[15px]' : 'text-[13px]',
+                grande ? 'text-[17px]' : 'text-[13px]',
               )}
             >
               {nomeCarta(carta)}
@@ -119,7 +119,7 @@ function Lado({
         <div
           className={cn(
             'aspect-[2.5/3.5] animate-pulse rounded-[10px] bg-surface-2',
-            grande ? 'w-28' : 'w-20',
+            grande ? 'w-44' : 'w-20',
           )}
         />
       )}
@@ -134,7 +134,7 @@ function Direcao({ grande }: { grande: boolean }) {
       aria-hidden
       className={cn(
         'flex shrink-0 flex-col items-center justify-center gap-1',
-        grande ? 'w-10' : 'w-7',
+        grande ? 'w-12' : 'w-7',
       )}
     >
       <Seta direcao="direita" />

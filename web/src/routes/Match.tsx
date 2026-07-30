@@ -18,7 +18,15 @@ import {
   reputacaoTexto,
 } from '@/lib/matches'
 import { linkWhatsApp } from '@/lib/telefone'
-import { type Carta, codigoSet, nomeCarta } from '@/lib/types'
+import {
+  type Carta,
+  codigoSet,
+  desequilibrio,
+  type Desequilibrio,
+  formatarMoeda,
+  formatarRazao,
+  nomeCarta,
+} from '@/lib/types'
 import { useUsuarioId } from '@/stores/auth'
 
 export default function MatchDetalhe() {
@@ -62,6 +70,10 @@ export default function MatchDetalhe() {
   const recebo = match.itens.find((i) => i.para_user_id === meuId)
   const jaAceitei = euAceitei(match, meuId)
   const reputacao = outro && reputacaoTexto(outro)
+  const desigual = desequilibrio(
+    dou && precos?.get(dou.card_id),
+    recebo && precos?.get(recebo.card_id),
+  )
 
   function registrarDesfecho(aconteceu: boolean) {
     desfecho.mutate(
@@ -138,6 +150,8 @@ export default function MatchDetalhe() {
         </dl>
       </div>
 
+      {desigual && <AvisoDesequilibrio dados={desigual} />}
+
       {match.status === 'CONCLUIDO' ? (
         <Encerrado
           titulo="Troca concluída."
@@ -196,6 +210,52 @@ function Detalhe({
         {condicao ?? '—'}
         {dica && <span className="text-muted"> · {dica}</span>}
       </dd>
+    </div>
+  )
+}
+
+/**
+ * Aviso de troca desigual.
+ *
+ * Não bloqueia e não julga: troca desigual é legítima — gente dá carta cara para
+ * fechar amizade, para desencalhar, ou porque quer muito a outra. O que não pode
+ * é a pessoa descobrir a diferença só na hora do encontro, porque aí ela some, e
+ * some contando como furo na métrica-mãe.
+ *
+ * O aviso fala mais alto para quem entrega mais valor, mas aparece dos dois
+ * lados: quem está levando vantagem também precisa saber, porque é do outro lado
+ * que vem a desistência.
+ */
+function AvisoDesequilibrio({ dados }: { dados: Desequilibrio }) {
+  const cor = dados.euEntregoMais
+    ? 'var(--color-want)'
+    : 'var(--color-faint)'
+
+  return (
+    <div
+      role="status"
+      className="mt-5 rounded-[var(--radius-card)] border p-4"
+      style={{
+        borderColor: `color-mix(in oklab, ${cor} 40%, transparent)`,
+        background: `color-mix(in oklab, ${cor} 8%, transparent)`,
+      }}
+    >
+      <p className="text-[15px] font-medium" style={{ color: cor }}>
+        {dados.euEntregoMais
+          ? `Você entrega cerca de ${formatarRazao(dados.razao)} mais valor do que recebe.`
+          : `Você recebe cerca de ${formatarRazao(dados.razao)} mais valor do que entrega.`}
+      </p>
+      <p className="mt-2 text-[14px] leading-relaxed text-muted">
+        Pela referência da TCGplayer, {formatarMoeda(dados.valorDou)} de um lado
+        e {formatarMoeda(dados.valorRecebo)} do outro.{' '}
+        {dados.euEntregoMais
+          ? 'Se não for de propósito, vale combinar uma compensação antes de fechar — mais cartas do outro lado, por exemplo.'
+          : 'A outra pessoa pode pedir uma compensação, e troca muito desigual costuma furar no dia do encontro.'}
+      </p>
+      <p className="mt-2 text-[12px] leading-relaxed text-faint">
+        Preço é referência de mercado americano, não regra: condição, idioma e
+        vontade de cada um valem mais do que a tabela.
+      </p>
     </div>
   )
 }
@@ -436,7 +496,10 @@ function IconeWhatsApp({ className }: { className?: string }) {
 
 function Moldura({ children }: { children: React.ReactNode }) {
   return (
-    <div className="mx-auto flex min-h-[100dvh] w-full max-w-xl flex-col px-5 py-10">
+    // Um pouco mais larga que a coluna de leitura das outras telas: aqui o
+    // conteúdo é a troca em si, e as duas cartas frente a frente são o que a
+    // pessoa veio ver — não texto corrido, que é o que pede linha curta.
+    <div className="mx-auto flex min-h-[100dvh] w-full max-w-2xl flex-col px-5 py-10">
       {children}
     </div>
   )
