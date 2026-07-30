@@ -7,6 +7,7 @@ import {
   atualizarAnuncio,
   criarAnuncio,
   listarAnuncios,
+  listarProcuradas,
   removerAnuncio,
 } from '@/lib/anuncios'
 import { supabase } from '@/lib/supabase'
@@ -25,6 +26,21 @@ export function useAnuncios() {
   return useQuery({
     queryKey: CHAVE,
     queryFn: () => listarAnuncios(),
+  })
+}
+
+/**
+ * Demanda pelas minhas ofertas — alimenta a tela vazia de trocas.
+ *
+ * `enabled` porque só a tela sem match nenhum pergunta isso: quando há troca
+ * para mostrar, a troca é o assunto, e a consulta seria trabalho jogado fora.
+ */
+export function useProcuradas(ativo: boolean) {
+  return useQuery({
+    queryKey: ['procuradas'],
+    enabled: ativo,
+    staleTime: 60 * 1000,
+    queryFn: () => listarProcuradas(),
   })
 }
 

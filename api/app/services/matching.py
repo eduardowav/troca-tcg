@@ -22,6 +22,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import RegraNegocio
+from app.schemas.listing import CartaProcurada
 from app.schemas.match import (
     ItemMatch,
     MatchOut,
@@ -273,6 +274,44 @@ async def listar_matches(session: AsyncSession, user_id: UUID) -> list[MatchOut]
             itens=await _itens(session, linha["id"]),
         )
         for linha in linhas
+    ]
+
+
+_DEMANDA = text(f"""
+select o.card_id::text as card_id, count(distinct p.user_id) as procurando
+from listings o
+join listings p on {_COMPATIVEL}
+join profiles pr on pr.id = p.user_id
+where o.user_id = :eu and pr.bloqueado = false
+group by o.card_id
+order by count(distinct p.user_id) desc, o.card_id
+limit :limite
+""")
+
+
+async def demanda_pelas_minhas_ofertas(
+    session: AsyncSession, user_id: UUID, limite: int = 5
+) -> list[CartaProcurada]:
+    """Quantas pessoas procuram cada carta que eu ofereço.
+
+    Existe por causa da tela vazia. Enquanto a base for pequena, quase todo mundo
+    que se cadastra abre o feed e não encontra troca nenhuma — a pessoa fez tudo
+    certo e o app responde "não tem nada", que é como um marketplace vazio começa
+    a morrer. Isto é o sinal de uma ponta só: a troca não fechou, mas existe
+    gente do outro lado querendo o que você tem.
+
+    Usa a **mesma** regra de compatibilidade do matching (`_COMPATIVEL`), não uma
+    contagem solta por carta. Contar todo mundo que procura a carta em qualquer
+    condição inflaria o número com gente que nunca daria match — prometer demanda
+    que não existe é pior do que a tela vazia honesta que estava aqui antes.
+    """
+    linhas = (
+        (await session.execute(_DEMANDA, {"eu": str(user_id), "limite": limite}))
+        .mappings()
+        .all()
+    )
+    return [
+        CartaProcurada(card_id=r["card_id"], procurando=r["procurando"]) for r in linhas
     ]
 
 

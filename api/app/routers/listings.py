@@ -12,8 +12,9 @@ from app.schemas.listing import (
     AnuncioBulkIn,
     AnuncioItem,
     AnuncioOut,
+    CartaProcurada,
 )
-from app.services import listings
+from app.services import listings, matching
 
 router = APIRouter(prefix="/me/listings", tags=["anuncios"])
 
@@ -34,6 +35,20 @@ async def criar(
     session: AsyncSession = Depends(get_session),
 ) -> AnuncioOut:
     return await listings.criar_anuncio(session, user_id, item)
+
+
+@router.get("/procuradas", response_model=list[CartaProcurada])
+async def procuradas(
+    user_id: UUID = Depends(usuario_atual),
+    session: AsyncSession = Depends(get_session),
+) -> list[CartaProcurada]:
+    """Alimenta a tela vazia de trocas: quem procura o que eu ofereço.
+
+    Declarada antes de qualquer rota com parâmetro no mesmo prefixo — o FastAPI
+    resolve na ordem, e um dia que apareça um `/me/listings/{id}` em GET esta
+    rota seria engolida por ele.
+    """
+    return await matching.demanda_pelas_minhas_ofertas(session, user_id)
 
 
 @router.post("/bulk", status_code=status.HTTP_201_CREATED)

@@ -67,3 +67,12 @@ export const criarAnunciosEmLote = (itens: AnuncioNovo[]) =>
   api.post<{ cadastradas: number }>('/me/listings/bulk', { itens })
 
 export const removerAnuncio = (id: string) => api.del(`/me/listings/${id}`)
+
+/** Quantas pessoas procuram cada carta que eu ofereço. Só contagem, nunca quem. */
+export interface CartaProcurada {
+  card_id: string
+  procurando: number
+}
+
+export const listarProcuradas = () =>
+  api.get<CartaProcurada[]>('/me/listings/procuradas')

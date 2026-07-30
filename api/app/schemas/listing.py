@@ -38,6 +38,19 @@ class AnuncioBulkIn(BaseModel):
     itens: list[AnuncioItem] = Field(min_length=1, max_length=300)
 
 
+class CartaProcurada(BaseModel):
+    """Quantas pessoas procuram uma carta que eu ofereço.
+
+    Só a contagem, nunca quem. Saber o nome de quem procura permitiria procurar a
+    pessoa por fora e furar o aceite mútuo, que é justamente o que protege os
+    dois lados aqui — e é a regra que o resto da API já segue (ver
+    ParticipanteResumo em schemas/match.py).
+    """
+
+    card_id: str
+    procurando: int
+
+
 class AnuncioOut(BaseModel):
     id: str
     card_id: str

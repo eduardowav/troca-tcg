@@ -5,6 +5,7 @@ from uuid import uuid4
 from fastapi.testclient import TestClient
 
 from app.main import app
+from app.schemas.listing import CartaProcurada
 from app.schemas.match import MatchOut, ParticipanteCompleto, ParticipanteResumo
 from app.services import matching
 
@@ -106,3 +107,31 @@ def test_responder_exige_autenticacao():
     client = TestClient(app)
     resp = client.post(f"/v1/me/matches/{uuid4()}/responder", json={"aceitou": True})
     assert resp.status_code in (401, 403)
+
+
+def test_demanda_conta_pessoas_sem_dizer_quem():
+    """A tela vazia mostra "3 pessoas procuram", nunca *quem* procura.
+
+    Nome ou @ ali permitiria procurar a pessoa por fora e furar o aceite mútuo,
+    que é o que protege os dois lados — a mesma regra que ParticipanteResumo
+    aplica ao contato.
+    """
+    assert set(CartaProcurada.model_fields) == {"card_id", "procurando"}
+
+
+def test_demanda_usa_a_mesma_regra_do_matching():
+    """Contagem solta por carta inflaria o número com gente que nunca daria
+    match: quem procura a carta em condição que a minha não atende não é
+    demanda, é falsa esperança."""
+    assert matching._COMPATIVEL in matching._DEMANDA.text
+    assert "pr.bloqueado = false" in matching._DEMANDA.text
+    assert "count(distinct p.user_id)" in matching._DEMANDA.text
+
+
+def test_demanda_serializa_carta_procurada():
+    assert _schema_resposta("/v1/me/listings/procuradas", "get") == "CartaProcurada"
+
+
+def test_demanda_exige_autenticacao():
+    client = TestClient(app)
+    assert client.get("/v1/me/listings/procuradas").status_code in (401, 403)

@@ -1,11 +1,13 @@
 import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 
+import { CartaThumb } from '@/components/carta/CartaThumb'
 import { LinhaDeTroca } from '@/components/carta/LinhaDeTroca'
 import { IconeTroca } from '@/components/ui/Icone'
-import { useCartasPorId } from '@/hooks/useAnuncios'
+import { useCartasPorId, useProcuradas } from '@/hooks/useAnuncios'
 import { useMatches } from '@/hooks/useMatches'
 import { cn } from '@/lib/cn'
+import { codigoSet, nomeCarta } from '@/lib/types'
 import {
   diasParaExpirar,
   type Match,
@@ -157,22 +159,94 @@ function Esqueleto() {
   )
 }
 
+/**
+ * Tela vazia.
+ *
+ * Enquanto a base for pequena esta é a tela principal, não a exceção: quase todo
+ * mundo que se cadastra abre o feed e não encontra troca. Sem mais nada, ela diz
+ * "você fez tudo certo e não tem nada" — que é como um marketplace vazio começa
+ * a morrer.
+ *
+ * Quando há gente procurando o que a pessoa oferece, é isso que ela vê primeiro:
+ * metade da troca já existe. E o que falta é acionável — o match precisa das
+ * duas pernas, então quem tem procura e não tem match precisa querer alguma
+ * coisa de volta.
+ */
 function Vazio() {
-  return (
-    <div className="flex flex-col items-center py-14 text-center">
-      <div className="grid size-12 place-items-center rounded-2xl border border-edge bg-surface text-muted">
-        <IconeTroca className="size-6" />
+  const { data: procuradas } = useProcuradas(true)
+  const ids = useMemo(
+    () => (procuradas ?? []).map((p) => p.card_id),
+    [procuradas],
+  )
+  const { data: cartas } = useCartasPorId(ids)
+
+  if (!procuradas?.length) {
+    return (
+      <div className="flex flex-col items-center py-14 text-center">
+        <div className="grid size-12 place-items-center rounded-2xl border border-edge bg-surface text-muted">
+          <IconeTroca className="size-6" />
+        </div>
+        <p className="mt-4 text-[15px] text-paper">Nenhuma troca possível ainda.</p>
+        <p className="mt-1.5 max-w-xs text-[14px] leading-relaxed text-muted">
+          Uma troca aparece quando alguém tem o que você procura e quer o que
+          você oferece. Quanto mais cartas nas suas listas, mais chances.
+        </p>
+        <Link
+          to="/minhas-cartas"
+          className="mt-5 text-[14px] text-paper underline underline-offset-4"
+        >
+          Ajustar minhas cartas
+        </Link>
       </div>
-      <p className="mt-4 text-[15px] text-paper">Nenhuma troca possível ainda.</p>
-      <p className="mt-1.5 max-w-xs text-[14px] leading-relaxed text-muted">
-        Uma troca aparece quando alguém tem o que você procura e quer o que você
-        oferece. Quanto mais cartas nas suas listas, mais chances.
-      </p>
+    )
+  }
+
+  return (
+    <div className="py-6">
+      <div className="rounded-[var(--radius-card)] border border-edge bg-surface p-5">
+        <p className="text-[15px] text-paper">
+          Nenhuma troca fechada ainda — mas tem gente de olho no que você
+          oferece.
+        </p>
+        <p className="mt-1.5 text-[14px] leading-relaxed text-muted">
+          Falta a outra metade: a troca só aparece quando você também quer
+          alguma carta de quem procura a sua.
+        </p>
+
+        <ul className="mt-5 flex flex-col gap-3">
+          {procuradas.map((p) => {
+            const carta = cartas?.get(p.card_id)
+            return (
+              <li key={p.card_id} className="flex items-center gap-3">
+                {carta ? (
+                  <CartaThumb carta={carta} className="w-11 shrink-0" />
+                ) : (
+                  <div className="aspect-[2.5/3.5] w-11 shrink-0 rounded-[10px] bg-surface-2" />
+                )}
+                <div className="min-w-0">
+                  <p className="truncate text-[14px] text-paper">
+                    {carta ? nomeCarta(carta) : 'Carta sua'}
+                  </p>
+                  <p className="set-code text-[11px] text-muted">
+                    {carta && `${codigoSet(carta)} · `}
+                    <span className="text-want">
+                      {p.procurando === 1
+                        ? '1 pessoa procura'
+                        : `${p.procurando} pessoas procuram`}
+                    </span>
+                  </p>
+                </div>
+              </li>
+            )
+          })}
+        </ul>
+      </div>
+
       <Link
         to="/minhas-cartas"
-        className="mt-5 text-[14px] text-paper underline underline-offset-4"
+        className="mt-3 flex h-13 items-center justify-center rounded-[var(--radius-control)] border border-edge bg-surface-2 text-[15px] text-paper transition-colors hover:border-[var(--color-faint)]"
       >
-        Ajustar minhas cartas
+        Adicionar cartas que eu procuro
       </Link>
     </div>
   )
