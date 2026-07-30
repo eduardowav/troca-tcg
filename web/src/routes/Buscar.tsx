@@ -70,15 +70,16 @@ export default function Buscar() {
 
   return (
     <div className="mx-auto flex min-h-[100dvh] w-full max-w-[100rem] flex-col px-5 pb-8">
-      <div className="w-full max-w-xl">
-        <header className="pt-10">
-          <p className="set-code text-xs tracking-wide text-muted">TROCATCG</p>
-          <h1 className="mt-3 text-[28px] leading-[1.1]">Buscar cartas</h1>
-        </header>
+      <header className="w-full max-w-xl pt-10">
+        <p className="set-code text-xs tracking-wide text-muted">TROCATCG</p>
+        <h1 className="mt-3 text-[28px] leading-[1.1]">Buscar cartas</h1>
+      </header>
 
+      <div className="w-full">
         {/* A busca desta tela é campo comum, não a lista suspensa: aqui o
             resultado é a página inteira, e uma lista caindo por cima dela
-            competiria com o que a pessoa veio ver. */}
+            competiria com o que a pessoa veio ver. Largura do conteúdo, para
+            alinhar com a grade que ela alimenta. */}
         <div className="relative mt-5">
           <IconeBusca className="pointer-events-none absolute top-1/2 left-3 size-4.5 -translate-y-1/2 text-muted" />
           <input
@@ -106,7 +107,7 @@ export default function Buscar() {
         />
 
         {atalho && (
-          <p role="status" className="mt-2 text-xs text-muted">
+          <p role="status" className="mt-2 text-[13px] text-muted">
             Lendo como carta{' '}
             <span className="set-code text-paper">{atalho.numero}</span> de{' '}
             <span className="text-paper">{atalho.set.nome}</span>.
@@ -122,7 +123,7 @@ export default function Buscar() {
         ) : resultados?.length ? (
           <>
             {total > resultados.length && (
-              <p role="status" className="mb-2 text-xs text-muted">
+              <p role="status" className="mb-2 text-[13px] text-muted">
                 Mostrando {resultados.length} de {total} cartas
               </p>
             )}

@@ -76,10 +76,10 @@ export function CelulaCarta({
       <CartaThumb carta={carta} className="carta-cresce w-full" />
 
       <div className="min-w-0 px-0.5">
-        <p className="truncate text-[13px] leading-tight font-medium text-paper">
+        <p className="truncate text-[15px] leading-tight font-medium text-paper">
           {nomeCarta(carta)}
         </p>
-        <p className="mt-1 flex min-w-0 items-baseline gap-1 text-[11px] text-muted">
+        <p className="mt-1 flex min-w-0 items-baseline gap-1 text-[12px] text-muted">
           <span className="set-code shrink-0">{codigoSet(carta)}</span>
           {carta.set_nome && (
             <>
@@ -91,7 +91,7 @@ export function CelulaCarta({
           )}
         </p>
         {carta.raridade && (
-          <p className="mt-1 truncate text-[11px] text-faint">{carta.raridade}</p>
+          <p className="mt-1 truncate text-[12px] text-faint">{carta.raridade}</p>
         )}
         <SeloPreco preco={preco} />
       </div>
@@ -148,7 +148,7 @@ export function SeloPreco({
   if (!valor) return null
 
   return (
-    <p className={cn('mt-1 text-[11px] text-muted', className)}>
+    <p className={cn('mt-1 text-[12px] text-muted', className)}>
       <span className="text-paper tabular-nums">{valor}</span>
       <span className="text-faint"> · TCGplayer</span>
     </p>
@@ -191,7 +191,7 @@ export function BotaoLista({
       aria-pressed={ativo}
       aria-label={`${rotulo ?? nome} — ${nome}`}
       className={cn(
-        'h-9 rounded-[var(--radius-control)] px-2 text-[13px] font-medium',
+        'h-9 rounded-[var(--radius-control)] px-2 text-[14px] font-medium',
         'transition-[background-color,color,border-color] duration-150',
         'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-volt',
         'disabled:cursor-default',

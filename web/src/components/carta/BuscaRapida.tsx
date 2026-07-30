@@ -198,10 +198,10 @@ function Sugestao({
       >
         <CartaThumb carta={carta} className="w-9 shrink-0" />
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-[14px] text-paper">
+          <span className="block truncate text-[15px] text-paper">
             {nomeCarta(carta)}
           </span>
-          <span className="set-code block truncate text-[11px] text-muted">
+          <span className="set-code block truncate text-[12px] text-muted">
             {numeroImpresso(carta, total)}
             {carta.set_nome && ` · ${carta.set_nome}`}
           </span>

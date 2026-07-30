@@ -69,11 +69,14 @@ export default function MinhasCartas() {
       {/* A busca compacta resolve o caso comum (achar uma carta pelo nome) sem
           tomar a tela; quem quer explorar cai na página de busca pelo Enter ou
           pelo link ao lado. */}
-      <div className="mt-4 flex w-full max-w-xl items-center gap-2">
+      {/* A busca acompanha a largura do conteúdo, não a da coluna de leitura:
+          ela é um controle da página inteira, e uma barra estreita sobre duas
+          grades largas lia como se pertencesse só à primeira. */}
+      <div className="mt-4 flex w-full items-center gap-2">
         <BuscaRapida className="flex-1" />
         <Link
           to="/buscar"
-          className="shrink-0 rounded-[var(--radius-control)] px-2 py-2 text-[13px] text-muted transition-colors hover:text-paper"
+          className="shrink-0 rounded-[var(--radius-control)] px-2 py-2 text-[14px] text-muted transition-colors hover:text-paper"
         >
           Explorar
         </Link>
@@ -149,16 +152,16 @@ function Coluna({
       <header className="flex items-baseline gap-2 border-b border-edge-soft pb-2">
         <h2
           className={cn(
-            'text-[15px] font-medium',
+            'text-[16px] font-medium',
             oferta ? 'text-offer' : 'text-want',
           )}
         >
           {oferta ? 'Ofereço' : 'Procuro'}
         </h2>
-        <span className="set-code text-[12px] text-muted">
+        <span className="set-code text-[13px] text-muted">
           {anuncios.length}
         </span>
-        <span className="ml-auto text-[12px] text-faint">
+        <span className="ml-auto text-[13px] text-faint">
           {oferta ? 'o que eu dou' : 'o que eu quero'}
         </span>
       </header>
@@ -273,7 +276,7 @@ function CartaDaLista({
           className={cn(
             'flex h-9 min-w-0 flex-1 items-center justify-between gap-2 px-2.5',
             'rounded-[var(--radius-control)] border border-edge bg-surface-2',
-            'text-[13px] text-muted transition-colors hover:text-paper',
+            'text-[14px] text-muted transition-colors hover:text-paper',
             'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-volt',
           )}
         >
@@ -485,8 +488,21 @@ function IconeLapis({ className }: { className?: string }) {
   )
 }
 
+/**
+ * O resumo que cabe na faixa de ações da célula.
+ *
+ * Prioridade só aparece quando **não** é a padrão. "Normal" é o valor da imensa
+ * maioria das cartas: repetido em todas, não distingue nenhuma, e era o que
+ * empurrava o texto para o truncamento agora que a faixa divide espaço com o
+ * botão de remover. Quem mexeu na prioridade vê; quem não mexeu ganha espaço.
+ */
+const PRIORIDADE_PADRAO = 2
+
 function resumo(a: Anuncio): string {
-  const prioridade = PRIORIDADES.find((p) => p.valor === a.prioridade)?.rotulo
+  const prioridade =
+    a.prioridade === PRIORIDADE_PADRAO
+      ? null
+      : PRIORIDADES.find((p) => p.valor === a.prioridade)?.rotulo
   return [`${a.quantidade}×`, a.condicao, prioridade].filter(Boolean).join(' · ')
 }
 
