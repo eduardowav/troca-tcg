@@ -80,13 +80,13 @@ export default function CartaDetalhe() {
         />
 
         <div className="min-w-0 flex-1">
-          <h1 className="text-[32px] leading-[1.1]">{nomeCarta(carta)}</h1>
-          <p className="set-code mt-2 text-[14px] text-muted">
+          <h1 className="text-[32px] leading-[1.1] lg:text-[38px]">{nomeCarta(carta)}</h1>
+          <p className="set-code mt-2 text-[14px] text-muted lg:text-[15px]">
             {numeroImpresso(carta, set?.total_oficial)}
             {set && ` · ${set.sigla ?? set.code}`}
           </p>
 
-          <dl className="mt-7 space-y-3.5 border-t border-edge-soft pt-5 text-[15px]">
+          <dl className="mt-7 space-y-3.5 border-t border-edge-soft pt-5 text-[15px] lg:text-[17px]">
             <Linha rotulo="Expansão" valor={set?.nome ?? carta.set_code} />
             <Linha rotulo="Raridade" valor={carta.raridade} />
             <Linha
@@ -100,7 +100,7 @@ export default function CartaDetalhe() {
           </dl>
 
           <div className="mt-7 flex flex-col gap-2">
-            <p className="text-[14px] text-muted">Colocar esta carta em:</p>
+            <p className="text-[14px] text-muted lg:text-[15px]">Colocar esta carta em:</p>
             <div className="grid grid-cols-2 gap-2">
               <Button
                 variant="offer"

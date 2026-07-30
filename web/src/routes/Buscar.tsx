@@ -72,7 +72,7 @@ export default function Buscar() {
     <div className="mx-auto flex min-h-[100dvh] w-full max-w-[100rem] flex-col px-5 pb-8">
       <header className="w-full max-w-xl pt-10">
         <p className="set-code text-xs tracking-wide text-muted">TROCATCG</p>
-        <h1 className="mt-3 text-[28px] leading-[1.1]">Buscar cartas</h1>
+        <h1 className="mt-3 text-[28px] leading-[1.1] lg:text-[34px]">Buscar cartas</h1>
       </header>
 
       <div className="w-full">
@@ -96,7 +96,7 @@ export default function Buscar() {
             }}
             aria-label="Buscar carta pelo nome"
             placeholder="Busque: Regigigas, Umbreon, Pesquisa…"
-            className="h-12 w-full rounded-[var(--radius-control)] border border-edge bg-surface pr-3 pl-10 text-[16px] text-paper placeholder:text-muted focus:border-volt focus:outline-none"
+            className="h-12 w-full rounded-[var(--radius-control)] border border-edge bg-surface pr-3 pl-10 text-[16px] text-paper placeholder:text-muted focus:border-volt focus:outline-none lg:h-14 lg:text-[17px]"
           />
         </div>
 

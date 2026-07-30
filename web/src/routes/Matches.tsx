@@ -33,8 +33,8 @@ export default function Matches() {
     <div className="mx-auto flex min-h-[100dvh] w-full max-w-[100rem] flex-col px-5">
       <header className="w-full max-w-xl pt-10">
         <p className="set-code text-xs tracking-wide text-muted">TROCATCG</p>
-        <h1 className="mt-3 text-[28px] leading-[1.1]">Trocas possíveis</h1>
-        <p className="mt-2 text-[15px] leading-relaxed text-muted">
+        <h1 className="mt-3 text-[28px] leading-[1.1] lg:text-[34px]">Trocas possíveis</h1>
+        <p className="mt-2 text-[15px] leading-relaxed text-muted lg:text-[16px]">
           Cada uma é alguém que tem o que você procura — e quer o que você
           oferece.
         </p>
@@ -85,10 +85,10 @@ function CartaoMatch({
     >
       <div className="flex items-baseline justify-between gap-3">
         <span className="min-w-0">
-          <span className="block truncate text-[15px] text-paper">
+          <span className="block truncate text-[15px] text-paper lg:text-[17px]">
             {outro?.nome_exibicao ?? 'Alguém'}
           </span>
-          <span className="set-code block text-[11px] text-muted">
+          <span className="set-code block text-[11px] text-muted lg:text-[12px]">
             @{outro?.username}
             {reputacao && ` · ${reputacao}`}
           </span>
@@ -145,7 +145,7 @@ function Selo({
   return (
     <span
       className={cn(
-        'shrink-0 rounded-full border px-2.5 py-1 text-[11px] whitespace-nowrap',
+        'shrink-0 rounded-full border px-2.5 py-1 text-[11px] whitespace-nowrap lg:text-[12px]',
         selo.cor,
       )}
     >

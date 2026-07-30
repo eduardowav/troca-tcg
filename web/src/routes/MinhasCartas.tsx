@@ -59,8 +59,8 @@ export default function MinhasCartas() {
     <div className="mx-auto flex min-h-[100dvh] w-full max-w-[100rem] flex-col px-5">
       <header className="w-full max-w-xl pt-10">
         <p className="set-code text-xs tracking-wide text-muted">TROCATCG</p>
-        <h1 className="mt-3 text-[28px] leading-[1.1]">Minhas cartas</h1>
-        <p className="mt-2 text-[15px] leading-relaxed text-muted">
+        <h1 className="mt-3 text-[28px] leading-[1.1] lg:text-[34px]">Minhas cartas</h1>
+        <p className="mt-2 text-[15px] leading-relaxed text-muted lg:text-[16px]">
           O que você oferece e o que procura, lado a lado. Toque numa carta para
           ajustar quantidade, condição e prioridade.
         </p>
@@ -152,7 +152,7 @@ function Coluna({
       <header className="flex items-baseline gap-2 border-b border-edge-soft pb-2">
         <h2
           className={cn(
-            'text-[16px] font-medium',
+            'text-[16px] font-medium lg:text-[18px]',
             oferta ? 'text-offer' : 'text-want',
           )}
         >
@@ -276,7 +276,7 @@ function CartaDaLista({
           className={cn(
             'flex h-9 min-w-0 flex-1 items-center justify-between gap-2 px-2.5',
             'rounded-[var(--radius-control)] border border-edge bg-surface-2',
-            'text-[14px] text-muted transition-colors hover:text-paper',
+            'text-[14px] text-muted transition-colors hover:text-paper lg:text-[15px]',
             'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-volt',
           )}
         >

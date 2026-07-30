@@ -104,12 +104,12 @@ function Lado({
             <span
               className={cn(
                 'block truncate text-paper',
-                grande ? 'text-[18px]' : 'text-[15px]',
+                grande ? 'text-[18px] lg:text-[20px]' : 'text-[15px] lg:text-[16px]',
               )}
             >
               {nomeCarta(carta)}
             </span>
-            <span className="set-code block text-[11px] text-muted">
+            <span className="set-code block text-[11px] text-muted lg:text-[12px]">
               {codigoSet(carta)}
             </span>
             {grande && carta.raridade && (

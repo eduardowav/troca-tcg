@@ -111,7 +111,7 @@ export function BuscaRapida({ className }: { className?: string }) {
           aria-label="Buscar carta"
           placeholder="Busque: Regigigas, Umbreon, Pesquisa…"
           className={cn(
-            'h-11 w-full rounded-[var(--radius-control)] pr-3 pl-10',
+            'h-11 w-full rounded-[var(--radius-control)] pr-3 pl-10 lg:h-12',
             'border border-edge bg-surface text-[16px] text-paper',
             'placeholder:text-muted focus:border-volt focus:outline-none',
           )}
@@ -198,10 +198,10 @@ function Sugestao({
       >
         <CartaThumb carta={carta} className="w-9 shrink-0" />
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-[15px] text-paper">
+          <span className="block truncate text-[15px] text-paper lg:text-[16px]">
             {nomeCarta(carta)}
           </span>
-          <span className="set-code block truncate text-[12px] text-muted">
+          <span className="set-code block truncate text-[12px] text-muted lg:text-[13px]">
             {numeroImpresso(carta, total)}
             {carta.set_nome && ` · ${carta.set_nome}`}
           </span>
