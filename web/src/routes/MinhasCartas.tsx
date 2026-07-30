@@ -41,22 +41,16 @@ import { useCardSearch } from '@/hooks/useCardSearch'
 import { useDebounced } from '@/hooks/useDebounced'
 
 export default function MinhasCartas() {
-  const [aba, setAba] = useState<ListingKind>('OFERTA')
   const { data: anuncios, isPending, isError, refetch } = useAnuncios()
 
   const ids = useMemo(() => (anuncios ?? []).map((a) => a.card_id), [anuncios])
   const { data: cartas } = useCartasPorId(ids)
   const { data: precos } = usePrecosPorId(ids)
 
-  const daAba = useMemo(
-    () => (anuncios ?? []).filter((a) => a.tipo === aba),
-    [anuncios, aba],
-  )
-
-  const totais = useMemo(
+  const porLista = useMemo(
     () => ({
-      OFERTA: (anuncios ?? []).filter((a) => a.tipo === 'OFERTA').length,
-      PROCURA: (anuncios ?? []).filter((a) => a.tipo === 'PROCURA').length,
+      OFERTA: (anuncios ?? []).filter((a) => a.tipo === 'OFERTA'),
+      PROCURA: (anuncios ?? []).filter((a) => a.tipo === 'PROCURA'),
     }),
     [anuncios],
   )
@@ -76,38 +70,108 @@ export default function MinhasCartas() {
   )
 
   return (
-    // Só a busca quer a tela toda; o resto é leitura e edição, que pedem coluna
-    // estreita. Ver o mesmo raciocínio no Onboarding.
     <div className="mx-auto flex min-h-[100dvh] w-full max-w-[100rem] flex-col px-5">
-      <div className="w-full max-w-xl">
-        <header className="pt-10">
-          <p className="set-code text-xs tracking-wide text-muted">TROCATCG</p>
-          <h1 className="mt-3 text-[28px] leading-[1.1]">Minhas cartas</h1>
-          <p className="mt-2 text-[15px] leading-relaxed text-muted">
-            O que você oferece e o que procura. Toque numa carta para ajustar
-            quantidade, condição e prioridade.
-          </p>
-        </header>
-
-        <Abas aba={aba} onAba={setAba} totais={totais} />
-      </div>
+      <header className="w-full max-w-xl pt-10">
+        <p className="set-code text-xs tracking-wide text-muted">TROCATCG</p>
+        <h1 className="mt-3 text-[28px] leading-[1.1]">Minhas cartas</h1>
+        <p className="mt-2 text-[15px] leading-relaxed text-muted">
+          O que você oferece e o que procura, lado a lado. Toque numa carta para
+          ajustar quantidade, condição e prioridade.
+        </p>
+      </header>
 
       <Adicionar emOferta={porTipo.OFERTA} emProcura={porTipo.PROCURA} />
 
-      <div className="mt-5 w-full flex-1">
-        {isPending ? (
-          <Esqueleto />
-        ) : isError ? (
+      <div className="mt-6 w-full flex-1 pb-6">
+        {isError ? (
           <div className="max-w-xl">
             <Recuperavel onTentar={() => refetch()} />
           </div>
-        ) : daAba.length === 0 ? (
-          <div className="max-w-xl">
-            <Vazio aba={aba} />
-          </div>
         ) : (
-          <GradeDeCartas>
-            {daAba.map((anuncio) => (
+          // As duas listas na mesma tela, uma em cada lado. A troca é uma
+          // relação entre elas — o que eu dou e o que eu quero — e a aba
+          // escondia metade da conversa atrás de um clique.
+          //
+          // Empilha abaixo de `lg` porque duas grades lado a lado num celular
+          // dariam uma carta de largura cada: aí a comparação que motiva o
+          // lado a lado deixa de existir e sobra só carta pequena.
+          <div className="grid gap-x-8 gap-y-10 lg:grid-cols-2 lg:gap-x-0">
+            <Coluna
+              tipo="OFERTA"
+              anuncios={porLista.OFERTA}
+              cartas={cartas}
+              precos={precos}
+              carregando={isPending}
+            />
+            <Coluna
+              tipo="PROCURA"
+              anuncios={porLista.PROCURA}
+              cartas={cartas}
+              precos={precos}
+              carregando={isPending}
+            />
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/* ---------- Uma lista ---------- */
+
+function Coluna({
+  tipo,
+  anuncios,
+  cartas,
+  precos,
+  carregando,
+}: {
+  tipo: ListingKind
+  anuncios: Anuncio[]
+  cartas?: Map<string, Carta>
+  precos?: Map<string, PrecoTCGplayer>
+  carregando: boolean
+}) {
+  const oferta = tipo === 'OFERTA'
+
+  return (
+    <section
+      aria-label={oferta ? 'Ofereço' : 'Procuro'}
+      className={cn(
+        // A divisa precisa ser visível: sem ela, a última carta de uma lista e
+        // a primeira da outra encostam e a tela vira uma grade só. O fio some
+        // no empilhado, onde a separação já vem do cabeçalho de cada seção.
+        !oferta && 'lg:border-l lg:border-edge-soft lg:pl-8',
+        oferta && 'lg:pr-8',
+      )}
+    >
+      <header className="flex items-baseline gap-2 border-b border-edge-soft pb-2">
+        <h2
+          className={cn(
+            'text-[15px] font-medium',
+            oferta ? 'text-offer' : 'text-want',
+          )}
+        >
+          {oferta ? 'Ofereço' : 'Procuro'}
+        </h2>
+        <span className="set-code text-[12px] text-muted">
+          {anuncios.length}
+        </span>
+        <span className="ml-auto text-[12px] text-faint">
+          {oferta ? 'o que eu dou' : 'o que eu quero'}
+        </span>
+      </header>
+
+      <div className="mt-3">
+        {carregando ? (
+          <Esqueleto />
+        ) : anuncios.length === 0 ? (
+          <Vazio tipo={tipo} />
+        ) : (
+          // Menos colunas que a grade da busca: aqui cada lista tem metade da
+          // tela, e herdar as seis colunas do catálogo espremeria a arte.
+          <GradeDeCartas className="lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+            {anuncios.map((anuncio) => (
               <CartaDaLista
                 key={anuncio.id}
                 anuncio={anuncio}
@@ -118,60 +182,7 @@ export default function MinhasCartas() {
           </GradeDeCartas>
         )}
       </div>
-    </div>
-  )
-}
-
-/* ---------- Abas Ofereço / Procuro ---------- */
-
-function Abas({
-  aba,
-  onAba,
-  totais,
-}: {
-  aba: ListingKind
-  onAba: (a: ListingKind) => void
-  totais: Record<ListingKind, number>
-}) {
-  return (
-    <div
-      role="tablist"
-      aria-label="Ofereço ou Procuro"
-      className="mt-7 grid grid-cols-2 gap-1 rounded-[var(--radius-control)] border border-edge bg-surface p-1"
-    >
-      {(['OFERTA', 'PROCURA'] as const).map((t) => {
-        const ativo = aba === t
-        return (
-          <button
-            key={t}
-            type="button"
-            role="tab"
-            aria-selected={ativo}
-            onClick={() => onAba(t)}
-            className={cn(
-              'relative h-9 rounded-[7px] text-[14px] font-medium transition-colors',
-              ativo
-                ? t === 'OFERTA'
-                  ? 'text-offer'
-                  : 'text-want'
-                : 'text-muted hover:text-paper',
-            )}
-          >
-            {ativo && (
-              <motion.span
-                layoutId="aba-minhas-cartas"
-                transition={{ type: 'spring', stiffness: 420, damping: 36 }}
-                className="absolute inset-0 rounded-[7px] bg-surface-2 shadow-[var(--shadow-card)]"
-              />
-            )}
-            <span className="relative">
-              {t === 'OFERTA' ? 'Ofereço' : 'Procuro'}
-              <span className="ml-1.5 opacity-70">{totais[t]}</span>
-            </span>
-          </button>
-        )
-      })}
-    </div>
+    </section>
   )
 }
 
@@ -717,18 +728,18 @@ function Escolha<T extends string | number>({
 
 function Esqueleto() {
   return (
-    <GradeDeCartas>
-      {[0, 1, 2, 3, 4, 5].map((i) => (
+    <GradeDeCartas className="lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+      {[0, 1, 2, 3].map((i) => (
         <CelulaEsqueleto key={i} />
       ))}
     </GradeDeCartas>
   )
 }
 
-function Vazio({ aba }: { aba: ListingKind }) {
-  const oferta = aba === 'OFERTA'
+function Vazio({ tipo }: { tipo: ListingKind }) {
+  const oferta = tipo === 'OFERTA'
   return (
-    <div className="flex flex-col items-center py-14 text-center">
+    <div className="flex flex-col items-center px-4 py-10 text-center">
       <div className="grid size-12 place-items-center rounded-2xl border border-edge bg-surface text-muted">
         {oferta ? (
           <IconeCartas className="size-6" />
