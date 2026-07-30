@@ -26,6 +26,7 @@ import {
   type PrecoTCGplayer,
 } from '@/lib/types'
 import {
+  useAdicionarAnuncio,
   useAnuncios,
   useCartasPorId,
   usePrecosPorId,
@@ -35,6 +36,12 @@ import {
 
 export default function MinhasCartas() {
   const { data: anuncios, isPending, isError, refetch } = useAnuncios()
+  // A remoção mora aqui, e não na célula, por um motivo que só aparece testando:
+  // ela é otimista, então a célula desmonta assim que o cache é atualizado — e o
+  // React Query não chama os callbacks passados no `mutate()` de um componente
+  // que já saiu da tela. O aviso com "Desfazer" simplesmente nunca aparecia.
+  // A página não desmonta ao remover uma carta.
+  const remocao = useRemocaoComDesfazer()
 
   const ids = useMemo(() => (anuncios ?? []).map((a) => a.card_id), [anuncios])
   const { data: cartas } = useCartasPorId(ids)
@@ -92,6 +99,7 @@ export default function MinhasCartas() {
               cartas={cartas}
               precos={precos}
               carregando={isPending}
+              remocao={remocao}
             />
             <Coluna
               tipo="PROCURA"
@@ -99,6 +107,7 @@ export default function MinhasCartas() {
               cartas={cartas}
               precos={precos}
               carregando={isPending}
+              remocao={remocao}
             />
           </div>
         )}
@@ -115,12 +124,14 @@ function Coluna({
   cartas,
   precos,
   carregando,
+  remocao,
 }: {
   tipo: ListingKind
   anuncios: Anuncio[]
   cartas?: Map<string, Carta>
   precos?: Map<string, PrecoTCGplayer>
   carregando: boolean
+  remocao: Remocao
 }) {
   const oferta = tipo === 'OFERTA'
 
@@ -167,6 +178,7 @@ function Coluna({
                 anuncio={anuncio}
                 carta={cartas?.get(anuncio.card_id)}
                 preco={precos?.get(anuncio.card_id)}
+                remocao={remocao}
               />
             ))}
           </GradeDeCartas>
@@ -186,41 +198,115 @@ function Coluna({
  * folha por cima, que é onde há largura para os controles respirarem — e é o
  * gesto que o texto da tela já prometia ("toque numa carta para ajustar").
  */
+
+/**
+ * Remoção com desfazer, em vez de "tem certeza?".
+ *
+ * Confirmação cobra de todo mundo, inclusive de quem acertou, e é justamente
+ * quem acertou que é a maioria. Desfazer cobra só de quem errou — e aqui dá para
+ * oferecer de verdade: o anúncio some na hora (a mutation já é otimista), e a
+ * volta recria o mesmo card com as mesmas especificações, porque o upsert da API
+ * é idempotente e reativa a linha em vez de duplicar.
+ */
+type Remocao = ReturnType<typeof useRemocaoComDesfazer>
+
+function useRemocaoComDesfazer() {
+  const remover = useRemoverAnuncio()
+  const recriar = useAdicionarAnuncio()
+
+  function apagar(anuncio: Anuncio, carta: Carta, aoRemover?: () => void) {
+    remover.mutate(anuncio.id, {
+      onSuccess: () => {
+        aoRemover?.()
+        const lista = anuncio.tipo === 'OFERTA' ? 'Ofereço' : 'Procuro'
+        toast.success(`${nomeCarta(carta)} saiu de ${lista}.`, {
+          action: {
+            label: 'Desfazer',
+            onClick: () =>
+              recriar.mutate({
+                card_id: anuncio.card_id,
+                tipo: anuncio.tipo,
+                quantidade: anuncio.quantidade,
+                condicao: anuncio.condicao,
+                finish_id: anuncio.finish_id,
+                idioma: anuncio.idioma,
+                prioridade: anuncio.prioridade,
+                aceita_qualquer_finish: anuncio.aceita_qualquer_finish,
+              }),
+          },
+        })
+      },
+      onError: () => toast.error('Não foi possível remover agora.'),
+    })
+  }
+
+  return { apagar, removendo: remover.isPending }
+}
+
 function CartaDaLista({
   anuncio,
   carta,
   preco,
+  remocao,
 }: {
   anuncio: Anuncio
   carta?: Carta
   preco?: PrecoTCGplayer
+  remocao: Remocao
 }) {
   const [editando, setEditando] = useState(false)
+  const { apagar, removendo } = remocao
 
   if (!carta) return <CelulaEsqueleto />
 
   return (
     <CelulaCarta carta={carta} destaque={anuncio.tipo} preco={preco}>
-      <button
-        type="button"
-        onClick={() => setEditando(true)}
-        aria-haspopup="dialog"
-        className={cn(
-          'flex h-9 w-full items-center justify-between gap-2 px-2.5',
-          'rounded-[var(--radius-control)] border border-edge bg-surface-2',
-          'text-[13px] text-muted transition-colors hover:text-paper',
-          'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-volt',
-        )}
-      >
-        <span className="truncate">{resumo(anuncio)}</span>
-        <IconeLapis className="size-3.5 shrink-0" />
-      </button>
+      {/* Tirar carta da lista é ação corriqueira — a pessoa trocou, vendeu ou se
+          arrependeu — e estava só no rodapé da folha de edição, que exige
+          adivinhar que a barra de especificações abre um editor. Aqui ela fica
+          à vista, na faixa de ações, sem competir com o toque de editar. */}
+      <div className="flex items-stretch gap-1.5">
+        <button
+          type="button"
+          onClick={() => setEditando(true)}
+          aria-haspopup="dialog"
+          className={cn(
+            'flex h-9 min-w-0 flex-1 items-center justify-between gap-2 px-2.5',
+            'rounded-[var(--radius-control)] border border-edge bg-surface-2',
+            'text-[13px] text-muted transition-colors hover:text-paper',
+            'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-volt',
+          )}
+        >
+          <span className="truncate">{resumo(anuncio)}</span>
+          <IconeLapis className="size-3.5 shrink-0" />
+        </button>
+
+        <button
+          type="button"
+          onClick={() => apagar(anuncio, carta)}
+          disabled={removendo}
+          aria-label={`Remover ${nomeCarta(carta)} da lista`}
+          title="Remover da lista"
+          className={cn(
+            // 36px de alvo: o mínimo da WCAG 2.2 é 24, e esta é uma ação
+            // destrutiva num dedo, não num mouse.
+            'grid size-9 shrink-0 place-items-center',
+            'rounded-[var(--radius-control)] border border-edge bg-surface-2',
+            'text-muted transition-colors hover:border-[color-mix(in_oklab,var(--color-alert)_45%,transparent)] hover:text-alert',
+            'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-volt',
+            'disabled:opacity-45',
+          )}
+        >
+          <IconeLixeira className="size-4" />
+        </button>
+      </div>
 
       <EditorAnuncio
         aberto={editando}
         onFechar={() => setEditando(false)}
         anuncio={anuncio}
         carta={carta}
+        remocao={remocao}
       />
     </CelulaCarta>
   )
@@ -249,14 +335,16 @@ function EditorAnuncio({
   onFechar,
   anuncio,
   carta,
+  remocao,
 }: {
   aberto: boolean
   onFechar: () => void
   anuncio: Anuncio
   carta: Carta
+  remocao: Remocao
 }) {
   const editar = useEditarAnuncio()
-  const remover = useRemoverAnuncio()
+  const { apagar, removendo } = remocao
 
   // Esc fecha, e a página não rola atrás da folha aberta.
   useEffect(() => {
@@ -348,23 +436,34 @@ function EditorAnuncio({
                 <Button
                   variant="ghost"
                   size="sm"
-                  loading={remover.isPending}
-                  onClick={() =>
-                    remover.mutate(anuncio.id, {
-                      onSuccess: () => {
-                        toast.success(`${nomeCarta(carta)} saiu da lista.`)
-                        onFechar()
-                      },
-                      onError: () =>
-                        toast.error('Não foi possível remover agora.'),
-                    })
-                  }
+                  loading={removendo}
+                  onClick={() => apagar(anuncio, carta, onFechar)}
                   className="self-end text-alert hover:text-alert"
                 >
                   Remover da lista
                 </Button>
               </div>
     </FolhaInferior>
+  )
+}
+
+function IconeLixeira({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden
+    >
+      <path d="M4 7h16" />
+      <path d="M10 11v6M14 11v6" />
+      <path d="M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12" />
+      <path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+    </svg>
   )
 }
 
