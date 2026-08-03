@@ -30,8 +30,12 @@ import {
 } from '@/lib/types'
 import { useUsuarioId } from '@/stores/auth'
 
-/** Varredura holo (2,4s) + a marca que entra depois dela, com folga para ler. */
-const DURACAO_SELAGEM = 3200
+/**
+ * Tudo somado: rastros (1,35s), travessia das cartas, e a marca — que entra aos
+ * 800ms, segura, e sai sozinha antes disto acabar. A saída é o que faz a peça
+ * desaparecer do DOM já invisível, em vez de sumir de estalo.
+ */
+const DURACAO_SELAGEM = 2800
 
 /**
  * Tempo entre pedir a rolagem e soltar a animação.
@@ -48,11 +52,11 @@ const ESPERA_ROLAGEM = 480
 /**
  * Atraso entre o começo da selagem e a travessia das cartas.
  *
- * O holo acende primeiro. Se as cartas saíssem no mesmo quadro, o brilho viraria
- * borrão de movimento e o gesto perderia o começo — primeiro as cartas chamam
- * atenção para si, depois se movem.
+ * A primeira divisa sai na frente e a carta vem atrás dela: a seta anuncia o
+ * caminho, a carta faz o caminho. Saindo tudo no mesmo quadro, o olho não tem
+ * onde pousar primeiro.
  */
-const ESPERA_TRAVESSIA = 260
+const ESPERA_TRAVESSIA = 150
 
 /** Status em que a troca já acabou — o que muda o tempo verbal da tela. */
 const ENCERRADOS = ['CONCLUIDO', 'FURADO', 'EXPIRADO']

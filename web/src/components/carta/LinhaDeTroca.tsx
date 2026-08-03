@@ -77,7 +77,6 @@ export function LinhaDeTroca({
         ordem={trocado ? 3 : 1}
         animar={selando}
         preco={dou && precos?.get(dou.id)}
-        foil={selando}
       />
 
       {/* O trilho sai de cena durante a selagem: a marca ocupa o lugar dele, e
@@ -97,7 +96,6 @@ export function LinhaDeTroca({
         // ordem de profundidade lêem como uma piscando dentro da outra.
         naFrente
         preco={recebo && precos?.get(recebo.id)}
-        foil={selando}
       />
 
       {selando && <Selagem />}
@@ -133,29 +131,33 @@ function Selagem() {
   )
 }
 
-/** Três divisas percorrendo a linha. O atraso entre elas é o que vira rastro. */
+/**
+ * Três divisas percorrendo a linha. O atraso entre elas é o que vira rastro.
+ *
+ * Cada uma ocupa a largura toda da linha e caminha por `transform`, não por
+ * `left`. Parece detalhe e não é: animar `left` obriga o navegador a recalcular
+ * layout a cada quadro, e era isso que fazia a passagem tremer. `transform`
+ * roda no compositor e não toca no layout.
+ */
 function Rastro({ sentido }: { sentido: 'direita' | 'esquerda' }) {
   const paraDireita = sentido === 'direita'
   return (
-    <span
-      className={cn(
-        'absolute inset-x-0 flex',
-        paraDireita ? 'top-[30%] text-offer' : 'top-[62%] flex-row-reverse text-want',
-      )}
-    >
+    <>
       {[0, 1, 2].map((i) => (
         <span
           key={i}
           className={cn(
-            'absolute',
-            paraDireita ? 'rastro-direita' : 'rastro-esquerda',
+            'absolute inset-x-0 flex',
+            paraDireita
+              ? 'rastro-direita top-[30%] text-offer'
+              : 'rastro-esquerda top-[62%] justify-end text-want',
           )}
-          style={{ animationDelay: `${i * 90}ms` }}
+          style={{ animationDelay: `${i * 110}ms` }}
         >
           <Divisa invertida={!paraDireita} />
         </span>
       ))}
-    </span>
+    </>
   )
 }
 
@@ -185,7 +187,6 @@ function Lado({
   animar,
   naFrente,
   preco,
-  foil,
 }: {
   carta?: Carta
   rotulo: string
@@ -199,14 +200,18 @@ function Lado({
   animar?: boolean
   naFrente?: boolean
   preco?: PrecoTCGplayer
-  foil?: boolean
 }) {
   return (
     <motion.div
       // 'position' e não `true`: a coluna muda de altura sozinha quando a imagem
       // da carta carrega, e animar tamanho faria o cartão respirar à toa.
       layout={animar ? 'position' : false}
-      transition={{ duration: 0.85, ease: [0.16, 1, 0.3, 1] }}
+      // Mola superamortecida (razão ~1,14), não curva fixa. Uma carta deslizando
+      // parte do repouso e chega ao repouso; a desaceleração exponencial que o
+      // resto do app usa arranca de uma vez e depois rasteja, o que num percurso
+      // longo lê como engasgo. Superamortecida quer dizer que ela não passa do
+      // ponto e não volta — mola aqui é suavidade, não elástico.
+      transition={{ type: 'spring', stiffness: 70, damping: 20, mass: 1.1 }}
       style={{ order: ordem, zIndex: animar && naFrente ? 30 : undefined }}
       className={cn(
         'grupo-carta relative flex min-w-0 flex-1 flex-col gap-2',
@@ -228,7 +233,6 @@ function Lado({
         <>
           <CartaThumb
             carta={carta}
-            foil={foil}
             className={cn(
               'carta-cresce ring-2',
               // A miniatura de 56px vinha de quando o feed era uma coluna

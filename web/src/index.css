@@ -170,12 +170,17 @@
      dela que a pessoa tira o contato para retomar o assunto. */
   /* Aceleração quase neutra de propósito: um ease-out forte faz a divisa saltar
      para o fim e depois rastejar, que lê como falha de quadro e não como algo
-     atravessando. Aqui ela viaja. O brilho é o que a mantém legível por cima da
-     arte da carta, que é colorida e cheia. */
+     atravessando. Aqui ela viaja.
+
+     Só `transform` e `opacity` — as duas únicas propriedades que o navegador
+     anima sem recalcular layout nem repintar. A primeira versão caminhava por
+     `left`/`right` e tremia. As porcentagens do `translateX` são da largura do
+     próprio elemento, e é por isso que cada divisa mora dentro de um vão da
+     largura da linha inteira: assim 18% e 78% são posições na linha. */
   .rastro-direita,
   .rastro-esquerda {
-    animation: 1.2s cubic-bezier(0.45, 0.05, 0.35, 1) forwards;
-    filter: drop-shadow(0 0 6px currentColor) drop-shadow(0 1px 2px rgb(0 0 0 / 0.5));
+    animation: 1.35s cubic-bezier(0.4, 0.08, 0.3, 1) forwards;
+    filter: drop-shadow(0 0 5px currentColor) drop-shadow(0 1px 2px rgb(0 0 0 / 0.45));
   }
 
   .rastro-direita {
@@ -188,44 +193,43 @@
 
   /* Sai de dentro da carta de origem e some antes de encostar na de destino: o
      rastro sugere o caminho, não desenha uma seta de ponta a ponta por cima da
-     arte, que é o que a pessoa veio ver. */
+     arte, que é o que a pessoa veio ver. Entrada e saída longas (30% de cada
+     lado) para nenhuma ponta aparecer ou sumir de estalo. */
   @keyframes rastro-direita {
     0% {
-      left: 18%;
       opacity: 0;
-      transform: scale(0.7);
+      transform: translateX(16%) scale(0.75);
     }
-    25% {
+    30% {
       opacity: 1;
-      transform: scale(1);
+      transform: translateX(34%) scale(1);
     }
-    75% {
+    70% {
       opacity: 1;
+      transform: translateX(62%) scale(1);
     }
     100% {
-      left: 78%;
       opacity: 0;
-      transform: scale(0.7);
+      transform: translateX(80%) scale(0.75);
     }
   }
 
   @keyframes rastro-esquerda {
     0% {
-      right: 18%;
       opacity: 0;
-      transform: scale(0.7);
+      transform: translateX(-16%) scale(0.75);
     }
-    25% {
+    30% {
       opacity: 1;
-      transform: scale(1);
+      transform: translateX(-34%) scale(1);
     }
-    75% {
+    70% {
       opacity: 1;
+      transform: translateX(-62%) scale(1);
     }
     100% {
-      right: 78%;
       opacity: 0;
-      transform: scale(0.7);
+      transform: translateX(-80%) scale(0.75);
     }
   }
 
@@ -236,12 +240,20 @@
      mola (o segundo ponto de controle acima de 1), que é a curva de gel e
      envelhece a tela inteira. O peso de carimbo vem de outro lugar — de vir
      grande e girada e assentar, com uma passagem curta de 6% pelo ponto final.
-     Objeto pesado desacelera; não quica. */
+     Objeto pesado desacelera; não quica.
+
+     Duas animações: a saída é separada e com `forwards` (não `both`) para não
+     valer antes da hora — com `both` ela imporia o próprio estado inicial desde
+     o quadro zero e apagaria a entrada. A saída existe porque a selagem some do
+     DOM quando acaba, e desaparecer de estalo é o oposto de suave: quando o
+     componente sai, a marca já está invisível há tempo. */
   .marca-troca {
-    animation: marca-troca 620ms cubic-bezier(0.16, 1, 0.3, 1) 900ms both;
+    animation:
+      marca-entra 700ms cubic-bezier(0.16, 1, 0.3, 1) 800ms both,
+      marca-sai 420ms ease-in 2380ms forwards;
   }
 
-  @keyframes marca-troca {
+  @keyframes marca-entra {
     0% {
       opacity: 0;
       transform: translate(-50%, -50%) scale(0.55) rotate(-14deg);
@@ -252,6 +264,29 @@
     100% {
       opacity: 1;
       transform: translate(-50%, -50%) scale(1) rotate(0deg);
+    }
+  }
+
+  @keyframes marca-sai {
+    to {
+      opacity: 0;
+    }
+  }
+
+  /* Movimento reduzido: as divisas são só movimento e não dizem nada paradas —
+     somem. A marca é informação e fica, sem entrada nem saída. Precisa de
+     `animation: none` explícito porque o corte global de duração lá embaixo
+     faria a saída disparar no primeiro quadro e apagá-la. */
+  @media (prefers-reduced-motion: reduce) {
+    .rastro-direita,
+    .rastro-esquerda {
+      animation: none;
+      opacity: 0;
+    }
+
+    .marca-troca {
+      animation: none;
+      opacity: 1;
     }
   }
 
