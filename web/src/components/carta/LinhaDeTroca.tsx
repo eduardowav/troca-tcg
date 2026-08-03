@@ -120,8 +120,16 @@ function Lado({
           <span className="min-w-0 max-w-full">
             <span
               className={cn(
-                'block truncate text-paper',
-                grande ? 'text-[18px] lg:text-[20px]' : 'text-[15px] lg:text-[16px]',
+                'block text-paper',
+                // No detalhe o nome não pode ser cortado: a tela existe para
+                // dizer qual carta sai e qual entra, e a 18px "Mega Dragonite
+                // ex" não cabe na metade de um celular — virava "Mega Drago…".
+                // Duas linhas resolvem sem empurrar nada para fora; da terceira
+                // em diante o corte volta, porque aí é nome de carta promocional
+                // comprido e o resto do cartão importa mais.
+                grande
+                  ? 'line-clamp-2 text-[18px] leading-[1.2] text-balance lg:text-[20px]'
+                  : 'truncate text-[15px] lg:text-[16px]',
               )}
             >
               {nomeCarta(carta)}

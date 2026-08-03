@@ -144,8 +144,12 @@ export default function MatchDetalhe() {
           tamanho="grande"
         />
 
+        {/* Os rótulos repetem, palavra por palavra, os das cartas logo acima.
+            Dizer "Você entrega" aqui e "Você dá" ali, a cem pixels de distância,
+            obriga quem lê a checar se são a mesma coisa — e essa linha existe
+            justamente para dizer em que estado vem cada carta. */}
         <dl className="mt-6 grid grid-cols-2 gap-3 border-t border-edge-soft pt-4 text-[13px] lg:text-[15px]">
-          <Detalhe rotulo="Você entrega" condicao={dou?.condicao} />
+          <Detalhe rotulo="Você dá" condicao={dou?.condicao} />
           <Detalhe rotulo="Você recebe" condicao={recebo?.condicao} />
         </dl>
       </div>
@@ -241,23 +245,40 @@ function Detalhe({
  * O aviso fala mais alto para quem entrega mais valor, mas aparece dos dois
  * lados: quem está levando vantagem também precisa saber, porque é do outro lado
  * que vem a desistência.
+ *
+ * "Mais alto" é a moldura, nunca a legibilidade. O lado de quem recebe mais já
+ * foi pintado inteiro na cor da letra miúda, e a frase principal saía mais apagada
+ * que o parágrafo de apoio logo abaixo dela — hierarquia ao contrário justamente
+ * na tela que a pessoa precisa ler antes de marcar um encontro. Agora quem
+ * entrega mais leva a moldura de Procuro e a frase na cor dela; quem recebe mais
+ * leva a cartela neutra do resto da tela, com a frase em `paper`. Os dois casos
+ * se leem; só um deles interrompe.
  */
 function AvisoDesequilibrio({ dados }: { dados: Desequilibrio }) {
-  const cor = dados.euEntregoMais
-    ? 'var(--color-want)'
-    : 'var(--color-faint)'
+  const alerta = dados.euEntregoMais
+  const cor = 'var(--color-want)'
 
   return (
     <div
       role="status"
-      className="mt-5 rounded-[var(--radius-card)] border p-4"
-      style={{
-        borderColor: `color-mix(in oklab, ${cor} 40%, transparent)`,
-        background: `color-mix(in oklab, ${cor} 8%, transparent)`,
-      }}
+      className={cn(
+        'mt-5 rounded-[var(--radius-card)] border p-4',
+        !alerta && 'border-edge bg-surface',
+      )}
+      style={
+        alerta
+          ? {
+              borderColor: `color-mix(in oklab, ${cor} 40%, transparent)`,
+              background: `color-mix(in oklab, ${cor} 8%, transparent)`,
+            }
+          : undefined
+      }
     >
-      <p className="text-[15px] font-medium" style={{ color: cor }}>
-        {dados.euEntregoMais
+      <p
+        className={cn('text-[15px] font-medium', !alerta && 'text-paper')}
+        style={alerta ? { color: cor } : undefined}
+      >
+        {alerta
           ? `Você entrega cerca de ${formatarRazao(dados.razao)} mais valor do que recebe.`
           : `Você recebe cerca de ${formatarRazao(dados.razao)} mais valor do que entrega.`}
       </p>

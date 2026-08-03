@@ -16,7 +16,14 @@
   /* Texto — cardstock levemente quente */
   --color-paper: #eaeef4; /* principal */
   --color-muted: #94a0b2; /* secundário / placeholder (≥4.5:1) */
-  --color-faint: #5c6675; /* decorativo, não-texto */
+  /* Terceiro nível de texto: letra miúda que ainda precisa ser lida — preço de
+     referência, raridade, prazo, isenção de responsabilidade. Era #5c6675,
+     especificado como "decorativo, não-texto", mas as 24 chamadas do app são
+     todas texto de verdade, e a 2,98:1 no #161b22 ele reprovava no piso AA que o
+     próprio produto fixa. Subiu até 4,7:1 sobre a superfície mais clara em que
+     aparece (#1d232d). Continua abaixo do muted — hierarquia mantida, só que
+     dentro da lei. */
+  --color-faint: #838da0;
 
   /* Acento primário — volt calibrado */
   --color-volt: #7c5cff;

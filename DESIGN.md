@@ -22,7 +22,8 @@ Superfícies (grafite de playmat, não preto puro):
 `edge #2A313C` · `edge-soft #222834`.
 
 Texto (cardstock levemente quente): `paper #EAEEF4` · `muted #94A0B2` (secundário /
-placeholder, ≥4.5:1) · `faint #5C6675` (decorativo, não-texto).
+placeholder, ≥4.5:1) · `faint #838DA0` (letra miúda — preço de referência, raridade,
+prazo, isenção; ≥4.5:1 até sobre `surface-2`).
 
 Acento e semântica:
 - `volt #7C5CFF` / `volt-strong #6B49F0` — ação primária.

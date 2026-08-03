@@ -150,7 +150,10 @@ export function SeloPreco({
   return (
     <p className={cn('mt-1 text-[12px] text-muted lg:text-[13px] 2xl:text-[14px]', className)}>
       <span className="text-paper tabular-nums">{valor}</span>
-      <span className="text-faint"> · TCGplayer</span>
+      {/* Espaço normal antes do ponto, inquebrável depois: em coluna estreita a
+          linha pode quebrar entre o preço e a fonte, nunca deixando o "·"
+          sozinho no fim da linha de cima. */}
+      <span className="text-faint"> ·&nbsp;TCGplayer</span>
     </p>
   )
 }

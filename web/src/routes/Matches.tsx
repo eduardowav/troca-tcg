@@ -116,6 +116,12 @@ function CartaoMatch({
  * a bola está comigo — e aí é uma chamada para agir, não um aviso de espera.
  * O detalhe já fazia essa distinção; o feed dizia "esperando o outro" nos dois
  * casos, e mandava a pessoa esperar justamente quando faltava ela.
+ *
+ * A distinção estava só nas palavras, e as duas saíam no mesmo laranja de
+ * Procuro: numa lista, a linha em que não há nada a fazer chamava tanta atenção
+ * quanto a única que depende da pessoa. Agora "falta você" é a única com fundo —
+ * é o selo que existe para ser perseguido, e a métrica-mãe é troca concluída.
+ * "Esperando o outro" desce para o cinza de espera, junto com "nova".
  */
 function Selo({
   status,
@@ -126,10 +132,12 @@ function Selo({
 }) {
   const mapa: Partial<Record<Match['status'], { texto: string; cor: string }>> = {
     SUGERIDO: { texto: 'nova', cor: 'text-muted border-edge' },
-    PENDENTE: {
-      texto: jaAceitei ? 'esperando o outro' : 'falta você',
-      cor: 'text-want border-[color-mix(in_oklab,var(--color-want)_40%,transparent)]',
-    },
+    PENDENTE: jaAceitei
+      ? { texto: 'esperando o outro', cor: 'text-muted border-edge' }
+      : {
+          texto: 'falta você',
+          cor: 'text-want border-[color-mix(in_oklab,var(--color-want)_45%,transparent)] bg-[color-mix(in_oklab,var(--color-want)_12%,transparent)] font-medium',
+        },
     ACEITO: {
       texto: 'combinada',
       cor: 'text-offer border-[color-mix(in_oklab,var(--color-offer)_40%,transparent)]',
