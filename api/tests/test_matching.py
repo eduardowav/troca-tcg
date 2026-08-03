@@ -4,6 +4,8 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
+from app.core.auth import usuario_atual
+from app.db.session import get_session
 from app.main import app
 from app.schemas.listing import CartaProcurada, QuemProcura
 from app.schemas.match import MatchOut, ParticipanteCompleto, ParticipanteResumo
@@ -147,3 +149,69 @@ def test_demanda_serializa_carta_procurada():
 def test_demanda_exige_autenticacao():
     client = TestClient(app)
     assert client.get("/v1/me/listings/procuradas").status_code in (401, 403)
+
+
+def test_historico_nao_e_engolido_pela_rota_de_detalhe(monkeypatch):
+    """O FastAPI resolve na ordem de declaração: com `/{match_id}` antes,
+    "historico" seria lido como UUID e a resposta viria 422 — a tela de perfil
+    ficaria vazia sem explicação.
+
+    Testa o comportamento, não a ordem da lista de rotas: em FastAPI 0.141
+    `app.routes` guarda as rotas incluídas atrás de `_IncludedRouter`, sem `path`,
+    então inspecionar a lista não prova nada. Aqui a rota é chamada de verdade,
+    com a sessão e a autenticação substituídas para não precisar de Postgres.
+    """
+
+    async def sem_banco(*_args, **_kwargs):
+        return []
+
+    monkeypatch.setattr(matching, "listar_historico", sem_banco)
+    app.dependency_overrides[usuario_atual] = lambda: uuid4()
+    app.dependency_overrides[get_session] = lambda: None
+    try:
+        resposta = TestClient(app).get("/v1/me/matches/historico")
+    finally:
+        app.dependency_overrides.clear()
+
+    assert resposta.status_code == 200, resposta.text
+    assert resposta.json() == []
+
+
+def test_historico_serializa_sem_contato():
+    """Lista de muita gente de uma vez: mesma regra do feed."""
+    assert _schema_resposta("/v1/me/matches/historico", "get") == "MatchNoHistorico"
+    participantes = app.openapi()["components"]["schemas"]["MatchNoHistorico"][
+        "properties"
+    ]["participantes"]
+    assert participantes["items"]["$ref"].endswith("ParticipanteResumo")
+
+
+def test_historico_so_traz_o_que_terminou():
+    """CONCLUIDO/FURADO explicam os contadores do perfil; EXPIRADO explica a
+    troca que sumiu do feed. RECUSADO e SUGERIDO não são histórico."""
+    sql = matching._HISTORICO.text
+    assert "m.status in ('CONCLUIDO', 'FURADO', 'EXPIRADO')" in sql
+    assert "RECUSADO" not in sql
+    assert "SUGERIDO" not in sql
+
+
+def test_historico_ordena_pelo_desfecho():
+    """Mais recente primeiro, e a data vem do último evento do match — `matches`
+    não guarda quando mudou de status."""
+    sql = matching._HISTORICO.text
+    assert "order by desfecho_em desc" in sql
+    assert "max(e.criado_em) from match_events e" in sql
+
+
+def test_desfecho_em_sai_em_iso_8601():
+    """`::text` do Postgres sai com espaço no lugar do T, e o Safari do iOS trata
+    isso como data inválida. O histórico é lido no celular."""
+    propriedade = app.openapi()["components"]["schemas"]["MatchNoHistorico"][
+        "properties"
+    ]["desfecho_em"]
+    assert propriedade["format"] == "date-time"
+
+
+def test_historico_exige_autenticacao():
+    client = TestClient(app)
+    assert client.get("/v1/me/matches/historico").status_code in (401, 403)

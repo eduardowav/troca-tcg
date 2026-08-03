@@ -22,6 +22,7 @@ export function FolhaInferior({
   rotulo,
   carta,
   tipo,
+  fecharNoTopo = true,
   children,
 }: {
   aberto: boolean
@@ -29,6 +30,15 @@ export function FolhaInferior({
   rotulo: string
   carta: Carta
   tipo: ListingKind
+  /**
+   * Quem já tem um botão de encerrar no rodapé desliga este.
+   *
+   * Vale para a folha de edição, onde cada controle salva sozinho: ali "Fechar"
+   * no topo e "Concluído" embaixo fazem exatamente a mesma coisa com dois nomes
+   * diferentes. Na folha de adicionar não é o caso — lá nada foi gravado ainda,
+   * então "Fechar" é desistir, e continua fazendo sentido ao lado do confirmar.
+   */
+  fecharNoTopo?: boolean
   children: React.ReactNode
 }) {
   useEffect(() => {
@@ -94,9 +104,11 @@ export function FolhaInferior({
                     {codigoSet(carta)}
                   </p>
                 </div>
-                <Button variant="ghost" size="sm" onClick={onFechar}>
-                  Fechar
-                </Button>
+                {fecharNoTopo && (
+                  <Button variant="ghost" size="sm" onClick={onFechar}>
+                    Fechar
+                  </Button>
+                )}
               </div>
 
               {children}

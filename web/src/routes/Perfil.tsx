@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import { z } from 'zod'
 
+import { MinhasTrocas } from '@/components/perfil/MinhasTrocas'
 import { Button } from '@/components/ui/Button'
 import { Campo } from '@/components/ui/Campo'
 import { usePerfil } from '@/hooks/usePerfil'
@@ -56,6 +57,9 @@ export default function PerfilTela() {
       </header>
 
       <Reputacao perfil={perfil} />
+      {/* Logo depois dos contadores, e antes do formulário: é a lista que dá
+          nome aos números de cima. Editar o @ pode esperar. */}
+      <MinhasTrocas />
       <Formulario perfil={perfil} />
 
       <div className="mt-10 border-t border-edge-soft pt-6">

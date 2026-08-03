@@ -67,7 +67,42 @@ export interface Match {
   itens: ItemMatch[]
 }
 
+/** Status que o histórico do perfil lista. Ver services/matching._HISTORICO. */
+export type Desfecho = 'CONCLUIDO' | 'FURADO' | 'EXPIRADO'
+
+/**
+ * Uma troca encerrada. `desfecho_em` é quando ela virou o que é — vem do último
+ * evento do match, em ISO 8601 (a API serializa `datetime`, não texto do
+ * Postgres, justamente para o `new Date` do Safari aceitar).
+ */
+export interface MatchEncerrado extends Match {
+  status: Desfecho
+  desfecho_em: string
+}
+
 export const listarMatches = () => api.get<Match[]>('/me/matches')
+
+export const listarHistorico = () =>
+  api.get<MatchEncerrado[]>('/me/matches/historico')
+
+/**
+ * A data do desfecho como a tela mostra.
+ *
+ * O ano só aparece quando não é o corrente: numa lista em que quase tudo é dos
+ * últimos meses, "2026" repetido em cada linha é ruído que empurra o que importa.
+ * Data inválida devolve nulo em vez de "Invalid Date" — o histórico continua
+ * legível sem ela.
+ */
+export function dataDoDesfecho(iso: string): string | null {
+  const quando = new Date(iso)
+  if (Number.isNaN(quando.getTime())) return null
+  const esteAno = quando.getFullYear() === new Date().getFullYear()
+  return quando.toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: 'short',
+    ...(esteAno ? {} : { year: 'numeric' }),
+  })
+}
 
 export const obterMatch = (id: string) => api.get<Match>(`/me/matches/${id}`)
 

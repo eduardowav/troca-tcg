@@ -25,6 +25,7 @@ from app.core.errors import RegraNegocio
 from app.schemas.listing import CartaProcurada, QuemProcura
 from app.schemas.match import (
     ItemMatch,
+    MatchNoHistorico,
     MatchOut,
     ParticipanteCompleto,
     ParticipanteResumo,
@@ -392,6 +393,75 @@ async def _participantes(
             **({"contato_visivel": r["contato_visivel"]} if completo else {}),
         )
         for r in linhas
+    ]
+
+
+# O histórico: o que já terminou.
+#
+# Os três status são uma escolha. CONCLUIDO e FURADO estão aqui porque são
+# exatamente os dois contadores que a tela de perfil mostra logo acima — sem esta
+# lista, "1 concluída" é um número sem como saber qual troca foi. EXPIRADO entra
+# porque é a única resposta para "aceitei uma troca e ela desapareceu do feed":
+# sem a linha, o app parece ter perdido a troca.
+#
+# RECUSADO fica fora de propósito: recusar uma sugestão não é uma troca que deu
+# errado, é uma que nunca começou. Virar mural de recusas não ajuda ninguém —
+# nem quem recusou, nem a leitura dos números de cima. SUGERIDO também não entra:
+# não é histórico, é o feed.
+#
+# `desfecho_em` vem do último evento do match, que é o instante em que ele virou
+# o que é. `matches` não tem coluna de atualização, e criar uma só para isto
+# duplicaria o que match_events já registra. O coalesce cobre match antigo sem
+# evento — não deveria existir, mas ordenar por nulo joga a linha para o fim da
+# lista silenciosamente, e histórico com buraco é pior que histórico com data
+# aproximada.
+_HISTORICO = text("""
+    select m.id::text, m.tipo::text, m.status::text, m.score,
+           m.expira_em::text,
+           coalesce(
+             (select max(e.criado_em) from match_events e where e.match_id = m.id),
+             m.criado_em
+           ) as desfecho_em
+    from matches m
+    join match_participants mp on mp.match_id = m.id
+    where mp.user_id = :eu
+      and m.status in ('CONCLUIDO', 'FURADO', 'EXPIRADO')
+    order by desfecho_em desc
+    limit :limite
+""")
+
+
+async def listar_historico(
+    session: AsyncSession, user_id: UUID, limite: int = 50
+) -> list[MatchNoHistorico]:
+    """As trocas encerradas do usuário, da mais recente para a mais antiga.
+
+    Serializa ParticipanteResumo, como o feed: contato não tem o que fazer numa
+    lista. O limite existe para a tela não crescer sem fim — quem chegar nele já
+    é um caso bom de ter, e paginar antes disso seria inventar problema.
+    """
+    linhas = (
+        (
+            await session.execute(
+                _HISTORICO, {"eu": str(user_id), "limite": limite}
+            )
+        )
+        .mappings()
+        .all()
+    )
+
+    return [
+        MatchNoHistorico(
+            id=linha["id"],
+            tipo=linha["tipo"],
+            status=linha["status"],
+            score=float(linha["score"]),
+            expira_em=linha["expira_em"],
+            desfecho_em=linha["desfecho_em"],
+            participantes=await _participantes(session, linha["id"], completo=False),
+            itens=await _itens(session, linha["id"]),
+        )
+        for linha in linhas
     ]
 
 

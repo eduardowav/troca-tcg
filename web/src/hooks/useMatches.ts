@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   concluirMatch,
   furouMatch,
+  listarHistorico,
   listarMatches,
   type Match,
   obterMatch,
@@ -23,6 +24,23 @@ export function useMatches() {
     queryKey: CHAVE,
     queryFn: listarMatches,
     staleTime: 30 * 1000,
+  })
+}
+
+/**
+ * Trocas encerradas, para o histórico do perfil.
+ *
+ * A chave mora debaixo de `matches` de propósito: registrar um desfecho já
+ * invalida essa raiz, então a troca que acabou de fechar aparece aqui sem
+ * ninguém precisar lembrar de invalidar uma segunda chave. `staleTime` longo
+ * porque histórico só muda quando uma troca termina — e é exatamente isso que a
+ * invalidação cobre.
+ */
+export function useHistorico() {
+  return useQuery({
+    queryKey: [...CHAVE, 'historico'],
+    queryFn: listarHistorico,
+    staleTime: 5 * 60 * 1000,
   })
 }
 

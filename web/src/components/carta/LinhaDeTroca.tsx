@@ -8,6 +8,8 @@ import {
   type PrecoTCGplayer,
 } from '@/lib/types'
 
+const ROTULOS_PADRAO = { dou: 'Você dá', recebo: 'Você recebe' }
+
 /**
  * A linha de troca: o que sai de você, o que chega até você.
  *
@@ -21,12 +23,21 @@ export function LinhaDeTroca({
   recebo,
   precos,
   tamanho = 'compacto',
+  rotulos = ROTULOS_PADRAO,
 }: {
   dou?: Carta
   recebo?: Carta
   /** Preço de referência por carta. Só o detalhe do match passa isto. */
   precos?: Map<string, PrecoTCGplayer>
   tamanho?: 'compacto' | 'grande'
+  /**
+   * O tempo verbal dos dois rótulos.
+   *
+   * O histórico precisa disto: "você dá" sobre uma troca concluída semana
+   * passada está errado, e sobre uma que expirou sem acontecer está errado duas
+   * vezes. Quem mostra troca em aberto não passa nada.
+   */
+  rotulos?: { dou: string; recebo: string }
 }) {
   const grande = tamanho === 'grande'
 
@@ -34,7 +45,7 @@ export function LinhaDeTroca({
     <div className="flex items-center gap-3">
       <Lado
         carta={dou}
-        rotulo="Você dá"
+        rotulo={rotulos.dou}
         cor="offer"
         grande={grande}
         alinhamento="end"
@@ -45,7 +56,7 @@ export function LinhaDeTroca({
 
       <Lado
         carta={recebo}
-        rotulo="Você recebe"
+        rotulo={rotulos.recebo}
         cor="want"
         grande={grande}
         alinhamento="start"

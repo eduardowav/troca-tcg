@@ -7,6 +7,8 @@ schemas — em vez de um campo opcional — é o que impede um vazamento por
 descuido: não dá para esquecer de limpar um campo que não existe.
 """
 
+from datetime import datetime
+
 from pydantic import BaseModel
 
 
@@ -58,3 +60,19 @@ class MatchOut(BaseModel):
 
 class MatchCompleto(MatchOut):
     participantes: list[ParticipanteCompleto]  # type: ignore[assignment]
+
+
+class MatchNoHistorico(MatchOut):
+    """Uma troca já encerrada, como ela aparece no histórico do perfil.
+
+    Herda de MatchOut, não de MatchCompleto: uma lista não precisa de contato, e
+    a regra do arquivo continua valendo — quem não tem o campo não vaza o campo.
+    Quem quiser retomar o assunto abre o detalhe, que revela o contato de novo.
+
+    `desfecho_em` é `datetime`, não `str` como `expira_em`. Deliberado: assim o
+    FastAPI serializa em ISO 8601 com o `T` no meio. O `::text` do Postgres sai
+    com espaço ("2026-08-03 05:40:35+00"), que o Chrome perdoa e o Safari do iOS
+    trata como data inválida — e o histórico é lido no celular.
+    """
+
+    desfecho_em: datetime

@@ -258,51 +258,30 @@ function CartaDaLista({
   remocao: Remocao
 }) {
   const [editando, setEditando] = useState(false)
-  const { apagar, removendo } = remocao
 
   if (!carta) return <CelulaEsqueleto />
 
   return (
     <CelulaCarta carta={carta} destaque={anuncio.tipo} preco={preco}>
-      {/* Tirar carta da lista é ação corriqueira — a pessoa trocou, vendeu ou se
-          arrependeu — e estava só no rodapé da folha de edição, que exige
-          adivinhar que a barra de especificações abre um editor. Aqui ela fica
-          à vista, na faixa de ações, sem competir com o toque de editar. */}
-      <div className="flex items-stretch gap-1.5">
-        <button
-          type="button"
-          onClick={() => setEditando(true)}
-          aria-haspopup="dialog"
-          className={cn(
-            'flex h-9 min-w-0 flex-1 items-center justify-between gap-2 px-2.5',
-            'rounded-[var(--radius-control)] border border-edge bg-surface-2',
-            'text-[14px] text-muted transition-colors hover:text-paper lg:text-[15px]',
-            'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-volt',
-          )}
-        >
-          <span className="truncate">{resumo(anuncio)}</span>
-          <IconeLapis className="size-3.5 shrink-0" />
-        </button>
-
-        <button
-          type="button"
-          onClick={() => apagar(anuncio, carta)}
-          disabled={removendo}
-          aria-label={`Remover ${nomeCarta(carta)} da lista`}
-          title="Remover da lista"
-          className={cn(
-            // 36px de alvo: o mínimo da WCAG 2.2 é 24, e esta é uma ação
-            // destrutiva num dedo, não num mouse.
-            'grid size-9 shrink-0 place-items-center',
-            'rounded-[var(--radius-control)] border border-edge bg-surface-2',
-            'text-muted transition-colors hover:border-[color-mix(in_oklab,var(--color-alert)_45%,transparent)] hover:text-alert',
-            'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-volt',
-            'disabled:opacity-45',
-          )}
-        >
-          <IconeLixeira className="size-4" />
-        </button>
-      </div>
+      {/* A faixa de ações é uma só: abrir o editor. Remover mora lá dentro, junto
+          das outras alterações da carta — foi decisão do Eduardo (2026-08-03).
+          Uma lixeira permanente sobre cada carta é peso visual repetido em toda a
+          grade para uma ação que ninguém faz em série, e ainda encostava no alvo
+          de editar. */}
+      <button
+        type="button"
+        onClick={() => setEditando(true)}
+        aria-haspopup="dialog"
+        className={cn(
+          'flex h-9 w-full min-w-0 items-center justify-between gap-2 px-2.5',
+          'rounded-[var(--radius-control)] border border-edge bg-surface-2',
+          'text-[14px] text-muted transition-colors hover:text-paper lg:text-[15px]',
+          'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-volt',
+        )}
+      >
+        <span className="truncate">{resumo(anuncio)}</span>
+        <IconeLapis className="size-3.5 shrink-0" />
+      </button>
 
       <EditorAnuncio
         aberto={editando}
@@ -385,6 +364,7 @@ function EditorAnuncio({
       rotulo={`Ajustar ${nomeCarta(carta)}`}
       carta={carta}
       tipo={anuncio.tipo}
+      fecharNoTopo={false}
     >
               <div className="mt-5 flex flex-col gap-5">
                 <Quantidade
@@ -436,37 +416,33 @@ function EditorAnuncio({
                   </label>
                 )}
 
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  loading={removendo}
-                  onClick={() => apagar(anuncio, carta, onFechar)}
-                  className="self-end text-alert hover:text-alert"
-                >
-                  Remover da lista
-                </Button>
+                {/* Cada controle acima já gravou sozinho, então "Concluído" não
+                    salva nada — só encerra. Existe porque a folha precisa de um
+                    fim declarado e alcançável pelo dedo: fechar por Esc, pelo
+                    fundo ou pelo canto de cima é atalho de quem já sabe.
+                    A remoção fica no extremo oposto, longe do alvo grande, e
+                    segue com desfazer. */}
+                <div className="mt-1 flex items-center gap-3 border-t border-edge-soft pt-4">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    loading={removendo}
+                    onClick={() => apagar(anuncio, carta, onFechar)}
+                    className="shrink-0 text-alert hover:text-alert"
+                  >
+                    Remover da lista
+                  </Button>
+                  <Button
+                    variant="primary"
+                    size="lg"
+                    onClick={onFechar}
+                    className="ml-auto flex-1"
+                  >
+                    Concluído
+                  </Button>
+                </div>
               </div>
     </FolhaInferior>
-  )
-}
-
-function IconeLixeira({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-      aria-hidden
-    >
-      <path d="M4 7h16" />
-      <path d="M10 11v6M14 11v6" />
-      <path d="M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12" />
-      <path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
-    </svg>
   )
 }
 
@@ -493,8 +469,8 @@ function IconeLapis({ className }: { className?: string }) {
  *
  * Prioridade só aparece quando **não** é a padrão. "Normal" é o valor da imensa
  * maioria das cartas: repetido em todas, não distingue nenhuma, e era o que
- * empurrava o texto para o truncamento agora que a faixa divide espaço com o
- * botão de remover. Quem mexeu na prioridade vê; quem não mexeu ganha espaço.
+ * empurrava o texto para o truncamento nas colunas estreitas. Quem mexeu na
+ * prioridade vê; quem não mexeu ganha espaço.
  */
 const PRIORIDADE_PADRAO = 2
 

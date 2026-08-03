@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import usuario_atual
 from app.db.session import get_session
-from app.schemas.match import MatchCompleto, MatchOut
+from app.schemas.match import MatchCompleto, MatchNoHistorico, MatchOut
 from app.services import matching
 
 router = APIRouter(prefix="/me/matches", tags=["matches"])
@@ -27,6 +27,20 @@ async def listar(
     # última visita, sem depender de job agendado.
     await matching.sincronizar_matches(session, user_id)
     return await matching.listar_matches(session, user_id)
+
+
+# ⚠️ Esta rota tem de vir ANTES de `/{match_id}`: o FastAPI resolve na ordem de
+# declaração, e `/{match_id}` casaria com "historico" primeiro, tentaria ler
+# "historico" como UUID e devolveria 422. Coberto por teste — mover para baixo
+# quebra a tela de perfil.
+@router.get("/historico", response_model=list[MatchNoHistorico])
+async def historico(
+    user_id: UUID = Depends(usuario_atual),
+    session: AsyncSession = Depends(get_session),
+) -> list[MatchNoHistorico]:
+    # Sem `sincronizar_matches` aqui, ao contrário do feed: histórico é o que já
+    # terminou, e recalcular sugestões não muda uma linha desta lista.
+    return await matching.listar_historico(session, user_id)
 
 
 # Detalhe e resposta usam MatchCompleto porque é neles que o contato pode
