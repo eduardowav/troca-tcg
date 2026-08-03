@@ -397,6 +397,15 @@ html[data-mundo='brutal'] .trilho span > span:last-child {
   color: #000;
 }
 
+/* A marca que sela a troca concluída. No mundo escuro ela é um disco com halo;
+   aqui halo não existe — quem carrega peso é a borda preta e a sombra dura. */
+html[data-mundo='brutal'] .marca-troca {
+  border: var(--brutal-borda) solid #000;
+  background: #fff;
+  color: #000;
+  box-shadow: var(--brutal-sombra);
+}
+
 /* ------------------------------------------------------------
    Linha de condição do detalhe — as fileiras com chip do print
    ------------------------------------------------------------ */

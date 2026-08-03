@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 
@@ -30,6 +30,12 @@ import {
 } from '@/lib/types'
 import { useUsuarioId } from '@/stores/auth'
 
+/** Varredura holo (2,4s) + a marca que entra depois dela, com folga para ler. */
+const DURACAO_SELAGEM = 3200
+
+/** Status em que a troca já acabou — o que muda o tempo verbal da tela. */
+const ENCERRADOS = ['CONCLUIDO', 'FURADO', 'EXPIRADO']
+
 export default function MatchDetalhe() {
   useMundo('brutal')
   const { id } = useParams<{ id: string }>()
@@ -37,6 +43,15 @@ export default function MatchDetalhe() {
   const { data: match, isPending, isError } = useMatch(id)
   const responder = useResponderMatch()
   const desfecho = useDesfechoMatch()
+  const [selando, setSelando] = useState(false)
+
+  // A selagem toca uma vez e sai sozinha. Quem volta à tela depois vem atrás do
+  // contato para retomar o assunto, e encontrar a festa de novo atrapalharia.
+  useEffect(() => {
+    if (!selando) return
+    const t = setTimeout(() => setSelando(false), DURACAO_SELAGEM)
+    return () => clearTimeout(t)
+  }, [selando])
 
   const ids = useMemo(
     () => (match?.itens ?? []).map((i) => i.card_id),
@@ -81,14 +96,19 @@ export default function MatchDetalhe() {
     desfecho.mutate(
       { id: match!.id, aconteceu },
       {
-        onSuccess: (novo) =>
+        onSuccess: (novo) => {
+          // Só quando fecha pelos dois. Quem confirma primeiro não fechou nada
+          // ainda — celebrar ali prometeria um desfecho que ainda depende do
+          // outro lado, e é justamente o que fura.
+          if (novo.status === 'CONCLUIDO') setSelando(true)
           toast.success(
             novo.status === 'CONCLUIDO'
               ? 'Troca concluída pelos dois. Reputação atualizada.'
               : aconteceu
                 ? 'Confirmado. Falta a outra pessoa confirmar.'
                 : 'Registrado. Obrigado por avisar.',
-          ),
+          )
+        },
         onError: (erro) =>
           toast.error(
             erro instanceof ApiError
@@ -139,11 +159,21 @@ export default function MatchDetalhe() {
       </p>
 
       <div className="cartela mt-8 rounded-[var(--radius-card)] border border-edge bg-surface p-5">
+        {/* Tempo verbal: numa troca encerrada, "você dá" está falando de uma
+            coisa que já aconteceu. O histórico do perfil já corrigia isso; o
+            detalhe, que é para onde o histórico leva, não corrigia. Durante a
+            selagem o passado já vale — foi ela que acabou de acontecer. */}
         <LinhaDeTroca
           dou={dou && cartas?.get(dou.card_id)}
           recebo={recebo && cartas?.get(recebo.card_id)}
           precos={precos}
           tamanho="grande"
+          selando={selando}
+          rotulos={
+            selando || ENCERRADOS.includes(match.status)
+              ? { dou: 'Você deu', recebo: 'Você recebeu' }
+              : undefined
+          }
         />
 
         {/* Os rótulos repetem, palavra por palavra, os das cartas logo acima.
@@ -206,8 +236,7 @@ export default function MatchDetalhe() {
  * troca encerrada sobra a segunda metade da frase, que continua verdadeira.
  */
 function Rodape({ match }: { match: Match }) {
-  const encerrada = ['CONCLUIDO', 'FURADO', 'EXPIRADO'].includes(match.status)
-  const prazo = encerrada ? null : prazoTexto(match)
+  const prazo = ENCERRADOS.includes(match.status) ? null : prazoTexto(match)
 
   return (
     <p className="mt-6 text-center text-[12px] leading-relaxed text-faint">

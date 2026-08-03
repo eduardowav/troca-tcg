@@ -1,5 +1,6 @@
 import { CartaThumb } from '@/components/carta/CartaThumb'
 import { SeloPreco } from '@/components/carta/GradeDeCartas'
+import { IconeTroca } from '@/components/ui/Icone'
 import { cn } from '@/lib/cn'
 import {
   type Carta,
@@ -24,6 +25,7 @@ export function LinhaDeTroca({
   precos,
   tamanho = 'compacto',
   rotulos = ROTULOS_PADRAO,
+  selando = false,
 }: {
   dou?: Carta
   recebo?: Carta
@@ -38,11 +40,19 @@ export function LinhaDeTroca({
    * vezes. Quem mostra troca em aberto não passa nada.
    */
   rotulos?: { dou: string; recebo: string }
+  /**
+   * A troca acabou de fechar pelos dois lados — toca a selagem uma vez.
+   *
+   * É o único instante do produto em que a métrica-mãe sobe, e até aqui ele
+   * passava como um toast cinza. Não é enfeite: é o retorno do gesto que o app
+   * inteiro existe para provocar.
+   */
+  selando?: boolean
 }) {
   const grande = tamanho === 'grande'
 
   return (
-    <div className="flex items-center gap-3">
+    <div className="relative flex items-center gap-3">
       <Lado
         carta={dou}
         rotulo={rotulos.dou}
@@ -50,9 +60,13 @@ export function LinhaDeTroca({
         grande={grande}
         alinhamento="end"
         preco={dou && precos?.get(dou.id)}
+        foil={selando}
       />
 
-      <Direcao grande={grande} />
+      {/* O trilho sai de cena durante a selagem: a marca ocupa o lugar dele, e
+          é a mesma ideia dita de outro jeito. Os dois ao mesmo tempo, no mesmo
+          eixo, viram sobreposição de dois desenhos parecidos. */}
+      <Direcao grande={grande} atenuado={selando} />
 
       <Lado
         carta={recebo}
@@ -61,8 +75,81 @@ export function LinhaDeTroca({
         grande={grande}
         alinhamento="start"
         preco={recebo && precos?.get(recebo.id)}
+        foil={selando}
       />
+
+      {selando && <Selagem />}
     </div>
+  )
+}
+
+/**
+ * A selagem: o trilho acordando.
+ *
+ * A referência que o Eduardo mandou resolve o momento com setas atravessando as
+ * duas cartas e uma marca no fim. Aqui elas não são desenho novo — são o mesmo
+ * trilho que separa as duas pontas desde sempre, nas mesmas cores de Ofereço e
+ * Procuro, fazendo pela primeira vez o que ele sempre representou parado: uma
+ * carta indo, outra vindo. Fecha com o ícone de troca do próprio app.
+ *
+ * Fica por cima de tudo e não recebe evento: é comentário sobre a tela, não
+ * parte dela. `aria-hidden` porque quem usa leitor de tela recebe a notícia pelo
+ * toast e pelo painel de "troca concluída" — repetir em enfeite é ruído.
+ */
+function Selagem() {
+  return (
+    <div
+      aria-hidden
+      className="pointer-events-none absolute inset-0 z-20 overflow-hidden"
+    >
+      <Rastro sentido="direita" />
+      <Rastro sentido="esquerda" />
+      <span className="marca-troca absolute top-1/2 left-1/2 grid size-13 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-[color-mix(in_oklab,var(--color-offer)_50%,transparent)] bg-surface text-offer shadow-[0_0_28px_-4px_var(--color-offer)]">
+        <IconeTroca className="size-7" />
+      </span>
+    </div>
+  )
+}
+
+/** Três divisas percorrendo a linha. O atraso entre elas é o que vira rastro. */
+function Rastro({ sentido }: { sentido: 'direita' | 'esquerda' }) {
+  const paraDireita = sentido === 'direita'
+  return (
+    <span
+      className={cn(
+        'absolute inset-x-0 flex',
+        paraDireita ? 'top-[30%] text-offer' : 'top-[62%] flex-row-reverse text-want',
+      )}
+    >
+      {[0, 1, 2].map((i) => (
+        <span
+          key={i}
+          className={cn(
+            'absolute',
+            paraDireita ? 'rastro-direita' : 'rastro-esquerda',
+          )}
+          style={{ animationDelay: `${i * 90}ms` }}
+        >
+          <Divisa invertida={!paraDireita} />
+        </span>
+      ))}
+    </span>
+  )
+}
+
+function Divisa({ invertida }: { invertida?: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 12 20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={4}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={cn('h-7 w-4', invertida && 'scale-x-[-1]')}
+    >
+      <path d="m2.5 3 6.5 7-6.5 7" />
+    </svg>
   )
 }
 
@@ -73,6 +160,7 @@ function Lado({
   grande,
   alinhamento,
   preco,
+  foil,
 }: {
   carta?: Carta
   rotulo: string
@@ -80,6 +168,7 @@ function Lado({
   grande: boolean
   alinhamento: 'start' | 'end'
   preco?: PrecoTCGplayer
+  foil?: boolean
 }) {
   return (
     <div
@@ -103,6 +192,7 @@ function Lado({
         <>
           <CartaThumb
             carta={carta}
+            foil={foil}
             className={cn(
               'carta-cresce ring-2',
               // A miniatura de 56px vinha de quando o feed era uma coluna
@@ -160,12 +250,14 @@ function Lado({
 }
 
 /** O trilho entre as duas pontas. Decorativo: a direção já está nos rótulos. */
-function Direcao({ grande }: { grande: boolean }) {
+function Direcao({ grande, atenuado }: { grande: boolean; atenuado?: boolean }) {
   return (
     <div
       aria-hidden
       className={cn(
         'trilho flex shrink-0 flex-col items-center justify-center gap-1',
+        'transition-opacity duration-300',
+        atenuado && 'opacity-0',
         // No celular o trilho disputa espaço com as cartas, que são o assunto:
         // 48px ali são 48px que a arte não tem.
         grande ? 'w-8 sm:w-12' : 'w-7 lg:w-10',
