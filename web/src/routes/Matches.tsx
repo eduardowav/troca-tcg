@@ -88,11 +88,15 @@ function CartaoMatch({
       className="cartela block rounded-[var(--radius-card)] border border-edge bg-surface p-4 transition-colors hover:border-[var(--color-faint)] lg:p-5"
     >
       <div className="flex items-baseline justify-between gap-3">
+        {/* O nome é o que identifica a troca numa lista — quem está do outro
+            lado dela. Em peso normal ele empatava com o @ e com a reputação, que
+            são qualificadores dele. O @ subiu um ponto junto: em mono, a 11px,
+            ele ficava pequeno demais ao lado de um nome de 15px. */}
         <span className="min-w-0">
-          <span className="block truncate text-[15px] text-paper lg:text-[17px]">
+          <span className="block truncate text-[15px] font-bold text-paper lg:text-[17px]">
             {outro?.nome_exibicao ?? 'Alguém'}
           </span>
-          <span className="set-code block text-[11px] text-muted lg:text-[12px]">
+          <span className="set-code block text-[12px] text-muted lg:text-[13px]">
             @{outro?.username}
             {reputacao && ` · ${reputacao}`}
           </span>
