@@ -1,5 +1,6 @@
 """Testes do matching que não dependem de um Postgres real."""
 
+import inspect
 from uuid import uuid4
 
 from fastapi.testclient import TestClient
@@ -203,13 +204,30 @@ def test_historico_ordena_pelo_desfecho():
     assert "max(e.criado_em) from match_events e" in sql
 
 
-def test_desfecho_em_sai_em_iso_8601():
+def test_datas_saem_em_iso_8601():
     """`::text` do Postgres sai com espaço no lugar do T, e o Safari do iOS trata
-    isso como data inválida. O histórico é lido no celular."""
-    propriedade = app.openapi()["components"]["schemas"]["MatchNoHistorico"][
-        "properties"
-    ]["desfecho_em"]
-    assert propriedade["format"] == "date-time"
+    isso como data inválida — "Expira em NaN dia(s)". O app é lido no celular."""
+    schemas = app.openapi()["components"]["schemas"]
+    for schema, campo in (
+        ("MatchOut", "expira_em"),
+        ("MatchCompleto", "expira_em"),
+        ("MatchNoHistorico", "expira_em"),
+        ("MatchNoHistorico", "desfecho_em"),
+    ):
+        assert schemas[schema]["properties"][campo]["format"] == "date-time", (
+            f"{schema}.{campo} não é date-time"
+        )
+
+
+def test_nenhuma_data_vira_texto_no_sql():
+    """Guarda a origem do problema, não só o sintoma.
+
+    O schema hoje coage o texto de volta para datetime, então um `::text` que
+    voltar não quebra nada — até alguém declarar o campo como `str` de novo e o
+    NaN reaparecer no iPhone. Ids continuam saindo como texto de propósito; data,
+    não.
+    """
+    assert "expira_em::text" not in inspect.getsource(matching)
 
 
 def test_historico_exige_autenticacao():

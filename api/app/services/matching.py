@@ -249,7 +249,7 @@ async def listar_matches(session: AsyncSession, user_id: UUID) -> list[MatchOut]
             await session.execute(
                 text("""
             select m.id::text, m.tipo::text, m.status::text, m.score,
-                   m.expira_em::text
+                   m.expira_em
             from matches m
             join match_participants mp on mp.match_id = m.id
             where mp.user_id = :eu
@@ -417,7 +417,7 @@ async def _participantes(
 # aproximada.
 _HISTORICO = text("""
     select m.id::text, m.tipo::text, m.status::text, m.score,
-           m.expira_em::text,
+           m.expira_em,
            coalesce(
              (select max(e.criado_em) from match_events e where e.match_id = m.id),
              m.criado_em
@@ -441,11 +441,7 @@ async def listar_historico(
     é um caso bom de ter, e paginar antes disso seria inventar problema.
     """
     linhas = (
-        (
-            await session.execute(
-                _HISTORICO, {"eu": str(user_id), "limite": limite}
-            )
-        )
+        (await session.execute(_HISTORICO, {"eu": str(user_id), "limite": limite}))
         .mappings()
         .all()
     )
@@ -651,7 +647,7 @@ async def obter_match(session: AsyncSession, user_id: UUID, match_id: UUID) -> M
             await session.execute(
                 text("""
             select m.id::text, m.tipo::text, m.status::text, m.score,
-                   m.expira_em::text
+                   m.expira_em
             from matches m join match_participants mp on mp.match_id = m.id
             where m.id = :m and mp.user_id = :eu
         """),

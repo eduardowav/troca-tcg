@@ -9,10 +9,10 @@ import { useMatches } from '@/hooks/useMatches'
 import type { CartaProcurada } from '@/lib/anuncios'
 import { cn } from '@/lib/cn'
 import {
-  diasParaExpirar,
   euAceitei,
   type Match,
   parceiro,
+  prazoTexto,
   reputacaoTexto,
 } from '@/lib/matches'
 import { useUsuarioId } from '@/stores/auth'
@@ -75,7 +75,7 @@ function CartaoMatch({
   const outro = parceiro(match, meuId)
   const dou = match.itens.find((i) => i.de_user_id === meuId)
   const recebo = match.itens.find((i) => i.para_user_id === meuId)
-  const dias = diasParaExpirar(match)
+  const prazo = prazoTexto(match)
   const reputacao = outro && reputacaoTexto(outro)
 
   return (
@@ -103,13 +103,9 @@ function CartaoMatch({
         />
       </div>
 
-      <p className="mt-4 text-[12px] text-faint lg:text-[13px]">
-        {dias === 0
-          ? 'Expira hoje'
-          : dias === 1
-            ? 'Expira amanhã'
-            : `Expira em ${dias} dias`}
-      </p>
+      {prazo && (
+        <p className="mt-4 text-[12px] text-faint lg:text-[13px]">{prazo}</p>
+      )}
     </Link>
   )
 }

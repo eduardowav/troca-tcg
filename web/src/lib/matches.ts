@@ -135,8 +135,25 @@ export function euAceitei(match: Match, meuId: string | undefined): boolean {
   return match.participantes.find((p) => p.user_id === meuId)?.aceitou === true
 }
 
-/** Dias inteiros até expirar — o match some do feed em 7 dias. */
-export function diasParaExpirar(match: Match): number {
+/**
+ * Dias inteiros até expirar — o match some do feed em 7 dias.
+ *
+ * Nulo quando a data não dá para ler, como `dataDoDesfecho`. A API manda ISO
+ * 8601 justamente para o `new Date` do Safari aceitar, mas quem chama isto
+ * escreve uma frase na tela: sem a guarda, uma data quebrada vira "Expira em
+ * NaN dias" para o usuário, que é pior do que não falar de prazo nenhum.
+ */
+export function diasParaExpirar(match: Match): number | null {
   const ms = new Date(match.expira_em).getTime() - Date.now()
+  if (Number.isNaN(ms)) return null
   return Math.max(0, Math.ceil(ms / 86_400_000))
+}
+
+/** O prazo como a tela escreve. Nulo quando não há data legível para mostrar. */
+export function prazoTexto(match: Match): string | null {
+  const dias = diasParaExpirar(match)
+  if (dias === null) return null
+  if (dias === 0) return 'Expira hoje'
+  if (dias === 1) return 'Expira amanhã'
+  return `Expira em ${dias} dias`
 }

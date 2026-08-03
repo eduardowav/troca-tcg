@@ -10,11 +10,11 @@ import { CONDICOES } from '@/lib/anuncios'
 import { ApiError } from '@/lib/api'
 import { cn } from '@/lib/cn'
 import {
-  diasParaExpirar,
   euAceitei,
   euConfirmei,
   type Match,
   parceiro,
+  prazoTexto,
   reputacaoTexto,
 } from '@/lib/matches'
 import { linkWhatsApp } from '@/lib/telefone'
@@ -187,11 +187,27 @@ export default function MatchDetalhe() {
         />
       )}
 
-      <p className="mt-6 text-center text-[12px] text-faint">
-        Expira em {diasParaExpirar(match)} dia(s). A troca acontece
-        presencialmente, combinada entre vocês.
-      </p>
+      <Rodape match={match} />
     </Moldura>
+  )
+}
+
+/**
+ * A letra miúda do pé da página.
+ *
+ * O prazo só existe enquanto a troca está de pé: dizer "expira em 4 dias"
+ * embaixo de uma troca já concluída é contradizer o cartão logo acima. Numa
+ * troca encerrada sobra a segunda metade da frase, que continua verdadeira.
+ */
+function Rodape({ match }: { match: Match }) {
+  const encerrada = ['CONCLUIDO', 'FURADO', 'EXPIRADO'].includes(match.status)
+  const prazo = encerrada ? null : prazoTexto(match)
+
+  return (
+    <p className="mt-6 text-center text-[12px] leading-relaxed text-faint">
+      {prazo && `${prazo}. `}A troca acontece presencialmente, combinada entre
+      vocês.
+    </p>
   )
 }
 

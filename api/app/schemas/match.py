@@ -49,11 +49,23 @@ class ItemMatch(BaseModel):
 
 
 class MatchOut(BaseModel):
+    """
+    Datas são `datetime`, nunca `str`.
+
+    O resto do arquivo usa `str` de propósito — os ids saem do Postgres já como
+    texto e não têm o que ganhar virando UUID de novo. Data é o caso oposto: com
+    `str`, o valor que chega do banco é o `::text` do Postgres
+    ("2026-08-06 18:03:27+00", espaço no lugar do T), e esse formato não é ISO
+    8601. O Chrome perdoa e devolve uma data; o Safari do iOS devolve
+    `Invalid Date`, e a tela mostra "Expira em NaN dia(s)". Declarando
+    `datetime`, o FastAPI serializa em ISO 8601 e as duas engines concordam.
+    """
+
     id: str
     tipo: str
     status: str
     score: float
-    expira_em: str
+    expira_em: datetime
     participantes: list[ParticipanteResumo]
     itens: list[ItemMatch]
 
@@ -69,10 +81,7 @@ class MatchNoHistorico(MatchOut):
     a regra do arquivo continua valendo — quem não tem o campo não vaza o campo.
     Quem quiser retomar o assunto abre o detalhe, que revela o contato de novo.
 
-    `desfecho_em` é `datetime`, não `str` como `expira_em`. Deliberado: assim o
-    FastAPI serializa em ISO 8601 com o `T` no meio. O `::text` do Postgres sai
-    com espaço ("2026-08-03 05:40:35+00"), que o Chrome perdoa e o Safari do iOS
-    trata como data inválida — e o histórico é lido no celular.
+    `desfecho_em` é `datetime` pelo mesmo motivo que `expira_em` — ver MatchOut.
     """
 
     desfecho_em: datetime
