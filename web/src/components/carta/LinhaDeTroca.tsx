@@ -91,7 +91,9 @@ function Lado({
       <span
         className={cn(
           'text-[12px] font-medium tracking-wide uppercase lg:text-[13px]',
-          cor === 'offer' ? 'text-offer' : 'text-want',
+          // O sufixo do nome da classe é o gancho de pele; a classe de cor é o
+          // que pinta no mundo padrão.
+          cor === 'offer' ? 'rotulo-offer text-offer' : 'rotulo-want text-want',
         )}
       >
         {rotulo}
@@ -163,7 +165,7 @@ function Direcao({ grande }: { grande: boolean }) {
     <div
       aria-hidden
       className={cn(
-        'flex shrink-0 flex-col items-center justify-center gap-1',
+        'trilho flex shrink-0 flex-col items-center justify-center gap-1',
         // No celular o trilho disputa espaço com as cartas, que são o assunto:
         // 48px ali são 48px que a arte não tem.
         grande ? 'w-8 sm:w-12' : 'w-7 lg:w-10',

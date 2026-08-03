@@ -33,7 +33,7 @@ function Navegacao() {
   return (
     <nav
       aria-label="Navegação principal"
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-edge bg-surface/95 backdrop-blur-sm"
+      className="nav-app fixed inset-x-0 bottom-0 z-40 border-t border-edge bg-surface/95 backdrop-blur-sm"
     >
       <ul className="mx-auto flex w-full max-w-xl pb-[env(safe-area-inset-bottom)]">
         {ABAS.map(({ para, rotulo, Icone }) => (

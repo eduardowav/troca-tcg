@@ -6,6 +6,7 @@ import { LinhaDeTroca } from '@/components/carta/LinhaDeTroca'
 import { Button, estiloBotao } from '@/components/ui/Button'
 import { useCartasPorId, usePrecosPorId } from '@/hooks/useAnuncios'
 import { useDesfechoMatch, useMatch, useResponderMatch } from '@/hooks/useMatches'
+import { useMundo } from '@/hooks/useMundo'
 import { CONDICOES } from '@/lib/anuncios'
 import { ApiError } from '@/lib/api'
 import { cn } from '@/lib/cn'
@@ -30,6 +31,7 @@ import {
 import { useUsuarioId } from '@/stores/auth'
 
 export default function MatchDetalhe() {
+  useMundo('brutal')
   const { id } = useParams<{ id: string }>()
   const meuId = useUsuarioId()
   const { data: match, isPending, isError } = useMatch(id)
@@ -123,12 +125,12 @@ export default function MatchDetalhe() {
     <Moldura>
       <Link
         to="/matches"
-        className="text-[13px] text-muted underline underline-offset-4 hover:text-paper"
+        className="voltar text-[13px] text-muted underline underline-offset-4 hover:text-paper"
       >
         ← Trocas
       </Link>
 
-      <h1 className="mt-5 text-[26px] leading-[1.15] lg:text-[32px]">
+      <h1 className="titulo-pagina mt-5 text-[26px] leading-[1.15] lg:text-[32px]">
         Troca com {outro?.nome_exibicao ?? 'alguém'}.
       </h1>
       <p className="mt-2 text-[15px] leading-relaxed text-muted lg:text-[16px]">
@@ -136,7 +138,7 @@ export default function MatchDetalhe() {
         {reputacao && ` · ${reputacao}`}
       </p>
 
-      <div className="mt-8 rounded-[var(--radius-card)] border border-edge bg-surface p-5">
+      <div className="cartela mt-8 rounded-[var(--radius-card)] border border-edge bg-surface p-5">
         <LinhaDeTroca
           dou={dou && cartas?.get(dou.card_id)}
           recebo={recebo && cartas?.get(recebo.card_id)}
@@ -224,7 +226,7 @@ function Detalhe({
 }) {
   const dica = CONDICOES.find((c) => c.valor === condicao)?.dica
   return (
-    <div>
+    <div className="fileira">
       <dt className="text-muted">{rotulo}</dt>
       <dd className="mt-0.5 text-paper">
         {condicao ?? '—'}
@@ -256,27 +258,23 @@ function Detalhe({
  */
 function AvisoDesequilibrio({ dados }: { dados: Desequilibrio }) {
   const alerta = dados.euEntregoMais
-  const cor = 'var(--color-want)'
 
   return (
     <div
       role="status"
+      data-tom={alerta ? 'atencao' : undefined}
       className={cn(
-        'mt-5 rounded-[var(--radius-card)] border p-4',
-        !alerta && 'border-edge bg-surface',
-      )}
-      style={
+        'cartela mt-5 rounded-[var(--radius-card)] border p-4',
         alerta
-          ? {
-              borderColor: `color-mix(in oklab, ${cor} 40%, transparent)`,
-              background: `color-mix(in oklab, ${cor} 8%, transparent)`,
-            }
-          : undefined
-      }
+          ? 'border-[color-mix(in_oklab,var(--color-want)_40%,transparent)] bg-[color-mix(in_oklab,var(--color-want)_8%,transparent)]'
+          : 'border-edge bg-surface',
+      )}
     >
       <p
-        className={cn('text-[15px] font-medium', !alerta && 'text-paper')}
-        style={alerta ? { color: cor } : undefined}
+        className={cn(
+          'titulo-tom text-[15px] font-medium',
+          alerta ? 'text-want' : 'text-paper',
+        )}
       >
         {alerta
           ? `Você entrega cerca de ${formatarRazao(dados.razao)} mais valor do que recebe.`
@@ -311,7 +309,7 @@ function Combinar({
 }) {
   if (jaAceitei) {
     return (
-      <div className="mt-5 rounded-[var(--radius-card)] border border-edge bg-surface p-4 text-center">
+      <div className="cartela mt-5 rounded-[var(--radius-card)] border border-edge bg-surface p-4 text-center">
         <p className="text-[15px] text-paper">Você topou essa troca.</p>
         <p className="mt-1.5 text-[14px] leading-relaxed text-muted">
           Assim que a outra pessoa aceitar, os contatos de vocês aparecem aqui
@@ -370,7 +368,7 @@ function Desfecho({
 }) {
   if (euConfirmei(match, meuId)) {
     return (
-      <p className="mt-5 rounded-[var(--radius-card)] border border-edge bg-surface p-4 text-center text-[14px] leading-relaxed text-muted">
+      <p className="cartela mt-5 rounded-[var(--radius-card)] border border-edge bg-surface p-4 text-center text-[14px] leading-relaxed text-muted">
         Você confirmou que a troca aconteceu. Falta a outra pessoa confirmar
         para ela entrar na reputação de vocês.
       </p>
@@ -378,7 +376,7 @@ function Desfecho({
   }
 
   return (
-    <div className="mt-5 rounded-[var(--radius-card)] border border-edge bg-surface p-4">
+    <div className="cartela mt-5 rounded-[var(--radius-card)] border border-edge bg-surface p-4">
       <p className="text-[15px] text-paper">Já se encontraram?</p>
       <p className="mt-1.5 text-[14px] leading-relaxed text-muted">
         Confirmar é o que constrói a reputação de vocês dois.
@@ -417,16 +415,23 @@ function Encerrado({
   texto: string
   tom: 'offer' | 'alert'
 }) {
-  const cor = tom === 'offer' ? 'var(--color-offer)' : 'var(--color-alert)'
+  const bom = tom === 'offer'
   return (
     <div
-      className="mt-5 rounded-[var(--radius-card)] border p-5"
-      style={{
-        borderColor: `color-mix(in oklab, ${cor} 40%, transparent)`,
-        background: `color-mix(in oklab, ${cor} 10%, transparent)`,
-      }}
+      data-tom={bom ? 'bom' : 'ruim'}
+      className={cn(
+        'cartela mt-5 rounded-[var(--radius-card)] border p-5',
+        bom
+          ? 'border-[color-mix(in_oklab,var(--color-offer)_40%,transparent)] bg-[color-mix(in_oklab,var(--color-offer)_10%,transparent)]'
+          : 'border-[color-mix(in_oklab,var(--color-alert)_40%,transparent)] bg-[color-mix(in_oklab,var(--color-alert)_10%,transparent)]',
+      )}
     >
-      <p className="text-[15px] font-medium" style={{ color: cor }}>
+      <p
+        className={cn(
+          'titulo-tom text-[15px] font-medium',
+          bom ? 'text-offer' : 'text-alert',
+        )}
+      >
         {titulo}
       </p>
       <p className="mt-2 text-[14px] leading-relaxed text-muted">{texto}</p>
@@ -458,8 +463,13 @@ function Contato({
     )
 
   return (
-    <div className="mt-5 rounded-[var(--radius-card)] border border-[color-mix(in_oklab,var(--color-offer)_40%,transparent)] bg-[color-mix(in_oklab,var(--color-offer)_10%,transparent)] p-5">
-      <p className="text-[15px] font-medium text-offer">Troca combinada.</p>
+    <div
+      data-tom="bom"
+      className="cartela mt-5 rounded-[var(--radius-card)] border border-[color-mix(in_oklab,var(--color-offer)_40%,transparent)] bg-[color-mix(in_oklab,var(--color-offer)_10%,transparent)] p-5"
+    >
+      <p className="titulo-tom text-[15px] font-medium text-offer">
+        Troca combinada.
+      </p>
       {outro?.contato_visivel ? (
         <>
           <p className="mt-2 text-[14px] leading-relaxed text-muted">

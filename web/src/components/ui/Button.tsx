@@ -11,6 +11,9 @@ import { cn } from '@/lib/cn'
  */
 export const estiloBotao = cva(
   [
+    // `botao` e os `botao-*` das variantes não pintam nada: são os nomes por
+    // onde uma pele visual pega o botão sem que este arquivo saiba dela.
+    'botao',
     'inline-flex items-center justify-center gap-2 select-none',
     'font-medium whitespace-nowrap rounded-[var(--radius-control)]',
     'transition-[transform,background-color,border-color,color,box-shadow]',
@@ -22,14 +25,14 @@ export const estiloBotao = cva(
     variants: {
       variant: {
         primary:
-          'bg-volt text-[var(--color-volt-ink)] font-bold hover:bg-volt-strong shadow-[0_1px_0_rgba(255,255,255,0.18)_inset,0_6px_20px_-8px_var(--color-volt)]',
+          'botao-primary bg-volt text-[var(--color-volt-ink)] font-bold hover:bg-volt-strong shadow-[0_1px_0_rgba(255,255,255,0.18)_inset,0_6px_20px_-8px_var(--color-volt)]',
         offer:
-          'bg-[color-mix(in_oklab,var(--color-offer)_16%,transparent)] text-offer border border-[color-mix(in_oklab,var(--color-offer)_40%,transparent)] hover:bg-[color-mix(in_oklab,var(--color-offer)_24%,transparent)]',
+          'botao-offer bg-[color-mix(in_oklab,var(--color-offer)_16%,transparent)] text-offer border border-[color-mix(in_oklab,var(--color-offer)_40%,transparent)] hover:bg-[color-mix(in_oklab,var(--color-offer)_24%,transparent)]',
         want:
-          'bg-[color-mix(in_oklab,var(--color-want)_15%,transparent)] text-want border border-[color-mix(in_oklab,var(--color-want)_38%,transparent)] hover:bg-[color-mix(in_oklab,var(--color-want)_22%,transparent)]',
+          'botao-want bg-[color-mix(in_oklab,var(--color-want)_15%,transparent)] text-want border border-[color-mix(in_oklab,var(--color-want)_38%,transparent)] hover:bg-[color-mix(in_oklab,var(--color-want)_22%,transparent)]',
         subtle:
-          'bg-surface-2 text-paper border border-edge hover:border-[var(--color-faint)]',
-        ghost: 'text-muted hover:text-paper hover:bg-surface-2',
+          'botao-subtle bg-surface-2 text-paper border border-edge hover:border-[var(--color-faint)]',
+        ghost: 'botao-ghost text-muted hover:text-paper hover:bg-surface-2',
       },
       size: {
         sm: 'h-9 px-3 text-sm',

@@ -6,6 +6,7 @@ import { LinhaDeTroca } from '@/components/carta/LinhaDeTroca'
 import { IconeTroca } from '@/components/ui/Icone'
 import { useCartasPorId, useProcuradas } from '@/hooks/useAnuncios'
 import { useMatches } from '@/hooks/useMatches'
+import { useMundo } from '@/hooks/useMundo'
 import type { CartaProcurada } from '@/lib/anuncios'
 import { cn } from '@/lib/cn'
 import {
@@ -18,6 +19,7 @@ import {
 import { useUsuarioId } from '@/stores/auth'
 
 export default function Matches() {
+  useMundo('brutal')
   const meuId = useUsuarioId()
   const { data: matches, isPending, isError, refetch } = useMatches()
 
@@ -33,7 +35,9 @@ export default function Matches() {
     <div className="mx-auto flex min-h-[100dvh] w-full max-w-[100rem] 2xl:max-w-[120rem] flex-col px-5">
       <header className="w-full max-w-xl pt-10">
         <p className="set-code text-xs tracking-wide text-muted">TROCATCG</p>
-        <h1 className="mt-3 text-[28px] leading-[1.1] lg:text-[34px]">Trocas possíveis</h1>
+        <h1 className="titulo-pagina mt-3 text-[28px] leading-[1.1] lg:text-[34px]">
+          Trocas possíveis
+        </h1>
         <p className="mt-2 text-[15px] leading-relaxed text-muted lg:text-[16px]">
           Cada uma é alguém que tem o que você procura — e quer o que você
           oferece.
@@ -81,7 +85,7 @@ function CartaoMatch({
   return (
     <Link
       to={`/matches/${match.id}`}
-      className="block rounded-[var(--radius-card)] border border-edge bg-surface p-4 transition-colors hover:border-[var(--color-faint)] lg:p-5"
+      className="cartela block rounded-[var(--radius-card)] border border-edge bg-surface p-4 transition-colors hover:border-[var(--color-faint)] lg:p-5"
     >
       <div className="flex items-baseline justify-between gap-3">
         <span className="min-w-0">
@@ -130,16 +134,25 @@ function Selo({
   status: Match['status']
   jaAceitei: boolean
 }) {
-  const mapa: Partial<Record<Match['status'], { texto: string; cor: string }>> = {
-    SUGERIDO: { texto: 'nova', cor: 'text-muted border-edge' },
+  // `tom` é o papel do selo — o que ele quer que a pessoa faça. `cor` é só como
+  // o mundo padrão o pinta; uma pele visual pinta pelo tom.
+  type Descricao = { texto: string; tom: string; cor: string }
+  const mapa: Partial<Record<Match['status'], Descricao>> = {
+    SUGERIDO: { texto: 'nova', tom: 'espera', cor: 'text-muted border-edge' },
     PENDENTE: jaAceitei
-      ? { texto: 'esperando o outro', cor: 'text-muted border-edge' }
+      ? {
+          texto: 'esperando o outro',
+          tom: 'espera',
+          cor: 'text-muted border-edge',
+        }
       : {
           texto: 'falta você',
+          tom: 'urgente',
           cor: 'text-want border-[color-mix(in_oklab,var(--color-want)_45%,transparent)] bg-[color-mix(in_oklab,var(--color-want)_12%,transparent)] font-medium',
         },
     ACEITO: {
       texto: 'combinada',
+      tom: 'ok',
       cor: 'text-offer border-[color-mix(in_oklab,var(--color-offer)_40%,transparent)]',
     },
   }
@@ -148,8 +161,9 @@ function Selo({
 
   return (
     <span
+      data-tom={selo.tom}
       className={cn(
-        'shrink-0 rounded-full border px-2.5 py-1 text-[11px] whitespace-nowrap lg:text-[12px]',
+        'selo shrink-0 rounded-full border px-2.5 py-1 text-[11px] whitespace-nowrap lg:text-[12px]',
         selo.cor,
       )}
     >
@@ -164,7 +178,7 @@ function Esqueleto() {
       {[0, 1].map((i) => (
         <li
           key={i}
-          className="rounded-[var(--radius-card)] border border-edge bg-surface p-4"
+          className="cartela rounded-[var(--radius-card)] border border-edge bg-surface p-4"
         >
           <div className="h-3.5 w-1/3 animate-pulse rounded bg-surface-2" />
           <div className="mt-4 flex items-center gap-3">
@@ -201,7 +215,7 @@ function Vazio() {
   if (!procuradas?.length) {
     return (
       <div className="flex flex-col items-center py-14 text-center">
-        <div className="grid size-12 place-items-center rounded-2xl border border-edge bg-surface text-muted">
+        <div className="cartela grid size-12 place-items-center rounded-2xl border border-edge bg-surface text-muted">
           <IconeTroca className="size-6" />
         </div>
         <p className="mt-4 text-[15px] text-paper lg:text-[16px]">Nenhuma troca possível ainda.</p>
@@ -249,7 +263,7 @@ function Vazio() {
 
       <Link
         to="/minhas-cartas"
-        className="mt-4 flex h-13 w-full max-w-xl items-center justify-center rounded-[var(--radius-control)] border border-edge bg-surface-2 text-[15px] text-paper transition-colors hover:border-[var(--color-faint)]"
+        className="botao botao-subtle mt-4 flex h-13 w-full max-w-xl items-center justify-center rounded-[var(--radius-control)] border border-edge bg-surface-2 text-[15px] text-paper transition-colors hover:border-[var(--color-faint)]"
       >
         Adicionar cartas que eu procuro
       </Link>
@@ -269,7 +283,7 @@ function QuemQuer({ procurada }: { procurada: CartaProcurada }) {
   const restantes = procurada.procurando - procurada.pessoas.length
 
   return (
-    <div className="rounded-[var(--radius-control)] border border-[color-mix(in_oklab,var(--color-want)_32%,transparent)] bg-[color-mix(in_oklab,var(--color-want)_10%,transparent)] px-2 py-1.5">
+    <div className="fileira rounded-[var(--radius-control)] border border-[color-mix(in_oklab,var(--color-want)_32%,transparent)] bg-[color-mix(in_oklab,var(--color-want)_10%,transparent)] px-2 py-1.5">
       <p className="text-[11px] font-medium text-want lg:text-[12px]">
         {procurada.procurando === 1
           ? '1 pessoa procura'
@@ -289,7 +303,7 @@ function Recuperavel({ onTentar }: { onTentar: () => void }) {
       <p className="text-[15px] text-paper">Não deu para carregar as trocas.</p>
       <button
         onClick={onTentar}
-        className="mt-5 h-9 rounded-[var(--radius-control)] border border-edge bg-surface-2 px-4 text-[14px] text-paper hover:border-[var(--color-faint)]"
+        className="botao botao-subtle mt-5 h-9 rounded-[var(--radius-control)] border border-edge bg-surface-2 px-4 text-[14px] text-paper hover:border-[var(--color-faint)]"
       >
         Tentar de novo
       </button>

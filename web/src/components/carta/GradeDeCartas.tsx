@@ -105,7 +105,7 @@ export function CelulaCarta({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.18, ease: 'easeOut' }}
       className={cn(
-        'grupo-carta relative flex flex-col gap-2 rounded-card border p-2',
+        'celula grupo-carta relative flex flex-col gap-2 rounded-card border p-2',
         'transition-colors',
         destaque ? DESTAQUE[destaque] : 'border-edge-soft bg-surface/50',
       )}

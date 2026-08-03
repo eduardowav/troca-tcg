@@ -1,4 +1,6 @@
 @import 'tailwindcss';
+/* Pele em avaliação, ligada só nas rotas de troca. Ver o cabeçalho do arquivo. */
+@import './estilos/brutal.css';
 
 /* ============================================================
    TOKENS — mundo da carta física (playmat / sleeve / foil)

@@ -36,6 +36,9 @@ export function CartaThumb({ carta, className, foil, alta }: CartaThumbProps) {
   return (
     <div
       className={cn(
+        // `thumb-carta` não pinta nada: é por onde uma pele visual troca a
+        // moldura do sleeve sem que este componente conheça a pele.
+        'thumb-carta',
         'relative aspect-[2.5/3.5] overflow-hidden rounded-[10px]',
         'bg-surface-2 ring-1 ring-edge/80',
         'shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04)]',
