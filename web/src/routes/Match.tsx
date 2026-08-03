@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 
@@ -33,6 +33,18 @@ import { useUsuarioId } from '@/stores/auth'
 /** Varredura holo (2,4s) + a marca que entra depois dela, com folga para ler. */
 const DURACAO_SELAGEM = 3200
 
+/**
+ * Tempo entre pedir a rolagem e soltar a animação.
+ *
+ * O botão que fecha a troca fica a mais de 400px abaixo das cartas: do topo da
+ * linha de troca até a base dele são ~950px, mais do que cabe em qualquer
+ * celular. Quem desce o dedo para confirmar não tem mais as cartas na tela — e a
+ * primeira versão disto tocou a selagem inteira fora do campo de visão de quem
+ * acabou de fechar a troca. Rolar até elas antes é o que faz a animação existir
+ * para alguém.
+ */
+const ESPERA_ROLAGEM = 480
+
 /** Status em que a troca já acabou — o que muda o tempo verbal da tela. */
 const ENCERRADOS = ['CONCLUIDO', 'FURADO', 'EXPIRADO']
 
@@ -43,15 +55,32 @@ export default function MatchDetalhe() {
   const { data: match, isPending, isError } = useMatch(id)
   const responder = useResponderMatch()
   const desfecho = useDesfechoMatch()
-  const [selando, setSelando] = useState(false)
+  // 'mirando' é o intervalo em que a tela vai até as cartas; 'tocando' é a
+  // animação. Separar os dois é o que garante que ninguém celebre no vazio.
+  const [selagem, setSelagem] = useState<'parada' | 'mirando' | 'tocando'>(
+    'parada',
+  )
+  const linhaRef = useRef<HTMLDivElement>(null)
 
-  // A selagem toca uma vez e sai sozinha. Quem volta à tela depois vem atrás do
-  // contato para retomar o assunto, e encontrar a festa de novo atrapalharia.
   useEffect(() => {
-    if (!selando) return
-    const t = setTimeout(() => setSelando(false), DURACAO_SELAGEM)
+    if (selagem === 'parada') return
+
+    if (selagem === 'mirando') {
+      const suave = !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      linhaRef.current?.scrollIntoView({
+        block: 'center',
+        behavior: suave ? 'smooth' : 'auto',
+      })
+      // Sem rolagem suave não há o que esperar: o salto já pôs as cartas na tela.
+      const t = setTimeout(() => setSelagem('tocando'), suave ? ESPERA_ROLAGEM : 0)
+      return () => clearTimeout(t)
+    }
+
+    // Toca uma vez e sai sozinha. Quem volta à tela depois vem atrás do contato
+    // para retomar o assunto, e encontrar a festa de novo atrapalharia.
+    const t = setTimeout(() => setSelagem('parada'), DURACAO_SELAGEM)
     return () => clearTimeout(t)
-  }, [selando])
+  }, [selagem])
 
   const ids = useMemo(
     () => (match?.itens ?? []).map((i) => i.card_id),
@@ -100,7 +129,7 @@ export default function MatchDetalhe() {
           // Só quando fecha pelos dois. Quem confirma primeiro não fechou nada
           // ainda — celebrar ali prometeria um desfecho que ainda depende do
           // outro lado, e é justamente o que fura.
-          if (novo.status === 'CONCLUIDO') setSelando(true)
+          if (novo.status === 'CONCLUIDO') setSelagem('mirando')
           toast.success(
             novo.status === 'CONCLUIDO'
               ? 'Troca concluída pelos dois. Reputação atualizada.'
@@ -163,18 +192,20 @@ export default function MatchDetalhe() {
             coisa que já aconteceu. O histórico do perfil já corrigia isso; o
             detalhe, que é para onde o histórico leva, não corrigia. Durante a
             selagem o passado já vale — foi ela que acabou de acontecer. */}
-        <LinhaDeTroca
-          dou={dou && cartas?.get(dou.card_id)}
-          recebo={recebo && cartas?.get(recebo.card_id)}
-          precos={precos}
-          tamanho="grande"
-          selando={selando}
-          rotulos={
-            selando || ENCERRADOS.includes(match.status)
-              ? { dou: 'Você deu', recebo: 'Você recebeu' }
-              : undefined
-          }
-        />
+        <div ref={linhaRef}>
+          <LinhaDeTroca
+            dou={dou && cartas?.get(dou.card_id)}
+            recebo={recebo && cartas?.get(recebo.card_id)}
+            precos={precos}
+            tamanho="grande"
+            selando={selagem === 'tocando'}
+            rotulos={
+              selagem !== 'parada' || ENCERRADOS.includes(match.status)
+                ? { dou: 'Você deu', recebo: 'Você recebeu' }
+                : undefined
+            }
+          />
+        </div>
 
         {/* Os rótulos repetem, palavra por palavra, os das cartas logo acima.
             Dizer "Você entrega" aqui e "Você dá" ali, a cem pixels de distância,
