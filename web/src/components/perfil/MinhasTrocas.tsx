@@ -145,11 +145,15 @@ function Linha({
           {desfecho.rotulo}
         </p>
 
+        {/* Mesma regra do detalhe: numa troca que aconteceu, cada carta aparece
+            do lado de quem ficou com ela. Nas que furaram ou expiraram, não —
+            ali a carta não saiu da mão de ninguém. */}
         <div className="mt-3">
           <LinhaDeTroca
             dou={dou && cartas?.get(dou.card_id)}
             recebo={recebo && cartas?.get(recebo.card_id)}
             rotulos={desfecho.rotulos}
+            trocado={troca.status === 'CONCLUIDO'}
           />
         </div>
       </Link>

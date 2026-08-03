@@ -45,6 +45,15 @@ const DURACAO_SELAGEM = 3200
  */
 const ESPERA_ROLAGEM = 480
 
+/**
+ * Atraso entre o começo da selagem e a travessia das cartas.
+ *
+ * O holo acende primeiro. Se as cartas saíssem no mesmo quadro, o brilho viraria
+ * borrão de movimento e o gesto perderia o começo — primeiro as cartas chamam
+ * atenção para si, depois se movem.
+ */
+const ESPERA_TRAVESSIA = 260
+
 /** Status em que a troca já acabou — o que muda o tempo verbal da tela. */
 const ENCERRADOS = ['CONCLUIDO', 'FURADO', 'EXPIRADO']
 
@@ -60,6 +69,7 @@ export default function MatchDetalhe() {
   const [selagem, setSelagem] = useState<'parada' | 'mirando' | 'tocando'>(
     'parada',
   )
+  const [cruzou, setCruzou] = useState(false)
   const linhaRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -78,8 +88,12 @@ export default function MatchDetalhe() {
 
     // Toca uma vez e sai sozinha. Quem volta à tela depois vem atrás do contato
     // para retomar o assunto, e encontrar a festa de novo atrapalharia.
-    const t = setTimeout(() => setSelagem('parada'), DURACAO_SELAGEM)
-    return () => clearTimeout(t)
+    const travessia = setTimeout(() => setCruzou(true), ESPERA_TRAVESSIA)
+    const fim = setTimeout(() => setSelagem('parada'), DURACAO_SELAGEM)
+    return () => {
+      clearTimeout(travessia)
+      clearTimeout(fim)
+    }
   }, [selagem])
 
   const ids = useMemo(
@@ -199,6 +213,13 @@ export default function MatchDetalhe() {
             precos={precos}
             tamanho="grande"
             selando={selagem === 'tocando'}
+            // Fora da selagem o lado certo vem do status, sem estado nenhum:
+            // quem abre uma troca concluída amanhã já encontra cada carta com
+            // seu novo dono, e não vê a travessia acontecer de novo. Durante a
+            // selagem quem manda é `cruzou`, que é o instante da passagem.
+            trocado={
+              selagem === 'parada' ? match.status === 'CONCLUIDO' : cruzou
+            }
             rotulos={
               selagem !== 'parada' || ENCERRADOS.includes(match.status)
                 ? { dou: 'Você deu', recebo: 'Você recebeu' }

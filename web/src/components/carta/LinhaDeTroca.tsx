@@ -1,3 +1,5 @@
+import { motion } from 'motion/react'
+
 import { CartaThumb } from '@/components/carta/CartaThumb'
 import { SeloPreco } from '@/components/carta/GradeDeCartas'
 import { IconeTroca } from '@/components/ui/Icone'
@@ -26,6 +28,7 @@ export function LinhaDeTroca({
   tamanho = 'compacto',
   rotulos = ROTULOS_PADRAO,
   selando = false,
+  trocado = false,
 }: {
   dou?: Carta
   recebo?: Carta
@@ -48,6 +51,18 @@ export function LinhaDeTroca({
    * inteiro existe para provocar.
    */
   selando?: boolean
+  /**
+   * A troca aconteceu: cada carta já está do lado do novo dono.
+   *
+   * O lado esquerdo é você. Enquanto a troca está de pé, ele mostra o que você
+   * vai entregar — o custo primeiro. Depois de concluída, mostra o que ficou com
+   * você. As duas leituras são verdadeiras nos seus momentos, e a travessia das
+   * cartas durante a selagem é a passagem de uma para a outra.
+   *
+   * Só CONCLUIDO troca de lado. Furada e expirada continuam como estavam: nelas
+   * a carta não saiu da mão de ninguém.
+   */
+  trocado?: boolean
 }) {
   const grande = tamanho === 'grande'
 
@@ -58,7 +73,9 @@ export function LinhaDeTroca({
         rotulo={rotulos.dou}
         cor="offer"
         grande={grande}
-        alinhamento="end"
+        alinhamento={trocado ? 'start' : 'end'}
+        ordem={trocado ? 3 : 1}
+        animar={selando}
         preco={dou && precos?.get(dou.id)}
         foil={selando}
       />
@@ -73,7 +90,12 @@ export function LinhaDeTroca({
         rotulo={rotulos.recebo}
         cor="want"
         grande={grande}
-        alinhamento="start"
+        alinhamento={trocado ? 'end' : 'start'}
+        ordem={trocado ? 1 : 3}
+        animar={selando}
+        // Passa por cima na travessia: duas cartas cruzando no mesmo eixo sem
+        // ordem de profundidade lêem como uma piscando dentro da outra.
+        naFrente
         preco={recebo && precos?.get(recebo.id)}
         foil={selando}
       />
@@ -159,6 +181,9 @@ function Lado({
   cor,
   grande,
   alinhamento,
+  ordem,
+  animar,
+  naFrente,
   preco,
   foil,
 }: {
@@ -167,11 +192,22 @@ function Lado({
   cor: 'offer' | 'want'
   grande: boolean
   alinhamento: 'start' | 'end'
+  /** Posição no flex. Trocar isto é o que faz as cartas atravessarem. */
+  ordem: number
+  /** Só durante a selagem. Fora dela a troca de lados é instantânea — quem abre
+   *  uma troca já concluída não pode ver as cartas cruzando de novo. */
+  animar?: boolean
+  naFrente?: boolean
   preco?: PrecoTCGplayer
   foil?: boolean
 }) {
   return (
-    <div
+    <motion.div
+      // 'position' e não `true`: a coluna muda de altura sozinha quando a imagem
+      // da carta carrega, e animar tamanho faria o cartão respirar à toa.
+      layout={animar ? 'position' : false}
+      transition={{ duration: 0.85, ease: [0.16, 1, 0.3, 1] }}
+      style={{ order: ordem, zIndex: animar && naFrente ? 30 : undefined }}
       className={cn(
         'grupo-carta relative flex min-w-0 flex-1 flex-col gap-2',
         alinhamento === 'end' ? 'items-end text-right' : 'items-start text-left',
@@ -245,7 +281,7 @@ function Lado({
           )}
         />
       )}
-    </div>
+    </motion.div>
   )
 }
 
@@ -254,6 +290,9 @@ function Direcao({ grande, atenuado }: { grande: boolean; atenuado?: boolean }) 
   return (
     <div
       aria-hidden
+      // Ordem explícita: as duas pontas usam `order` para atravessar, e o padrão
+      // 0 deste trilho o jogaria para antes das duas.
+      style={{ order: 2 }}
       className={cn(
         'trilho flex shrink-0 flex-col items-center justify-center gap-1',
         'transition-opacity duration-300',
