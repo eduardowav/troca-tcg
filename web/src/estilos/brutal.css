@@ -1,6 +1,16 @@
 /* ============================================================
-   MUNDO "BRUTAL" — protótipo de direção visual
+   MUNDO "BRUTAL" — protótipo de direção visual, HOJE DESLIGADO
    ============================================================
+
+   ⚠️ Este arquivo NÃO está no bundle. O `@import` dele no `index.css` está
+   comentado desde 2026-08-03: o Eduardo viu o protótipo rodando, gostou, e
+   decidiu voltar ao playmat do DESIGN.md para implementar funcionalidade antes
+   de mexer no visual. Ele fica aqui inteiro para quando essa decisão voltar à
+   mesa — os nomes de gancho nos componentes também continuam no lugar, então
+   religar é descomentar o import e chamar `useMundo('brutal')` nas rotas.
+
+   Enquanto estiver desligado, nada aqui afeta o app: o seletor de escopo nunca
+   casa, e sem o import o CSS nem é servido.
 
    Neobrutalismo: papel milimetrado, borda preta grossa, sombra dura sem blur,
    cor chapada, tipografia display pesada. É uma pele completa, não um ajuste

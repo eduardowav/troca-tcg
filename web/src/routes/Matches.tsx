@@ -6,7 +6,6 @@ import { LinhaDeTroca } from '@/components/carta/LinhaDeTroca'
 import { IconeTroca } from '@/components/ui/Icone'
 import { useCartasPorId, useProcuradas } from '@/hooks/useAnuncios'
 import { useMatches } from '@/hooks/useMatches'
-import { useMundo } from '@/hooks/useMundo'
 import type { CartaProcurada } from '@/lib/anuncios'
 import { cn } from '@/lib/cn'
 import {
@@ -19,7 +18,6 @@ import {
 import { useUsuarioId } from '@/stores/auth'
 
 export default function Matches() {
-  useMundo('brutal')
   const meuId = useUsuarioId()
   const { data: matches, isPending, isError, refetch } = useMatches()
 

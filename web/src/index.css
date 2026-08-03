@@ -1,6 +1,14 @@
 @import 'tailwindcss';
-/* Pele em avaliação, ligada só nas rotas de troca. Ver o cabeçalho do arquivo. */
-@import './estilos/brutal.css';
+
+/* A pele neobrutalista está DESLIGADA. O mundo do projeto é o playmat descrito
+   no DESIGN.md, e ela foi um protótipo para o Eduardo julgar (commit af682b9).
+   O arquivo continua em `estilos/brutal.css`, fora do bundle — sem o import
+   abaixo ele não chega ao navegador.
+
+   Para religar são duas coisas: descomentar o import e chamar `useMundo('brutal')`
+   nas rotas que devem usá-la (era `Matches.tsx` e `Match.tsx`).
+
+   @import './estilos/brutal.css'; */
 
 /* ============================================================
    TOKENS — mundo da carta física (playmat / sleeve / foil)

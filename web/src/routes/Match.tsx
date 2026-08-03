@@ -6,7 +6,6 @@ import { LinhaDeTroca } from '@/components/carta/LinhaDeTroca'
 import { Button, estiloBotao } from '@/components/ui/Button'
 import { useCartasPorId, usePrecosPorId } from '@/hooks/useAnuncios'
 import { useDesfechoMatch, useMatch, useResponderMatch } from '@/hooks/useMatches'
-import { useMundo } from '@/hooks/useMundo'
 import { CONDICOES } from '@/lib/anuncios'
 import { ApiError } from '@/lib/api'
 import { cn } from '@/lib/cn'
@@ -62,7 +61,6 @@ const ESPERA_TRAVESSIA = 150
 const ENCERRADOS = ['CONCLUIDO', 'FURADO', 'EXPIRADO']
 
 export default function MatchDetalhe() {
-  useMundo('brutal')
   const { id } = useParams<{ id: string }>()
   const meuId = useUsuarioId()
   const { data: match, isPending, isError } = useMatch(id)
@@ -138,6 +136,24 @@ export default function MatchDetalhe() {
     dou && precos?.get(dou.card_id),
     recebo && precos?.get(recebo.card_id),
   )
+
+  // Uma decisão só, usada pela linha de troca e pela linha de condição. Elas
+  // descrevem as mesmas duas cartas: se divergirem em ordem ou em tempo verbal,
+  // a de baixo passa a falar da carta errada.
+  const rotulos =
+    selagem !== 'parada' || ENCERRADOS.includes(match.status)
+      ? { dou: 'Você deu', recebo: 'Você recebeu' }
+      : { dou: 'Você dá', recebo: 'Você recebe' }
+  const trocado = selagem === 'parada' ? match.status === 'CONCLUIDO' : cruzou
+  const condicoes = trocado
+    ? [
+        { rotulo: rotulos.recebo, condicao: recebo?.condicao },
+        { rotulo: rotulos.dou, condicao: dou?.condicao },
+      ]
+    : [
+        { rotulo: rotulos.dou, condicao: dou?.condicao },
+        { rotulo: rotulos.recebo, condicao: recebo?.condicao },
+      ]
 
   function registrarDesfecho(aconteceu: boolean) {
     desfecho.mutate(
@@ -217,28 +233,20 @@ export default function MatchDetalhe() {
             precos={precos}
             tamanho="grande"
             selando={selagem === 'tocando'}
-            // Fora da selagem o lado certo vem do status, sem estado nenhum:
-            // quem abre uma troca concluída amanhã já encontra cada carta com
-            // seu novo dono, e não vê a travessia acontecer de novo. Durante a
-            // selagem quem manda é `cruzou`, que é o instante da passagem.
-            trocado={
-              selagem === 'parada' ? match.status === 'CONCLUIDO' : cruzou
-            }
-            rotulos={
-              selagem !== 'parada' || ENCERRADOS.includes(match.status)
-                ? { dou: 'Você deu', recebo: 'Você recebeu' }
-                : undefined
-            }
+            trocado={trocado}
+            rotulos={rotulos}
           />
         </div>
 
-        {/* Os rótulos repetem, palavra por palavra, os das cartas logo acima.
-            Dizer "Você entrega" aqui e "Você dá" ali, a cem pixels de distância,
-            obriga quem lê a checar se são a mesma coisa — e essa linha existe
-            justamente para dizer em que estado vem cada carta. */}
+        {/* Os rótulos repetem, palavra por palavra, os das cartas logo acima —
+            e na mesma ordem. Dizer "Você entrega" aqui e "Você dá" ali, a cem
+            pixels de distância, obriga quem lê a checar se são a mesma coisa; e
+            depois que as cartas trocam de lado, ficar parada aqui embaixo faz
+            esta linha descrever a carta errada. */}
         <dl className="mt-6 grid grid-cols-2 gap-3 border-t border-edge-soft pt-4 text-[13px] lg:text-[15px]">
-          <Detalhe rotulo="Você dá" condicao={dou?.condicao} />
-          <Detalhe rotulo="Você recebe" condicao={recebo?.condicao} />
+          {condicoes.map((c) => (
+            <Detalhe key={c.rotulo} rotulo={c.rotulo} condicao={c.condicao} />
+          ))}
         </dl>
       </div>
 
