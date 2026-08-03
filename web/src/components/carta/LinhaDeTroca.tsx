@@ -96,7 +96,13 @@ function Lado({
               // estreita. Na grade larga ela ficava minúscula ao lado das
               // células de Ofereço e Procuro, onde a arte é o que identifica a
               // carta — é o mesmo argumento de GradeDeCartas.
-              grande ? 'w-44 lg:w-52 2xl:w-60' : 'w-20 lg:w-28 2xl:w-32',
+              //
+              // Teto, não largura fixa: a coluna já é `flex-1 min-w-0`, mas um
+              // filho de largura fixa não encolhe com ela — no celular as duas
+              // cartas "grandes" somavam 424px dentro de ~310px e vazavam pelas
+              // duas bordas da tela. Onde couber, o teto é a medida de antes.
+              'w-full',
+              grande ? 'max-w-44 lg:max-w-52 2xl:max-w-60' : 'max-w-20 lg:max-w-28 2xl:max-w-32',
               cor === 'offer' ? 'ring-offer' : 'ring-want',
             )}
           />
@@ -123,8 +129,8 @@ function Lado({
       ) : (
         <div
           className={cn(
-            'aspect-[2.5/3.5] animate-pulse rounded-[10px] bg-surface-2',
-            grande ? 'w-44 lg:w-52' : 'w-20 lg:w-28',
+            'aspect-[2.5/3.5] w-full animate-pulse rounded-[10px] bg-surface-2',
+            grande ? 'max-w-44 lg:max-w-52' : 'max-w-20 lg:max-w-28',
           )}
         />
       )}
@@ -139,7 +145,9 @@ function Direcao({ grande }: { grande: boolean }) {
       aria-hidden
       className={cn(
         'flex shrink-0 flex-col items-center justify-center gap-1',
-        grande ? 'w-12' : 'w-7 lg:w-10',
+        // No celular o trilho disputa espaço com as cartas, que são o assunto:
+        // 48px ali são 48px que a arte não tem.
+        grande ? 'w-8 sm:w-12' : 'w-7 lg:w-10',
       )}
     >
       <Seta direcao="direita" />
