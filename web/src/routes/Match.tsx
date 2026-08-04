@@ -432,10 +432,14 @@ function PrazoApertado({
   const pode = podeEstender(match)
 
   return (
+    // Empilhado no celular, lado a lado a partir de sm. Com o botão ao lado numa
+    // largura de 390px, o parágrafo cai numa coluna de cinco linhas curtas e o
+    // botão vira um alvo pequeno no canto — e é justamente no celular que este
+    // aviso precisa ser tocado, porque é lá que a pessoa lê o app.
     <div
       role="status"
       data-tom="atencao"
-      className="cartela mt-5 flex flex-wrap items-center gap-x-4 gap-y-3 rounded-[var(--radius-card)] border border-[color-mix(in_oklab,var(--color-want)_40%,transparent)] bg-[color-mix(in_oklab,var(--color-want)_8%,transparent)] p-4"
+      className="cartela mt-5 flex flex-col gap-3 rounded-[var(--radius-card)] border border-[color-mix(in_oklab,var(--color-want)_40%,transparent)] bg-[color-mix(in_oklab,var(--color-want)_8%,transparent)] p-4 sm:flex-row sm:items-center sm:gap-4"
     >
       <div className="min-w-0 flex-1">
         <p className="titulo-tom text-[15px] font-medium text-want">{prazo}.</p>
@@ -448,10 +452,11 @@ function PrazoApertado({
       {pode && (
         <Button
           variant="want"
-          size="sm"
+          size="md"
+          block
           loading={enviando}
           onClick={onEstender}
-          className="shrink-0"
+          className="shrink-0 sm:w-auto"
         >
           Mais 7 dias
         </Button>

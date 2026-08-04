@@ -69,7 +69,7 @@ export default function MinhasCartas() {
         <h1 className="mt-3 text-[28px] leading-[1.1] lg:text-[34px]">Minhas cartas</h1>
         <p className="mt-2 text-[15px] leading-relaxed text-muted lg:text-[16px]">
           O que você oferece e o que procura, lado a lado. Toque numa carta para
-          ajustar quantidade, condição e prioridade.
+          ajustar quantidade, condição, acabamento e prioridade.
         </p>
       </header>
 
