@@ -14,6 +14,7 @@ import { FolhaAdicionar } from '@/components/carta/FolhaAdicionar'
 import { useAnuncios, usePrecosPorId } from '@/hooks/useAnuncios'
 import { useCardSearch } from '@/hooks/useCardSearch'
 import { useDebounced } from '@/hooks/useDebounced'
+import { precoDoAcabamento } from '@/lib/acabamentos'
 import {
   type Carta,
   type FiltrosBusca,
@@ -136,7 +137,10 @@ export default function Buscar() {
                     key={carta.id}
                     carta={carta}
                     destaque={naOferta ? 'OFERTA' : naProcura ? 'PROCURA' : null}
-                    preco={precos?.get(carta.id)}
+                    // Sem acabamento no contexto: o catálogo mostra a impressão
+                    // comum, que é o que a busca sempre mostrou. Quem escolhe
+                    // acabamento é quem anuncia.
+                    preco={precoDoAcabamento(precos?.get(carta.id), undefined)}
                     para={`/carta/${carta.id}`}
                   >
                     <AcoesDeLista>

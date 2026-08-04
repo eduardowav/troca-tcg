@@ -3,15 +3,21 @@ import { motion } from 'motion/react'
 import { CartaThumb } from '@/components/carta/CartaThumb'
 import { SeloPreco } from '@/components/carta/GradeDeCartas'
 import { IconeTroca } from '@/components/ui/Icone'
-import { cn } from '@/lib/cn'
 import {
-  type Carta,
-  codigoSet,
-  nomeCarta,
-  type PrecoTCGplayer,
-} from '@/lib/types'
+  type Acabamento,
+  NORMAL,
+  type PrecoEscolhido,
+} from '@/lib/acabamentos'
+import { cn } from '@/lib/cn'
+import { type Carta, codigoSet, nomeCarta } from '@/lib/types'
 
 const ROTULOS_PADRAO = { dou: 'Você dá', recebo: 'Você recebe' }
+
+/** O que cada ponta da linha carrega além da carta. */
+export interface LadoDaTroca {
+  acabamento?: Acabamento
+  preco?: PrecoEscolhido
+}
 
 /**
  * A linha de troca: o que sai de você, o que chega até você.
@@ -24,7 +30,7 @@ const ROTULOS_PADRAO = { dou: 'Você dá', recebo: 'Você recebe' }
 export function LinhaDeTroca({
   dou,
   recebo,
-  precos,
+  lados,
   tamanho = 'compacto',
   rotulos = ROTULOS_PADRAO,
   selando = false,
@@ -32,8 +38,15 @@ export function LinhaDeTroca({
 }: {
   dou?: Carta
   recebo?: Carta
-  /** Preço de referência por carta. Só o detalhe do match passa isto. */
-  precos?: Map<string, PrecoTCGplayer>
+  /**
+   * Acabamento e preço de cada ponta.
+   *
+   * Vem por lado, e não por carta, porque as duas coisas dependem do anúncio e
+   * não do catálogo: a mesma carta pode aparecer numa troca como reverse e
+   * noutra como normal, com preços diferentes. Quem tem essa informação é a tela
+   * que carregou o match. O feed não passa nada e continua mostrando só as artes.
+   */
+  lados?: { dou?: LadoDaTroca; recebo?: LadoDaTroca }
   tamanho?: 'compacto' | 'grande'
   /**
    * O tempo verbal dos dois rótulos.
@@ -67,7 +80,13 @@ export function LinhaDeTroca({
   const grande = tamanho === 'grande'
 
   return (
-    <div className="relative flex items-center gap-3">
+    // Alinhado pelo topo, não pelo centro: as duas colunas quase nunca têm a
+    // mesma altura — nome de duas linhas de um lado, selo de acabamento do
+    // outro — e centralizar fazia uma carta subir e a outra descer, sem que
+    // nada nelas justificasse o degrau. Pelo topo, o rótulo e a arte de cada
+    // lado começam na mesma linha e o que sobra fica embaixo, que é onde o
+    // olho já espera diferença.
+    <div className="relative flex items-start gap-3">
       <Lado
         carta={dou}
         rotulo={rotulos.dou}
@@ -76,7 +95,8 @@ export function LinhaDeTroca({
         alinhamento={trocado ? 'start' : 'end'}
         ordem={trocado ? 3 : 1}
         animar={selando}
-        preco={dou && precos?.get(dou.id)}
+        acabamento={lados?.dou?.acabamento}
+        preco={lados?.dou?.preco}
       />
 
       {/* O trilho sai de cena durante a selagem: a marca ocupa o lugar dele, e
@@ -95,7 +115,8 @@ export function LinhaDeTroca({
         // Passa por cima na travessia: duas cartas cruzando no mesmo eixo sem
         // ordem de profundidade lêem como uma piscando dentro da outra.
         naFrente
-        preco={recebo && precos?.get(recebo.id)}
+        acabamento={lados?.recebo?.acabamento}
+        preco={lados?.recebo?.preco}
       />
 
       {selando && <Selagem />}
@@ -186,6 +207,7 @@ function Lado({
   ordem,
   animar,
   naFrente,
+  acabamento,
   preco,
 }: {
   carta?: Carta
@@ -199,7 +221,8 @@ function Lado({
    *  uma troca já concluída não pode ver as cartas cruzando de novo. */
   animar?: boolean
   naFrente?: boolean
-  preco?: PrecoTCGplayer
+  acabamento?: Acabamento
+  preco?: PrecoEscolhido
 }) {
   return (
     <motion.div
@@ -274,6 +297,25 @@ function Lado({
                 {carta.raridade}
               </span>
             )}
+            {/* Normal não vira selo: é o acabamento da maioria das cartas e
+                repeti-lo em toda troca gastaria destaque com o que não
+                distingue. Reverse, Poké Ball e companhia mudam o que está sendo
+                trocado — e mudam o preço — então precisam ser vistos sem ler a
+                linha de baixo. */}
+            {acabamento && acabamento.id !== NORMAL && (
+              <span
+                title={acabamento.nome_pt}
+                className={cn(
+                  'mt-1 inline-block rounded-[6px] border px-1.5 py-0.5 leading-none',
+                  grande ? 'text-[12px]' : 'text-[11px]',
+                  cor === 'offer'
+                    ? 'border-[color-mix(in_oklab,var(--color-offer)_40%,transparent)] text-offer'
+                    : 'border-[color-mix(in_oklab,var(--color-want)_40%,transparent)] text-want',
+                )}
+              >
+                {acabamento.nome_curto}
+              </span>
+            )}
             <SeloPreco preco={preco} className="mt-0.5" />
           </span>
         </>
@@ -298,7 +340,10 @@ function Direcao({ grande, atenuado }: { grande: boolean; atenuado?: boolean }) 
       // 0 deste trilho o jogaria para antes das duas.
       style={{ order: 2 }}
       className={cn(
-        'trilho flex shrink-0 flex-col items-center justify-center gap-1',
+        // `self-center` porque a linha passou a alinhar pelo topo: sem isto o
+        // trilho subiria para junto dos rótulos, e ele é o eixo entre as duas
+        // artes, não um terceiro rótulo.
+        'trilho flex shrink-0 self-center flex-col items-center justify-center gap-1',
         'transition-opacity duration-300',
         atenuado && 'opacity-0',
         // No celular o trilho disputa espaço com as cartas, que são o assunto:

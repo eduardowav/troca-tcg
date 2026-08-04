@@ -15,7 +15,6 @@ import {
   COLUNAS_CARTA,
   COLUNAS_PRECO,
   type Carta,
-  precoPrincipal,
   type PrecoTCGplayer,
 } from '@/lib/types'
 
@@ -51,7 +50,13 @@ export function useProcuradas(ativo: boolean) {
 }
 
 /**
- * Preço de referência por carta, já resolvido para um acabamento só.
+ * Preços de referência por carta — todas as linhas, não uma escolhida.
+ *
+ * O hook resolvia o acabamento aqui dentro e devolvia um preço só por carta.
+ * Isso funcionava enquanto ninguém escolhia acabamento: a resposta era sempre a
+ * impressão comum. Agora quem sabe qual linha vale é a tela — ela tem o
+ * `finish_id` do anúncio — e escolher cedo demais aqui apagava a informação de
+ * que ela precisa. Quem não tem acabamento no contexto chama `precoComum`.
  *
  * Consulta separada de `useCartasPorId` de propósito: preço é a única coisa do
  * catálogo que vence, então tem cache próprio e prazo próprio. Juntar no mesmo
@@ -64,7 +69,7 @@ export function usePrecosPorId(ids: string[]) {
     queryKey: ['precos', 'porId', chave],
     enabled: chave.length > 0,
     staleTime: 30 * 60 * 1000,
-    queryFn: async (): Promise<Map<string, PrecoTCGplayer>> => {
+    queryFn: async (): Promise<Map<string, PrecoTCGplayer[]>> => {
       const { data, error } = await supabase
         .from('card_prices')
         .select(COLUNAS_PRECO)
@@ -78,13 +83,7 @@ export function usePrecosPorId(ids: string[]) {
         if (lista) lista.push(preco)
         else porCarta.set(preco.card_id, [preco])
       }
-
-      const principais = new Map<string, PrecoTCGplayer>()
-      for (const [card_id, lista] of porCarta) {
-        const escolhido = precoPrincipal(lista)
-        if (escolhido) principais.set(card_id, escolhido)
-      }
-      return principais
+      return porCarta
     },
   })
 }

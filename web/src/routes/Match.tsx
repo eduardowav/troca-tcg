@@ -4,8 +4,10 @@ import { toast } from 'sonner'
 
 import { LinhaDeTroca } from '@/components/carta/LinhaDeTroca'
 import { Button, estiloBotao } from '@/components/ui/Button'
+import { useAcabamentoPorId } from '@/hooks/useAcabamentos'
 import { useCartasPorId, usePrecosPorId } from '@/hooks/useAnuncios'
 import { useDesfechoMatch, useMatch, useResponderMatch } from '@/hooks/useMatches'
+import { type Acabamento, precoDoAcabamento } from '@/lib/acabamentos'
 import { CONDICOES } from '@/lib/anuncios'
 import { ApiError } from '@/lib/api'
 import { cn } from '@/lib/cn'
@@ -104,6 +106,7 @@ export default function MatchDetalhe() {
   )
   const { data: cartas } = useCartasPorId(ids)
   const { data: precos } = usePrecosPorId(ids)
+  const acabamentoPorId = useAcabamentoPorId()
 
   if (isPending) {
     return (
@@ -132,10 +135,28 @@ export default function MatchDetalhe() {
   const recebo = match.itens.find((i) => i.para_user_id === meuId)
   const jaAceitei = euAceitei(match, meuId)
   const reputacao = outro && reputacaoTexto(outro)
-  const desigual = desequilibrio(
-    dou && precos?.get(dou.card_id),
-    recebo && precos?.get(recebo.card_id),
-  )
+
+  // Acabamento e preço andam juntos: o item da troca diz em que acabamento a
+  // carta vai, e é a linha de preço daquele acabamento que vale. Antes disto o
+  // aviso de troca desigual comparava sempre a impressão comum das duas cartas —
+  // e uma reverse trocada por uma normal da mesma carta aparecia como troca
+  // perfeitamente equilibrada.
+  const acabamentoDou = acabamentoPorId(dou?.finish_id)
+  const acabamentoRecebo = acabamentoPorId(recebo?.finish_id)
+
+  const ladoDou = {
+    acabamento: acabamentoDou,
+    preco: precoDoAcabamento(dou && precos?.get(dou.card_id), acabamentoDou),
+  }
+  const ladoRecebo = {
+    acabamento: acabamentoRecebo,
+    preco: precoDoAcabamento(
+      recebo && precos?.get(recebo.card_id),
+      acabamentoRecebo,
+    ),
+  }
+
+  const desigual = desequilibrio(ladoDou.preco?.preco, ladoRecebo.preco?.preco)
 
   // Uma decisão só, usada pela linha de troca e pela linha de condição. Elas
   // descrevem as mesmas duas cartas: se divergirem em ordem ou em tempo verbal,
@@ -145,14 +166,30 @@ export default function MatchDetalhe() {
       ? { dou: 'Você deu', recebo: 'Você recebeu' }
       : { dou: 'Você dá', recebo: 'Você recebe' }
   const trocado = selagem === 'parada' ? match.status === 'CONCLUIDO' : cruzou
-  const condicoes = trocado
+  const especificacoes = trocado
     ? [
-        { rotulo: rotulos.recebo, condicao: recebo?.condicao },
-        { rotulo: rotulos.dou, condicao: dou?.condicao },
+        {
+          rotulo: rotulos.recebo,
+          condicao: recebo?.condicao,
+          acabamento: ladoRecebo.acabamento,
+        },
+        {
+          rotulo: rotulos.dou,
+          condicao: dou?.condicao,
+          acabamento: ladoDou.acabamento,
+        },
       ]
     : [
-        { rotulo: rotulos.dou, condicao: dou?.condicao },
-        { rotulo: rotulos.recebo, condicao: recebo?.condicao },
+        {
+          rotulo: rotulos.dou,
+          condicao: dou?.condicao,
+          acabamento: ladoDou.acabamento,
+        },
+        {
+          rotulo: rotulos.recebo,
+          condicao: recebo?.condicao,
+          acabamento: ladoRecebo.acabamento,
+        },
       ]
 
   function registrarDesfecho(aconteceu: boolean) {
@@ -230,7 +267,7 @@ export default function MatchDetalhe() {
           <LinhaDeTroca
             dou={dou && cartas?.get(dou.card_id)}
             recebo={recebo && cartas?.get(recebo.card_id)}
-            precos={precos}
+            lados={{ dou: ladoDou, recebo: ladoRecebo }}
             tamanho="grande"
             selando={selagem === 'tocando'}
             trocado={trocado}
@@ -244,8 +281,13 @@ export default function MatchDetalhe() {
             depois que as cartas trocam de lado, ficar parada aqui embaixo faz
             esta linha descrever a carta errada. */}
         <dl className="mt-6 grid grid-cols-2 gap-3 border-t border-edge-soft pt-4 text-[13px] lg:text-[15px]">
-          {condicoes.map((c) => (
-            <Detalhe key={c.rotulo} rotulo={c.rotulo} condicao={c.condicao} />
+          {especificacoes.map((e) => (
+            <Detalhe
+              key={e.rotulo}
+              rotulo={e.rotulo}
+              condicao={e.condicao}
+              acabamento={e.acabamento}
+            />
           ))}
         </dl>
       </div>
@@ -310,12 +352,23 @@ function Rodape({ match }: { match: Match }) {
   )
 }
 
+/**
+ * O que exatamente sai e o que exatamente entra.
+ *
+ * Aqui o acabamento aparece **sempre**, inclusive o Normal — ao contrário do
+ * selo sobre a carta, que só marca o que foge do comum. Esta é a linha que a
+ * pessoa lê antes de topar a troca, e "Normal" dito por extenso é o que fecha a
+ * dúvida de quem está trocando com um desconhecido: sem ele, silêncio sobre o
+ * acabamento é indistinguível de "ninguém escolheu".
+ */
 function Detalhe({
   rotulo,
   condicao,
+  acabamento,
 }: {
   rotulo: string
   condicao?: string
+  acabamento?: Acabamento
 }) {
   const dica = CONDICOES.find((c) => c.valor === condicao)?.dica
   return (
@@ -324,6 +377,11 @@ function Detalhe({
       <dd className="mt-0.5 text-paper">
         {condicao ?? '—'}
         {dica && <span className="text-muted"> · {dica}</span>}
+        {acabamento && (
+          <span className="mt-0.5 block text-muted" title={acabamento.nome_pt}>
+            {acabamento.nome_curto}
+          </span>
+        )}
       </dd>
     </div>
   )

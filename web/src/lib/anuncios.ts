@@ -33,6 +33,8 @@ export interface Anuncio {
 export interface AnuncioEdicao {
   quantidade?: number
   condicao?: Condicao
+  /** Corrigível como a condição; carta e tipo não são. Ver o schema da API. */
+  finish_id?: number
   prioridade?: number
   aceita_qualquer_finish?: boolean
 }

@@ -7,7 +7,9 @@ import {
   Quantidade,
 } from '@/components/carta/ControlesAnuncio'
 import { Button } from '@/components/ui/Button'
+import { useAcabamentosDaCarta } from '@/hooks/useAcabamentos'
 import { useAdicionarAnuncio } from '@/hooks/useAnuncios'
+import { NORMAL } from '@/lib/acabamentos'
 import { CONDICOES, type Condicao, PRIORIDADES } from '@/lib/anuncios'
 import { ApiError } from '@/lib/api'
 import { type Carta, type ListingKind, nomeCarta } from '@/lib/types'
@@ -24,6 +26,11 @@ import { type Carta, type ListingKind, nomeCarta } from '@/lib/types'
  *
  * Perguntar aqui custa um toque a mais e evita a viagem de volta a Minhas
  * cartas para corrigir o que nunca foi escolhido.
+ *
+ * O acabamento entrou por último e é o que mais mudou a conta: o matcher casa
+ * acabamento com acabamento, e enquanto ninguém escolhia, todo anúncio nascia
+ * "Normal". Quem tinha a reverse anunciava a normal sem saber, e a diferença só
+ * aparecia na mesa — que é onde a troca fura.
  */
 export function FolhaAdicionar({
   carta,
@@ -38,8 +45,12 @@ export function FolhaAdicionar({
   const adicionar = useAdicionarAnuncio()
   const [quantidade, setQuantidade] = useState(1)
   const [condicao, setCondicao] = useState<Condicao>('NM')
+  const [acabamento, setAcabamento] = useState(NORMAL)
   const [prioridade, setPrioridade] = useState(2)
   const [qualquerFinish, setQualquerFinish] = useState(false)
+
+  const { data: porCarta } = useAcabamentosDaCarta(carta ? [carta.id] : [])
+  const acabamentos = (carta && porCarta?.get(carta.id)) || []
 
   // Cada carta começa do zero: manter a condição da anterior faria a segunda
   // carta herdar uma escolha que era sobre outra carta.
@@ -50,6 +61,21 @@ export function FolhaAdicionar({
     setPrioridade(2)
     setQualquerFinish(false)
   }, [carta])
+
+  // O acabamento não pode cair no padrão do schema: uma carta que só existe em
+  // holo não tem "Normal" para oferecer, e mandar `finish_id = 1` faria a API
+  // recusar o anúncio com uma mensagem que a pessoa não pediu para ver. Normal
+  // quando existe (é a impressão da maioria), a primeira da ordem quando não.
+  //
+  // A dependência é a lista de ids em texto, não o array: a consulta chega
+  // depois da carta e o React Query devolve um array novo a cada resposta, então
+  // comparar por identidade reabriria o efeito e desfaria a escolha da pessoa.
+  const idsDisponiveis = acabamentos.map((a) => a.id).join('-')
+  useEffect(() => {
+    const ids = idsDisponiveis.split('-').filter(Boolean).map(Number)
+    if (!ids.length) return
+    setAcabamento(ids.includes(NORMAL) ? NORMAL : ids[0])
+  }, [idsDisponiveis])
 
   if (!carta) return null
 
@@ -63,6 +89,7 @@ export function FolhaAdicionar({
         tipo,
         quantidade,
         condicao,
+        finish_id: acabamento,
         prioridade,
         aceita_qualquer_finish: tipo === 'PROCURA' ? qualquerFinish : false,
       },
@@ -106,6 +133,26 @@ export function FolhaAdicionar({
           valor={condicao}
           onMudar={(v) => setCondicao(v as Condicao)}
         />
+
+        {/* Some quando a carta só teve uma impressão: escolha de opção única não
+            é escolha, é um controle a mais para ler. O anúncio sai com ela do
+            mesmo jeito, e o detalhe da troca mostra qual é. */}
+        {acabamentos.length > 1 && (
+          <Escolha
+            rotulo={
+              tipo === 'OFERTA'
+                ? 'Acabamento da sua carta'
+                : 'Acabamento que você procura'
+            }
+            opcoes={acabamentos.map((a) => ({
+              valor: a.id,
+              rotulo: a.nome_curto,
+              titulo: a.nome_pt,
+            }))}
+            valor={acabamento}
+            onMudar={(v) => setAcabamento(v as number)}
+          />
+        )}
 
         <Escolha
           rotulo="Prioridade"

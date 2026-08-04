@@ -11,6 +11,7 @@ import {
 import { CelulaCarta, GradeDeCartas } from '@/components/carta/GradeDeCartas'
 import { Button } from '@/components/ui/Button'
 import { IconeBusca, IconeCartas } from '@/components/ui/Icone'
+import { type Acabamento, NORMAL, precoDoAcabamento } from '@/lib/acabamentos'
 import {
   type Anuncio,
   CONDICOES,
@@ -25,6 +26,11 @@ import {
   nomeCarta,
   type PrecoTCGplayer,
 } from '@/lib/types'
+import {
+  opcoesDeAcabamento,
+  useAcabamentoPorId,
+  useAcabamentosDaCarta,
+} from '@/hooks/useAcabamentos'
 import {
   useAdicionarAnuncio,
   useAnuncios,
@@ -46,6 +52,7 @@ export default function MinhasCartas() {
   const ids = useMemo(() => (anuncios ?? []).map((a) => a.card_id), [anuncios])
   const { data: cartas } = useCartasPorId(ids)
   const { data: precos } = usePrecosPorId(ids)
+  const { data: acabamentos } = useAcabamentosDaCarta(ids)
 
   const porLista = useMemo(
     () => ({
@@ -101,6 +108,7 @@ export default function MinhasCartas() {
               anuncios={porLista.OFERTA}
               cartas={cartas}
               precos={precos}
+              acabamentos={acabamentos}
               carregando={isPending}
               remocao={remocao}
             />
@@ -109,6 +117,7 @@ export default function MinhasCartas() {
               anuncios={porLista.PROCURA}
               cartas={cartas}
               precos={precos}
+              acabamentos={acabamentos}
               carregando={isPending}
               remocao={remocao}
             />
@@ -126,13 +135,15 @@ function Coluna({
   anuncios,
   cartas,
   precos,
+  acabamentos,
   carregando,
   remocao,
 }: {
   tipo: ListingKind
   anuncios: Anuncio[]
   cartas?: Map<string, Carta>
-  precos?: Map<string, PrecoTCGplayer>
+  precos?: Map<string, PrecoTCGplayer[]>
+  acabamentos?: Map<string, Acabamento[]>
   carregando: boolean
   remocao: Remocao
 }) {
@@ -180,7 +191,8 @@ function Coluna({
                 key={anuncio.id}
                 anuncio={anuncio}
                 carta={cartas?.get(anuncio.card_id)}
-                preco={precos?.get(anuncio.card_id)}
+                precos={precos?.get(anuncio.card_id)}
+                acabamentos={acabamentos?.get(anuncio.card_id)}
                 remocao={remocao}
               />
             ))}
@@ -249,20 +261,32 @@ function useRemocaoComDesfazer() {
 function CartaDaLista({
   anuncio,
   carta,
-  preco,
+  precos,
+  acabamentos,
   remocao,
 }: {
   anuncio: Anuncio
   carta?: Carta
-  preco?: PrecoTCGplayer
+  precos?: PrecoTCGplayer[]
+  acabamentos?: Acabamento[]
   remocao: Remocao
 }) {
   const [editando, setEditando] = useState(false)
+  // Pela tabela, não pela lista da carta: anúncio antigo pode carregar um
+  // acabamento que o catálogo da carta não lista. Ver useAcabamentoPorId.
+  const acabamento = useAcabamentoPorId()(anuncio.finish_id)
 
   if (!carta) return <CelulaEsqueleto />
 
   return (
-    <CelulaCarta carta={carta} destaque={anuncio.tipo} preco={preco}>
+    <CelulaCarta
+      carta={carta}
+      destaque={anuncio.tipo}
+      // O preço segue o acabamento anunciado, não a impressão comum: quem
+      // anunciou a reverse vê o valor da reverse. É a mesma carta com dois
+      // preços, e mostrar o outro é o começo de uma troca desigual.
+      preco={precoDoAcabamento(precos, acabamento)}
+    >
       {/* A faixa de ações é uma só: abrir o editor. Remover mora lá dentro, junto
           das outras alterações da carta — foi decisão do Eduardo (2026-08-03).
           Uma lixeira permanente sobre cada carta é peso visual repetido em toda a
@@ -279,7 +303,7 @@ function CartaDaLista({
           'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-volt',
         )}
       >
-        <span className="truncate">{resumo(anuncio)}</span>
+        <span className="truncate">{resumo(anuncio, acabamento)}</span>
         <IconeLapis className="size-3.5 shrink-0" />
       </button>
 
@@ -288,6 +312,7 @@ function CartaDaLista({
         onFechar={() => setEditando(false)}
         anuncio={anuncio}
         carta={carta}
+        acabamentos={opcoesDeAcabamento(acabamentos, acabamento)}
         remocao={remocao}
       />
     </CelulaCarta>
@@ -317,12 +342,14 @@ function EditorAnuncio({
   onFechar,
   anuncio,
   carta,
+  acabamentos,
   remocao,
 }: {
   aberto: boolean
   onFechar: () => void
   anuncio: Anuncio
   carta: Carta
+  acabamentos?: Acabamento[]
   remocao: Remocao
 }) {
   const editar = useEditarAnuncio()
@@ -384,6 +411,27 @@ function EditorAnuncio({
                     aplicar({ condicao: condicao as Condicao })
                   }
                 />
+
+                {/* Corrigir o acabamento aqui é o que evita remover e
+                    recadastrar a carta por causa de um toque errado — e é por
+                    isso que `finish_id` é editável, ao contrário de carta e
+                    tipo (api/app/schemas/listing.py). Trocar para um acabamento
+                    que a pessoa já anuncia volta como 409, porque a chave única
+                    do anúncio inclui o acabamento. */}
+                {acabamentos && acabamentos.length > 1 && (
+                  <Escolha
+                    rotulo="Acabamento"
+                    opcoes={acabamentos.map((a) => ({
+                      valor: a.id,
+                      rotulo: a.nome_curto,
+                      titulo: a.nome_pt,
+                    }))}
+                    valor={anuncio.finish_id}
+                    onMudar={(finish_id) =>
+                      aplicar({ finish_id: finish_id as number })
+                    }
+                  />
+                )}
 
                 <Escolha
                   rotulo="Prioridade"
@@ -471,15 +519,24 @@ function IconeLapis({ className }: { className?: string }) {
  * maioria das cartas: repetido em todas, não distingue nenhuma, e era o que
  * empurrava o texto para o truncamento nas colunas estreitas. Quem mexeu na
  * prioridade vê; quem não mexeu ganha espaço.
+ *
+ * O acabamento entra pela mesma régua e pelo motivo oposto: ele **distingue** —
+ * duas linhas da mesma carta na lista só se diferenciam por ele, e sem o rótulo
+ * a pessoa não sabe qual das duas está prestes a editar. O Normal fica de fora
+ * porque é o valor da maioria, como a prioridade padrão.
  */
 const PRIORIDADE_PADRAO = 2
 
-function resumo(a: Anuncio): string {
+function resumo(a: Anuncio, acabamento?: Acabamento): string {
   const prioridade =
     a.prioridade === PRIORIDADE_PADRAO
       ? null
       : PRIORIDADES.find((p) => p.valor === a.prioridade)?.rotulo
-  return [`${a.quantidade}×`, a.condicao, prioridade].filter(Boolean).join(' · ')
+  const acabamentoTexto =
+    acabamento && acabamento.id !== NORMAL ? acabamento.nome_curto : null
+  return [`${a.quantidade}×`, a.condicao, acabamentoTexto, prioridade]
+    .filter(Boolean)
+    .join(' · ')
 }
 
 /* ---------- Controles ---------- */

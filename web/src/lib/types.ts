@@ -92,36 +92,9 @@ export interface PrecoTCGplayer {
 
 export const COLUNAS_PRECO = 'card_id, tipo_tcgplayer, moeda, baixo, mercado'
 
-// A mesma carta tem preços diferentes por acabamento, e a fonte usa sete baldes.
-// A ordem abaixo escolhe qual representa a carta, e o critério é **assumir a
-// impressão mais comum**: entre a 1st edition de uma Base Set a US$ 101 e a
-// unlimited a US$ 35, mostrar a primeira inflaria o valor de quase todo mundo,
-// porque quase ninguém tem a 1st. Errar para baixo é o erro barato aqui — quem
-// tem a versão cara sabe que tem, e diz.
-const ORDEM_ACABAMENTO = [
-  'normal',
-  'unlimited',
-  'holofoil',
-  'unlimited-holofoil',
-  'reverse-holofoil',
-  '1st-edition',
-  '1st-edition-holofoil',
-]
-
-export function precoPrincipal(
-  precos: PrecoTCGplayer[],
-): PrecoTCGplayer | undefined {
-  for (const tipo of ORDEM_ACABAMENTO) {
-    const achado = precos.find((p) => p.tipo_tcgplayer === tipo)
-    if (achado) return achado
-  }
-  // Balde novo na fonte: escolhe o mais barato, que é o mesmo critério de
-  // assumir a impressão comum — e é determinístico, ao contrário da ordem em
-  // que o banco devolveu as linhas.
-  return [...precos].sort(
-    (a, b) => (a.mercado ?? a.baixo ?? 0) - (b.mercado ?? b.baixo ?? 0),
-  )[0]
-}
+// A escolha de qual das linhas de preço representa a carta mudou de casa: agora
+// depende do acabamento anunciado, e mora em lib/acabamentos.ts junto com a
+// ponte entre as duas taxonomias.
 
 const MOEDA = new Intl.NumberFormat('pt-BR', {
   style: 'currency',

@@ -4,8 +4,10 @@ import { Link, useParams } from 'react-router-dom'
 import { CartaThumb } from '@/components/carta/CartaThumb'
 import { FolhaAdicionar } from '@/components/carta/FolhaAdicionar'
 import { Button } from '@/components/ui/Button'
+import { useAcabamentosDaCarta } from '@/hooks/useAcabamentos'
 import { useAnuncios, useCartasPorId, usePrecosPorId } from '@/hooks/useAnuncios'
 import { useCatalogo } from '@/hooks/useCatalogo'
+import { precoDoAcabamento } from '@/lib/acabamentos'
 import {
   formatarPreco,
   type ListingKind,
@@ -26,13 +28,22 @@ export default function CartaDetalhe() {
   const ids = id ? [id] : []
   const { data: cartas, isPending } = useCartasPorId(ids)
   const { data: precos } = usePrecosPorId(ids)
+  const { data: acabamentosPorCarta } = useAcabamentosDaCarta(ids)
   const { data: catalogo } = useCatalogo()
   const { data: anuncios } = useAnuncios()
   const [aAdicionar, setAAdicionar] = useState<ListingKind | null>(null)
 
   const carta = id ? cartas?.get(id) : undefined
-  const preco = id ? precos?.get(id) : undefined
+  const lista = id ? precos?.get(id) : undefined
   const set = carta && catalogo?.setsPorCodigo.get(carta.set_code)
+
+  // Uma linha de preço por acabamento que a fonte precifica de verdade. Os
+  // especiais ficam de fora: todos herdariam o número da reverse e a tela
+  // mostraria "Poké Ball US$ 0,22 · Master Ball US$ 0,22", três preços iguais
+  // afirmando algo que não é verdade sobre nenhum dos dois.
+  const porAcabamento = (id ? (acabamentosPorCarta?.get(id) ?? []) : [])
+    .map((a) => ({ acabamento: a, escolha: precoDoAcabamento(lista, a) }))
+    .filter((linha) => linha.escolha?.exato)
 
   const jaEm = (tipo: ListingKind) =>
     (anuncios ?? []).some((a) => a.card_id === id && a.tipo === tipo)
@@ -59,7 +70,7 @@ export default function CartaDetalhe() {
     )
   }
 
-  const valor = formatarPreco(preco)
+  const valorComum = formatarPreco(precoDoAcabamento(lista, undefined)?.preco)
 
   return (
     <Moldura>
@@ -89,11 +100,27 @@ export default function CartaDetalhe() {
           <dl className="mt-7 space-y-3.5 border-t border-edge-soft pt-5 text-[15px] lg:text-[17px]">
             <Linha rotulo="Expansão" valor={set?.nome ?? carta.set_code} />
             <Linha rotulo="Raridade" valor={carta.raridade} />
-            <Linha
-              rotulo="Preço de referência"
-              valor={valor}
-              dica={valor ? 'TCGplayer, em dólar' : undefined}
-            />
+
+            {/* A mesma carta sai por US$ 0,13 em normal e US$ 0,22 em reverse —
+                quase o dobro. Um preço só nesta página obrigava a pessoa a
+                adivinhar de qual impressão ele falava, e é justamente aqui, antes
+                de anunciar, que a diferença muda a decisão. */}
+            {porAcabamento.length > 0 ? (
+              porAcabamento.map(({ acabamento, escolha }) => (
+                <Linha
+                  key={acabamento.id}
+                  rotulo={acabamento.nome_pt}
+                  valor={formatarPreco(escolha?.preco)}
+                  dica="TCGplayer, em dólar"
+                />
+              ))
+            ) : (
+              <Linha
+                rotulo="Preço de referência"
+                valor={valorComum}
+                dica={valorComum ? 'TCGplayer, em dólar' : undefined}
+              />
+            )}
             {carta.nome_pt && carta.nome_en !== carta.nome_pt && (
               <Linha rotulo="Nome em inglês" valor={carta.nome_en} />
             )}

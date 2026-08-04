@@ -2,6 +2,7 @@ import { motion } from 'motion/react'
 import { Link } from 'react-router-dom'
 
 import { CartaThumb } from '@/components/carta/CartaThumb'
+import type { PrecoEscolhido } from '@/lib/acabamentos'
 import { cn } from '@/lib/cn'
 import {
   type Carta,
@@ -9,7 +10,6 @@ import {
   formatarPreco,
   type ListingKind,
   nomeCarta,
-  type PrecoTCGplayer,
 } from '@/lib/types'
 
 /**
@@ -61,7 +61,7 @@ export function CelulaCarta({
   /** Lista em que a carta já está, se estiver em alguma. */
   destaque?: ListingKind | null
   /** Preço de referência, quando a tela o carrega. Ausente não vira traço. */
-  preco?: PrecoTCGplayer
+  preco?: PrecoEscolhido
   /**
    * Destino ao tocar na arte. Só as telas de descoberta passam isto: em Minhas
    * cartas o toque já abre o editor, e dois destinos no mesmo gesto seria pior
@@ -136,20 +136,37 @@ export function CelulaCarta({
  * Sem preço, não desenha nada. Boa parte do catálogo (promos, cartas só em PT)
  * simplesmente não existe na TCGplayer, e um "—" em metade da grade seria ruído
  * dizendo "faltou dado" onde a resposta honesta é "não se aplica".
+ *
+ * O til não é enfeite: a TCGplayer não publica preço para padrão de Poké Ball
+ * nem de Master Ball, então ali o número é o da reverse comum — e uma Master
+ * Ball vale muito mais que isso. Mostrar o valor sem sinal nenhum seria afirmar
+ * uma precisão que a fonte não tem, justamente na carta em que o erro é maior.
  */
 export function SeloPreco({
   preco,
   className,
 }: {
-  preco?: PrecoTCGplayer
+  preco?: PrecoEscolhido
   className?: string
 }) {
-  const valor = formatarPreco(preco)
+  const valor = formatarPreco(preco?.preco)
   if (!valor) return null
 
+  const aproximado = !preco?.exato
+
   return (
-    <p className={cn('mt-1 text-[12px] text-muted lg:text-[13px] 2xl:text-[14px]', className)}>
-      <span className="text-paper tabular-nums">{valor}</span>
+    <p
+      className={cn('mt-1 text-[12px] text-muted lg:text-[13px] 2xl:text-[14px]', className)}
+      title={
+        aproximado
+          ? 'A fonte não separa preço para este acabamento — o valor é o da impressão comum.'
+          : undefined
+      }
+    >
+      <span className="text-paper tabular-nums">
+        {aproximado && <span aria-hidden>~</span>}
+        {valor}
+      </span>
       {/* Espaço normal antes do ponto, inquebrável depois: em coluna estreita a
           linha pode quebrar entre o preço e a fonte, nunca deixando o "·"
           sozinho no fim da linha de cima. */}
