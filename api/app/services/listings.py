@@ -2,7 +2,7 @@
 
 from uuid import UUID
 
-from sqlalchemy import text
+from sqlalchemy import bindparam, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -35,14 +35,84 @@ _UPSERT = text(
 )
 
 
-def _params(user_id: UUID, item: AnuncioItem) -> dict:
+# Acabamentos catalogados das cartas do lote, na ordem de exibição do catálogo.
+# `expanding` monta o IN com um parâmetro por id em vez de interpolar texto —
+# mesma regra de sempre, SQL parametrizado, e uma ida ao banco em vez de uma por
+# carta do onboarding. A ordem importa: é ela que decide o padrão de quem não
+# escolheu.
+_ACABAMENTOS_DAS_CARTAS = text("""
+    select cf.card_id::text as card_id, cf.finish_id
+    from card_finishes cf
+    join finishes f on f.id = cf.finish_id and f.ativo
+    where cf.card_id in :ids
+    order by f.ordem
+""").bindparams(bindparam("ids", expanding=True))
+
+NORMAL = 1
+
+
+async def _resolver_acabamentos(
+    session: AsyncSession, pedidos: list[tuple[str, int | None]]
+) -> list[int]:
+    """Valida o acabamento escolhido, ou escolhe um quando ninguém escolheu.
+
+    **Validar:** a FK de `listings.finish_id` garante que o acabamento existe no
+    mundo; ela não sabe que Charizard nunca saiu em Master Ball. Quem sabe é
+    `card_finishes` (db/schema/19_acabamentos.sql), e é ela que sustenta a
+    promessa da tela: se o app oferece uma escolha, a escolha tem de valer.
+
+    **Escolher:** `finish_id` ausente não é descuido do cliente, é o onboarding —
+    a tela onde o atrito foi removido de propósito e que não pergunta acabamento.
+    O padrão do schema era NORMAL fixo, e isso deixou de servir no instante em que
+    passou a existir validação: **5.082 cartas do catálogo não têm Normal** (as
+    holo e ultra raras, justamente as mais trocadas), e mandar NORMAL nelas
+    reprovaria o lote inteiro de quem está entrando no app pela primeira vez.
+    Resolver aqui, e não em cada tela, é o que mantém a regra num lugar só —
+    qualquer cliente que omitir o campo recebe a mesma escolha.
+
+    O critério é: Normal quando a carta tem (é a impressão da maioria), senão a
+    primeira na ordem do catálogo, senão Normal mesmo — carta sem nada
+    catalogado cai no padrão histórico.
+
+    **Carta sem nenhum acabamento catalogado passa na validação.** São 1.681 das
+    15.997 — promos, cartas só em PT, sets velhos que a TCGplayer não precifica e
+    sobre os quais o banco não tem opinião. Bloquear ali seria transformar
+    ausência de dado em "não existe", e o custo cairia justamente sobre a carta
+    rara que alguém quer trocar. Errar por permitir demais custa uma conversa
+    entre duas pessoas; errar por barrar custa o anúncio inteiro.
+    """
+    cartas = list({card_id for card_id, _ in pedidos})
+    res = await session.execute(_ACABAMENTOS_DAS_CARTAS, {"ids": cartas})
+
+    catalogados: dict[str, list[int]] = {}
+    for linha in res.mappings().all():
+        catalogados.setdefault(linha["card_id"], []).append(linha["finish_id"])
+
+    resolvidos: list[int] = []
+    for card_id, escolhido in pedidos:
+        opcoes = catalogados.get(card_id, [])
+        if escolhido is None:
+            resolvidos.append(NORMAL if NORMAL in opcoes or not opcoes else opcoes[0])
+            continue
+        if opcoes and escolhido not in opcoes:
+            raise RegraNegocio(
+                "ACABAMENTO_INVALIDO",
+                "Essa carta não existe nesse acabamento.",
+                campo="finish_id",
+                status_code=422,
+            )
+        resolvidos.append(escolhido)
+    return resolvidos
+
+
+def _params(user_id: UUID, item: AnuncioItem, finish_id: int) -> dict:
     return {
         "user_id": str(user_id),
         "card_id": str(item.card_id),
         "tipo": item.tipo,
         "quantidade": item.quantidade,
         "condicao": item.condicao,
-        "finish_id": item.finish_id,
+        "finish_id": finish_id,
         "idioma": item.idioma,
         "prioridade": item.prioridade,
         "aceita_qualquer_finish": item.aceita_qualquer_finish,
@@ -52,8 +122,11 @@ def _params(user_id: UUID, item: AnuncioItem) -> dict:
 async def criar_anuncio(
     session: AsyncSession, user_id: UUID, item: AnuncioItem
 ) -> AnuncioOut:
+    (finish_id,) = await _resolver_acabamentos(
+        session, [(str(item.card_id), item.finish_id)]
+    )
     try:
-        res = await session.execute(_UPSERT, _params(user_id, item))
+        res = await session.execute(_UPSERT, _params(user_id, item, finish_id))
         row = res.mappings().first()
         await session.commit()
     except IntegrityError as exc:
@@ -67,9 +140,13 @@ async def criar_bulk(
     session: AsyncSession, user_id: UUID, itens: list[AnuncioItem]
 ) -> int:
     """Persiste o lote do onboarding e marca onboarding_ok. Retorna quantos entraram."""
+    # Uma consulta para o lote todo, não uma por carta: são até 300 itens.
+    acabamentos = await _resolver_acabamentos(
+        session, [(str(i.card_id), i.finish_id) for i in itens]
+    )
     try:
-        for item in itens:
-            await session.execute(_UPSERT, _params(user_id, item))
+        for item, finish_id in zip(itens, acabamentos, strict=True):
+            await session.execute(_UPSERT, _params(user_id, item, finish_id))
         await session.execute(
             text("update profiles set onboarding_ok = true where id = :id"),
             {"id": str(user_id)},
@@ -125,6 +202,12 @@ async def atualizar_anuncio(
     campos = dados.model_dump(exclude_unset=True)
     if not campos:
         return await obter_anuncio(session, user_id, anuncio_id)
+
+    # A carta não vem no corpo do PATCH — e sem ela não dá para saber se o
+    # acabamento novo existe para aquela carta. Só busca quando o campo veio.
+    if "finish_id" in campos:
+        atual = await obter_anuncio(session, user_id, anuncio_id)
+        await _resolver_acabamentos(session, [(atual.card_id, campos["finish_id"])])
 
     sets = ", ".join(f"{c} = :{c}" for c in campos)
     params: dict[str, object] = {**campos}

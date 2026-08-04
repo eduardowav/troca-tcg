@@ -26,7 +26,10 @@ def test_username_normaliza_e_valida():
 
 def test_anuncio_item_defaults():
     item = AnuncioItem(card_id=uuid4(), tipo="OFERTA")
-    assert item.finish_id == 1
+    # Acabamento nasce vazio, e não em NORMAL: quem não escolhe recebe o
+    # acabamento que a carta tem, decidido no serviço — ver
+    # services/listings._resolver_acabamentos.
+    assert item.finish_id is None
     assert item.condicao == "NM"
     assert item.quantidade == 1
     assert item.prioridade == 2

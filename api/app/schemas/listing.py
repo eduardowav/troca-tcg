@@ -14,7 +14,11 @@ class AnuncioItem(BaseModel):
     tipo: Tipo
     quantidade: int = Field(default=1, ge=1, le=99)
     condicao: Condicao = "NM"
-    finish_id: int = 1  # NORMAL; o onboarding ainda não coleta acabamento
+    # Ausente de propósito quando o cliente não pergunta acabamento — é o caso do
+    # onboarding, a tela onde o atrito foi removido. Quem omite recebe o
+    # acabamento que a carta tem (services/listings._resolver_acabamentos); NORMAL
+    # fixo aqui reprovaria as 5.082 cartas do catálogo que não existem em normal.
+    finish_id: int | None = Field(default=None, ge=1)
     idioma: str = Field(default="pt", min_length=2, max_length=2)
     prioridade: int = Field(default=2, ge=1, le=3)
     aceita_qualquer_finish: bool = False
@@ -26,10 +30,18 @@ class AnuncioAtualizar(BaseModel):
     `card_id` e `tipo` ficam de fora de propósito: trocar a carta ou mudar de
     Ofereço para Procuro é outro anúncio, não uma edição. Quem faz isso remove e
     cadastra de novo.
+
+    `finish_id` **é** editável, ao contrário desses dois, e a diferença não é
+    arbitrária: acabamento é atributo da carta que a pessoa tem na mão, igual à
+    condição. Anunciar a reverse como normal é erro de digitação, não intenção de
+    trocar de anúncio — e obrigar a remover e recadastrar por causa disso é como
+    se perde a carta da lista. Muda a chave única, então a colisão volta como 409
+    de anúncio duplicado, que é a mensagem certa.
     """
 
     quantidade: int | None = Field(default=None, ge=1, le=99)
     condicao: Condicao | None = None
+    finish_id: int | None = Field(default=None, ge=1)
     prioridade: int | None = Field(default=None, ge=1, le=3)
     aceita_qualquer_finish: bool | None = None
 

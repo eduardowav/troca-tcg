@@ -46,6 +46,12 @@ def test_atualizar_valida_limites():
         AnuncioAtualizar(condicao="PERFEITA")  # type: ignore[arg-type]
 
 
+def test_atualizar_aceita_acabamento():
+    """Acabamento é corrigível, ao contrário de carta e tipo — ver o schema."""
+    dados = AnuncioAtualizar(finish_id=3)
+    assert dados.model_dump(exclude_unset=True) == {"finish_id": 3}
+
+
 def test_atualizar_nao_deixa_trocar_carta_nem_tipo():
     """card_id/tipo não são editáveis: mudar isso é outro anúncio."""
     dados = AnuncioAtualizar.model_validate(
@@ -86,6 +92,95 @@ def test_finish_invalido_continua_traduzido():
     )
     erro = listings._traduzir(_integrity(orig))
     assert erro.codigo == "ACABAMENTO_INVALIDO"
+
+
+class _Resultado:
+    """O bastante da API do SQLAlchemy para o que `_validar_acabamentos` usa."""
+
+    def __init__(self, linhas: list[dict]):
+        self._linhas = linhas
+
+    def mappings(self):
+        return self
+
+    def all(self):
+        return self._linhas
+
+
+class _SessaoFake:
+    def __init__(self, linhas: list[dict]):
+        self._linhas = linhas
+        self.consultas = 0
+
+    async def execute(self, *_args, **_kwargs):
+        self.consultas += 1
+        return _Resultado(self._linhas)
+
+
+CARTA = str(uuid4())
+OUTRA = str(uuid4())
+
+
+async def test_acabamento_fora_do_catalogo_e_recusado():
+    """Master Ball numa carta que nunca saiu em Master Ball."""
+    sessao = _SessaoFake(
+        [{"card_id": CARTA, "finish_id": 1}, {"card_id": CARTA, "finish_id": 3}]
+    )
+    with pytest.raises(Exception) as erro:
+        await listings._resolver_acabamentos(sessao, [(CARTA, 11)])  # type: ignore[arg-type]
+    assert erro.value.codigo == "ACABAMENTO_INVALIDO"  # type: ignore[attr-defined]
+    assert erro.value.status_code == 422  # type: ignore[attr-defined]
+
+
+async def test_acabamento_catalogado_passa():
+    sessao = _SessaoFake(
+        [{"card_id": CARTA, "finish_id": 1}, {"card_id": CARTA, "finish_id": 3}]
+    )
+    assert await listings._resolver_acabamentos(sessao, [(CARTA, 3)]) == [3]  # type: ignore[arg-type]
+
+
+async def test_carta_sem_catalogo_aceita_qualquer_acabamento():
+    """1.681 cartas não têm acabamento catalogado.
+
+    Ausência de dado não é "não existe" — ver `_resolver_acabamentos`.
+    """
+    sessao = _SessaoFake([])
+    assert await listings._resolver_acabamentos(sessao, [(CARTA, 11)]) == [11]  # type: ignore[arg-type]
+
+
+async def test_sem_escolha_pega_normal_quando_existe():
+    """O onboarding não pergunta acabamento e manda o campo vazio."""
+    sessao = _SessaoFake(
+        [{"card_id": CARTA, "finish_id": 1}, {"card_id": CARTA, "finish_id": 3}]
+    )
+    assert await listings._resolver_acabamentos(sessao, [(CARTA, None)]) == [1]  # type: ignore[arg-type]
+
+
+async def test_sem_escolha_pega_o_primeiro_quando_nao_ha_normal():
+    """Regressão: 5.082 cartas não existem em Normal.
+
+    Antes de resolver no servidor, o onboarding mandava NORMAL fixo — e o lote
+    inteiro de quem começava com uma ultra rara era reprovado.
+    """
+    sessao = _SessaoFake(
+        [{"card_id": CARTA, "finish_id": 2}, {"card_id": CARTA, "finish_id": 3}]
+    )
+    assert await listings._resolver_acabamentos(sessao, [(CARTA, None)]) == [2]  # type: ignore[arg-type]
+
+
+async def test_sem_escolha_e_sem_catalogo_cai_em_normal():
+    sessao = _SessaoFake([])
+    assert await listings._resolver_acabamentos(sessao, [(CARTA, None)]) == [1]  # type: ignore[arg-type]
+
+
+async def test_lote_inteiro_em_uma_consulta():
+    """O onboarding manda até 300 itens; 300 idas ao banco derrubariam a tela."""
+    sessao = _SessaoFake([{"card_id": CARTA, "finish_id": 1}])
+    resolvidos = await listings._resolver_acabamentos(  # type: ignore[arg-type]
+        sessao, [(CARTA, 1), (OUTRA, None), (CARTA, None)]
+    )
+    assert resolvidos == [1, 1, 1]
+    assert sessao.consultas == 1
 
 
 def test_patch_exige_autenticacao():
