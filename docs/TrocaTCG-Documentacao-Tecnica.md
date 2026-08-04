@@ -883,6 +883,36 @@ Essa terceira camada é o que faz o sistema envelhecer bem. Quando sair um set c
 
 **Adicionar um acabamento novo custa um `insert`**, não uma migração. Essa é a diferença prática entre a tabela de referência e o enum, e é o motivo de toda a seção existir.
 
+#### Como ficou na prática (implementado em `db/schema/19_acabamentos.sql`)
+
+Três correções ao plano acima, todas descobertas ao executá-lo:
+
+1. **Nasceu uma camada 0, mais barata e mais confiável que a camada 1: o preço.**
+   `card_prices.tipo_tcgplayer` já diz, por evidência de mercado, quais impressões
+   existem — se a TCGplayer publica preço de `reverse-holofoil` para uma carta,
+   aquela carta foi impressa em reverse. Um `insert ... select` cobriu **14.316
+   das 15.997 cartas** sem uma requisição de rede. A regra por set ficou só para
+   o que preço nenhum revela: os padrões especiais.
+2. **O vocabulário de `aplica_a` mudou porque metade dele era inavaliável.**
+   `POKEMON_REGULAR`, `TREINADOR` e `ENERGIA` supõem uma coluna de categoria da
+   carta que `cards` não tem — a normalização da migração 12 trouxe set e série,
+   não supertipo. O que existe hoje: `TODOS`, `COM_REVERSE` (as cartas do set que
+   já têm reverse — recorte natural dos padrões de bola, que são todos variação de
+   reverse), `NUMERO:a-b` e `RARIDADE:x`. A exclusão dos Pokémon ex do Master Ball
+   continua sendo feita, agora pela faixa de número.
+3. **A ponte entre as duas taxonomias virou coluna:** `finishes.tipos_tcgplayer`
+   diz quais baldes da TCGplayer representam cada acabamento. Ela serve nos dois
+   sentidos — descobrir acabamento a partir de preço (o backfill) e escolher a
+   linha de preço a partir do acabamento (a UI, ao mostrar o valor da carta
+   anunciada). Duas cópias dessa tabela em lugares diferentes é como duas telas
+   começam a discordar sobre quanto vale a mesma carta.
+
+A camada 3 (curadoria da comunidade) continua não implementada, e `multiplicador`
+segue sem uso: o preço mostrado é o do balde real quando existe, e o da impressão
+de origem — marcado como aproximado — quando a fonte não separa. Multiplicar um
+preço de mercado por um peso nosso daria falsa precisão a um número que já é
+estimativa.
+
 ### 8.6 Efeito no matching
 
 O matching passa a casar **carta + acabamento**, não só carta:
