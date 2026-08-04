@@ -188,10 +188,10 @@ def test_historico_serializa_sem_contato():
 
 
 def test_historico_so_traz_o_que_terminou():
-    """CONCLUIDO/FURADO explicam os contadores do perfil; EXPIRADO explica a
-    troca que sumiu do feed. RECUSADO e SUGERIDO não são histórico."""
+    """CONCLUIDO/FURADO explicam os contadores do perfil; EXPIRADO e CANCELADO
+    explicam a troca que sumiu do feed. RECUSADO e SUGERIDO não são histórico."""
     sql = matching._HISTORICO.text
-    assert "m.status in ('CONCLUIDO', 'FURADO', 'EXPIRADO')" in sql
+    assert "m.status in ('CONCLUIDO', 'FURADO', 'EXPIRADO', 'CANCELADO')" in sql
     assert "RECUSADO" not in sql
     assert "SUGERIDO" not in sql
 
@@ -233,3 +233,62 @@ def test_nenhuma_data_vira_texto_no_sql():
 def test_historico_exige_autenticacao():
     client = TestClient(app)
     assert client.get("/v1/me/matches/historico").status_code in (401, 403)
+
+
+def test_desistir_nao_mexe_na_reputacao_de_ninguem():
+    """A decisão de produto vive aqui: desistir declarado não é furo.
+
+    Se `registrar_desistencia` tocasse `trocas_furadas`, o botão viraria uma
+    auto-denúncia e ninguém clicaria — a pessoa sumiria, o match viraria
+    EXPIRADO, e a métrica-mãe pioraria em vez de melhorar.
+    """
+    fonte = inspect.getsource(matching.registrar_desistencia)
+    assert "trocas_desistidas" in fonte
+    assert "trocas_furadas" not in fonte
+    assert "trocas_concluidas" not in fonte
+
+
+def test_desistencia_volta_a_ser_sugerida_depois_da_carencia():
+    """CANCELADO ressuscita como EXPIRADO, mas não no mesmo instante.
+
+    Sem a comparação com `expira_em`, a troca que a pessoa acabou de desmarcar
+    reapareceria no feed no refresh seguinte.
+    """
+    fonte = inspect.getsource(matching._gravar_match)
+    assert "matches.status = 'CANCELADO' and matches.expira_em <= now()" in fonte
+
+
+def test_prorrogacao_tem_teto():
+    """Prazo que estica sem fim é o mesmo que não ter prazo — e o par fica preso,
+    porque só existe um match por dupla de pessoas."""
+    assert matching._LIMITE_PRORROGACOES == 2
+    fonte = inspect.getsource(matching.prorrogar)
+    assert "prorrogacoes < :limite" in fonte
+    # Somar sobre uma data já vencida devolveria um prazo que nasce vencido.
+    assert "greatest(now(), expira_em)" in fonte
+
+
+def test_prazo_so_estica_com_troca_em_andamento():
+    fonte = inspect.getsource(matching.prorrogar)
+    assert '("PENDENTE", "ACEITO")' in fonte
+
+
+def test_rotas_novas_estao_publicadas():
+    """Lê o OpenAPI, não `app.routes`: em FastAPI 0.141 as rotas incluídas ficam
+    atrás de um `_IncludedRouter` sem `path`, e inspecionar a lista não prova
+    nada (ver a nota em api-nao-sobe / testes anteriores)."""
+    caminhos = app.openapi()["paths"]
+    assert "/v1/me/matches/{match_id}/desistir" in caminhos
+    assert "/v1/me/matches/{match_id}/estender" in caminhos
+
+
+def test_match_expoe_prorrogacoes_e_quem_desistiu():
+    """A tela precisa dos dois: um decide se ainda oferece o botão de estender,
+    o outro decide entre "você desistiu" e "a outra pessoa desistiu"."""
+    props = app.openapi()["components"]["schemas"]["MatchCompleto"]["properties"]
+    assert "prorrogacoes" in props
+    assert "desistiu_por" in props
+    assert (
+        "trocas_desistidas"
+        in MatchOut.model_fields["participantes"].annotation.__args__[0].model_fields
+    )

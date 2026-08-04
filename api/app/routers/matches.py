@@ -76,6 +76,26 @@ async def furou(
     return await matching.registrar_furo(session, user_id, match_id)
 
 
+@router.post("/{match_id}/desistir", response_model=MatchCompleto)
+async def desistir(
+    match_id: UUID,
+    user_id: UUID = Depends(usuario_atual),
+    session: AsyncSession = Depends(get_session),
+) -> MatchOut:
+    """Encerra a troca sem acusar ninguém. Ver services/matching."""
+    return await matching.registrar_desistencia(session, user_id, match_id)
+
+
+@router.post("/{match_id}/estender", response_model=MatchCompleto)
+async def estender(
+    match_id: UUID,
+    user_id: UUID = Depends(usuario_atual),
+    session: AsyncSession = Depends(get_session),
+) -> MatchOut:
+    """Mais uma semana de prazo. Qualquer um dos dois, até duas vezes."""
+    return await matching.prorrogar(session, user_id, match_id)
+
+
 @router.post("/{match_id}/responder", response_model=MatchCompleto)
 async def responder(
     match_id: UUID,

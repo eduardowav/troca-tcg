@@ -28,6 +28,10 @@ class ParticipanteResumo(BaseModel):
     nome_exibicao: str
     trocas_concluidas: int = 0
     trocas_furadas: int = 0
+    # Desistência declarada não é furo e fica fora da razão da reputação — mas
+    # aparece, porque é lida por quem está prestes a marcar um encontro. É o que
+    # impede o botão de desistir de virar rota de fuga de quem furaria.
+    trocas_desistidas: int = 0
     aceitou: bool | None = None
     confirmou_conclusao: bool = False
 
@@ -66,6 +70,13 @@ class MatchOut(BaseModel):
     status: str
     score: float
     expira_em: datetime
+    #: Quantas vezes o prazo já foi esticado. A tela precisa para saber se ainda
+    #: oferece o botão — o teto é 2 (services/matching.prorrogar).
+    prorrogacoes: int = 0
+    #: Quem desistiu, quando a troca está CANCELADA. "Você desistiu" e "Marina
+    #: desistiu" são notícias diferentes, e sem isto a tela teria de escolher uma
+    #: frase que serve mal para os dois.
+    desistiu_por: str | None = None
     participantes: list[ParticipanteResumo]
     itens: list[ItemMatch]
 

@@ -59,6 +59,9 @@ class PerfilOut(BaseModel):
     contato_visivel: str | None = None
     trocas_concluidas: int
     trocas_furadas: int
+    # Fora da razão da `reputacao` de propósito: desistir avisando não é furar.
+    # Aparece como contador próprio — o custo da desistência é transparência.
+    trocas_desistidas: int = 0
     reputacao: int | None = None
     plano: str
     onboarding_ok: bool

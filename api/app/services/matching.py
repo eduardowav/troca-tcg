@@ -174,8 +174,15 @@ async def _gravar_match(session: AsyncSession, eu: UUID, par: dict) -> None:
             on conflict (hash_grupo) do update
               set score = excluded.score,
                   status = 'SUGERIDO',
-                  expira_em = now() + interval '7 days'
+                  expira_em = now() + interval '7 days',
+                  prorrogacoes = 0
               where matches.status in ('SUGERIDO', 'EXPIRADO')
+                 -- Desistência volta a ser sugerida, mas só depois da carência
+                 -- que `registrar_desistencia` gravou em expira_em: reoferecer
+                 -- no mesmo instante a troca que a pessoa acabou de desmarcar
+                 -- leria como o app ignorando a decisão dela. Uma semana depois
+                 -- volta, porque desistir quase sempre é sobre o momento.
+                 or (matches.status = 'CANCELADO' and matches.expira_em <= now())
             returning id::text
         """),
         {"score": par["score"], "hash": hash_grupo},
@@ -249,7 +256,7 @@ async def listar_matches(session: AsyncSession, user_id: UUID) -> list[MatchOut]
             await session.execute(
                 text("""
             select m.id::text, m.tipo::text, m.status::text, m.score,
-                   m.expira_em
+                   m.expira_em, m.prorrogacoes
             from matches m
             join match_participants mp on mp.match_id = m.id
             where mp.user_id = :eu
@@ -271,6 +278,7 @@ async def listar_matches(session: AsyncSession, user_id: UUID) -> list[MatchOut]
             status=linha["status"],
             score=float(linha["score"]),
             expira_em=linha["expira_em"],
+            prorrogacoes=linha["prorrogacoes"],
             participantes=await _participantes(session, linha["id"], completo=False),
             itens=await _itens(session, linha["id"]),
         )
@@ -359,7 +367,7 @@ async def _participantes(
 ) -> list:
     colunas = (
         "p.id::text as user_id, p.username, p.nome_exibicao, "
-        "p.trocas_concluidas, p.trocas_furadas, "
+        "p.trocas_concluidas, p.trocas_furadas, p.trocas_desistidas, "
         "mp.aceitou, mp.confirmou_conclusao"
     )
     if completo:
@@ -388,6 +396,7 @@ async def _participantes(
             nome_exibicao=r["nome_exibicao"],
             trocas_concluidas=r["trocas_concluidas"],
             trocas_furadas=r["trocas_furadas"],
+            trocas_desistidas=r["trocas_desistidas"],
             aceitou=r["aceitou"],
             confirmou_conclusao=r["confirmou_conclusao"],
             **({"contato_visivel": r["contato_visivel"]} if completo else {}),
@@ -404,6 +413,10 @@ async def _participantes(
 # porque é a única resposta para "aceitei uma troca e ela desapareceu do feed":
 # sem a linha, o app parece ter perdido a troca.
 #
+# CANCELADO entra pelo mesmo motivo que EXPIRADO: a troca sai do feed e sem a
+# linha o app pareceria tê-la perdido. Vale para os dois lados — quem recebeu a
+# desistência precisa da linha ainda mais do que quem desistiu.
+#
 # RECUSADO fica fora de propósito: recusar uma sugestão não é uma troca que deu
 # errado, é uma que nunca começou. Virar mural de recusas não ajuda ninguém —
 # nem quem recusou, nem a leitura dos números de cima. SUGERIDO também não entra:
@@ -415,9 +428,16 @@ async def _participantes(
 # evento — não deveria existir, mas ordenar por nulo joga a linha para o fim da
 # lista silenciosamente, e histórico com buraco é pior que histórico com data
 # aproximada.
-_HISTORICO = text("""
+_DESISTIU_POR = """
+  (select e.user_id::text from match_events e
+    where e.match_id = m.id and e.evento = 'DESISTIU'
+    order by e.criado_em desc limit 1) as desistiu_por
+"""
+
+_HISTORICO = text(f"""
     select m.id::text, m.tipo::text, m.status::text, m.score,
-           m.expira_em,
+           m.expira_em, m.prorrogacoes,
+           {_DESISTIU_POR},
            coalesce(
              (select max(e.criado_em) from match_events e where e.match_id = m.id),
              m.criado_em
@@ -425,7 +445,7 @@ _HISTORICO = text("""
     from matches m
     join match_participants mp on mp.match_id = m.id
     where mp.user_id = :eu
-      and m.status in ('CONCLUIDO', 'FURADO', 'EXPIRADO')
+      and m.status in ('CONCLUIDO', 'FURADO', 'EXPIRADO', 'CANCELADO')
     order by desfecho_em desc
     limit :limite
 """)
@@ -453,6 +473,8 @@ async def listar_historico(
             status=linha["status"],
             score=float(linha["score"]),
             expira_em=linha["expira_em"],
+            prorrogacoes=linha["prorrogacoes"],
+            desistiu_por=linha["desistiu_por"],
             desfecho_em=linha["desfecho_em"],
             participantes=await _participantes(session, linha["id"], completo=False),
             itens=await _itens(session, linha["id"]),
@@ -528,8 +550,14 @@ async def responder(
     return await obter_match(session, user_id, match_id)
 
 
-async def _exigir_aceito(session: AsyncSession, user_id: UUID, match_id: UUID) -> None:
-    """Só troca combinada tem desfecho — antes disso não houve encontro."""
+async def _status_do_participante(
+    session: AsyncSession, user_id: UUID, match_id: UUID
+) -> str:
+    """O status do match, e a prova de que quem pergunta participa dele.
+
+    O join com `match_participants` é a autorização: quem não está na troca
+    recebe 404, não 403 — não confirmamos nem que o match existe.
+    """
     status = await session.scalar(
         text("""
             select m.status::text from matches m
@@ -540,6 +568,12 @@ async def _exigir_aceito(session: AsyncSession, user_id: UUID, match_id: UUID) -
     )
     if status is None:
         raise _nao_encontrado()
+    return status
+
+
+async def _exigir_aceito(session: AsyncSession, user_id: UUID, match_id: UUID) -> None:
+    """Só troca combinada tem desfecho — antes disso não houve encontro."""
+    status = await _status_do_participante(session, user_id, match_id)
     if status != "ACEITO":
         raise RegraNegocio(
             "MATCH_SEM_DESFECHO",
@@ -600,6 +634,112 @@ async def confirmar_conclusao(
     return await obter_match(session, user_id, match_id)
 
 
+_LIMITE_PRORROGACOES = 2
+_PRAZO_EXTRA = "7 days"
+
+
+async def prorrogar(session: AsyncSession, user_id: UUID, match_id: UUID) -> MatchOut:
+    """Estica o prazo em uma semana. Qualquer um dos dois pode, até duas vezes.
+
+    Um toque de um lado vale pelos dois de propósito: exigir que ambos peçam
+    transformaria "ainda estamos combinando" numa negociação sobre negociar. Quem
+    não quer mais tem a saída explícita ao lado (desistir), e ela é melhor do que
+    deixar o prazo vencer calado.
+
+    O teto de duas prorrogações é o que mantém EXPIRADO significando alguma
+    coisa. Sem ele, uma troca que ninguém encerra ocupa o par no feed para
+    sempre — só existe um match por dupla de pessoas.
+
+    `greatest(now(), expira_em)` em vez de somar sobre a data velha: se o prazo
+    já passou mas a varredura ainda não rodou, somar sete dias a uma data no
+    passado devolveria um prazo que nasce vencido.
+    """
+    status = await _status_do_participante(session, user_id, match_id)
+    if status not in ("PENDENTE", "ACEITO"):
+        raise RegraNegocio(
+            "PRAZO_NAO_PRORROGAVEL",
+            "Só dá para estender o prazo de uma troca em andamento.",
+            status_code=409,
+        )
+
+    res = await session.execute(
+        text(f"""
+            update matches
+               set expira_em = greatest(now(), expira_em) + interval '{_PRAZO_EXTRA}',
+                   prorrogacoes = prorrogacoes + 1
+             where id = :m and prorrogacoes < :limite
+            returning id::text
+        """),
+        {"m": str(match_id), "limite": _LIMITE_PRORROGACOES},
+    )
+    if res.mappings().first() is None:
+        raise RegraNegocio(
+            "PRAZO_NO_LIMITE",
+            "Essa troca já foi estendida duas vezes.",
+            status_code=409,
+        )
+
+    await session.execute(
+        text(
+            "insert into match_events (match_id, user_id, evento) "
+            "values (:m, :u, 'PRORROGADO')"
+        ),
+        {"m": str(match_id), "u": str(user_id)},
+    )
+    await session.commit()
+    return await obter_match(session, user_id, match_id)
+
+
+async def registrar_desistencia(
+    session: AsyncSession, user_id: UUID, match_id: UUID
+) -> MatchOut:
+    """Encerra a troca por decisão de quem está desistindo — sem acusar ninguém.
+
+    O desfecho oferecia só "aconteceu" e "a pessoa não apareceu". Quem desistiu
+    de boa-fé não tinha saída: ou acusava o outro de um furo que não houve, ou
+    sumia. Sumir vira EXPIRADO, que conta contra os dois — o app empurrava gente
+    honesta para o pior dos desfechos.
+
+    CANCELADO fica fora do denominador da métrica-mãe, mas **não** sai de graça:
+    `trocas_desistidas` sobe em quem desistiu e aparece ao lado da reputação,
+    onde ela é lida por quem está prestes a marcar um encontro. Sem esse
+    contador, desistir seria a rota de fuga barata de quem furaria de qualquer
+    jeito, e os números do app ficariam bonitos sem serem verdade.
+
+    `expira_em` vira carência de uma semana: o motor ressuscita match encerrado
+    por prazo, e reoferecer no mesmo instante a troca que a pessoa acabou de
+    desmarcar leria como o app ignorando a decisão dela. Uma semana depois volta,
+    porque desistência quase sempre é sobre o momento, não sobre a carta.
+    """
+    await _exigir_aceito(session, user_id, match_id)
+
+    await session.execute(
+        text(f"""
+            update matches
+               set status = 'CANCELADO',
+                   expira_em = now() + interval '{_PRAZO_EXTRA}'
+             where id = :m
+        """),
+        {"m": str(match_id)},
+    )
+    await session.execute(
+        text(
+            "update profiles set trocas_desistidas = trocas_desistidas + 1 "
+            "where id = :u"
+        ),
+        {"u": str(user_id)},
+    )
+    await session.execute(
+        text(
+            "insert into match_events (match_id, user_id, evento) "
+            "values (:m, :u, 'DESISTIU')"
+        ),
+        {"m": str(match_id), "u": str(user_id)},
+    )
+    await session.commit()
+    return await obter_match(session, user_id, match_id)
+
+
 async def registrar_furo(
     session: AsyncSession, user_id: UUID, match_id: UUID
 ) -> MatchOut:
@@ -645,9 +785,10 @@ async def obter_match(session: AsyncSession, user_id: UUID, match_id: UUID) -> M
     linha = (
         (
             await session.execute(
-                text("""
+                text(f"""
             select m.id::text, m.tipo::text, m.status::text, m.score,
-                   m.expira_em
+                   m.expira_em, m.prorrogacoes,
+                   {_DESISTIU_POR}
             from matches m join match_participants mp on mp.match_id = m.id
             where m.id = :m and mp.user_id = :eu
         """),
@@ -672,6 +813,8 @@ async def obter_match(session: AsyncSession, user_id: UUID, match_id: UUID) -> M
         status=linha["status"],
         score=float(linha["score"]),
         expira_em=linha["expira_em"],
+        prorrogacoes=linha["prorrogacoes"],
+        desistiu_por=linha["desistiu_por"],
         participantes=await _participantes(session, linha["id"], completo=completo),
         itens=await _itens(session, linha["id"]),
     )

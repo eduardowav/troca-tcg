@@ -20,7 +20,8 @@ from app.schemas.profile import PerfilAtualizar, PerfilCriar, PerfilOut
 # que ela precisa continuar valendo.
 _COLUNAS = """
   id::text, username, nome_exibicao, cidade, bairro, avatar_url, bio,
-  contato_visivel, trocas_concluidas, trocas_furadas, plano, onboarding_ok
+  contato_visivel, trocas_concluidas, trocas_furadas, trocas_desistidas,
+  plano, onboarding_ok
 """
 
 
