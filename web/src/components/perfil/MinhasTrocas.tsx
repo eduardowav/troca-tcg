@@ -106,6 +106,15 @@ const DESFECHOS: Record<
     cor: 'text-faint',
     rotulos: { dou: 'Você daria', recebo: 'Você receberia' },
   },
+  // "Desmarcada", sem dizer por quem: a mesma linha aparece no histórico dos
+  // dois, e quem recebeu a desistência não desmarcou nada. Quem quiser saber
+  // abre a troca, que tem a frase certa para cada lado. A cor é a neutra, não a
+  // de alerta — desmarcar avisando é o oposto de furar.
+  CANCELADO: {
+    rotulo: 'Desmarcada',
+    cor: 'text-muted',
+    rotulos: { dou: 'Você daria', recebo: 'Você receberia' },
+  },
 }
 
 function Linha({

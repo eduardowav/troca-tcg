@@ -14,6 +14,8 @@ export interface Perfil {
   contato_visivel: string | null
   trocas_concluidas: number
   trocas_furadas: number
+  /** Desistências declaradas. Fora da razão da reputação — não são furo. */
+  trocas_desistidas?: number
   reputacao: number | null
   plano: string
   onboarding_ok: boolean

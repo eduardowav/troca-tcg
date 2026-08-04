@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/Button'
 import { Campo } from '@/components/ui/Campo'
 import { usePerfil } from '@/hooks/usePerfil'
 import { ApiError } from '@/lib/api'
+import { cn } from '@/lib/cn'
 import {
   atualizarPerfil,
   excluirConta,
@@ -79,9 +80,18 @@ export default function PerfilTela() {
 /** Reputação é pública e não editável — é o que sustenta a confiança. */
 function Reputacao({ perfil }: { perfil: Perfil }) {
   const total = perfil.trocas_concluidas + perfil.trocas_furadas
+  // A desistência não entra na razão da reputação, e o placar dela só aparece
+  // depois da primeira: um "0" fixo ao lado dos outros números sugeriria que
+  // existe algo a vigiar aí, e para quase todo mundo não existe.
+  const desistencias = perfil.trocas_desistidas ?? 0
 
   return (
-    <dl className="mt-7 grid grid-cols-3 gap-3">
+    <dl
+      className={cn(
+        'mt-7 grid gap-3',
+        desistencias > 0 ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-3',
+      )}
+    >
       <Placar
         rotulo="Reputação"
         valor={perfil.reputacao != null ? `${perfil.reputacao}%` : '—'}
@@ -97,6 +107,13 @@ function Reputacao({ perfil }: { perfil: Perfil }) {
         valor={String(perfil.trocas_furadas)}
         cor="text-alert"
       />
+      {desistencias > 0 && (
+        <Placar
+          rotulo="Desmarcadas"
+          valor={String(desistencias)}
+          dica="avisadas antes"
+        />
+      )}
     </dl>
   )
 }

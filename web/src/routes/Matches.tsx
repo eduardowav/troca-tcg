@@ -13,6 +13,7 @@ import {
   type Match,
   parceiro,
   prazoTexto,
+  prazoUrgente,
   reputacaoTexto,
 } from '@/lib/matches'
 import { useUsuarioId } from '@/stores/auth'
@@ -109,8 +110,19 @@ function CartaoMatch({
         />
       </div>
 
+      {/* O prazo é rodapé enquanto sobra semana e vira aviso nos dois últimos
+          dias. É a mesma linha, com peso de cor diferente: a lista existe para
+          a pessoa decidir o que fazer hoje, e "expira amanhã" no mesmo cinza de
+          "expira em 6 dias" faz as duas notícias valerem o mesmo. */}
       {prazo && (
-        <p className="mt-4 text-[12px] text-faint lg:text-[13px]">{prazo}</p>
+        <p
+          className={cn(
+            'mt-4 text-[12px] lg:text-[13px]',
+            prazoUrgente(match) ? 'font-medium text-want' : 'text-faint',
+          )}
+        >
+          {prazo}
+        </p>
       )}
     </Link>
   )

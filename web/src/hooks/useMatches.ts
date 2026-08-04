@@ -2,6 +2,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import {
   concluirMatch,
+  desistirMatch,
+  estenderMatch,
   furouMatch,
   listarHistorico,
   listarMatches,
@@ -69,22 +71,52 @@ export function useResponderMatch() {
 }
 
 /**
- * Desfecho da troca: aconteceu ou a pessoa não apareceu.
+ * Desfecho da troca. Três saídas, não duas.
  *
- * Invalida o perfil junto porque é aqui que a reputação muda — sem isso a tela
- * de perfil continuaria mostrando o número velho.
+ * Era um booleano — aconteceu ou não aconteceu — e essa era exatamente a falta:
+ * quem desistiu de boa-fé tinha de escolher entre acusar o outro de um furo que
+ * não houve e sumir. `DESISTI` é a terceira, e é a única que a própria pessoa
+ * declara sobre si.
+ *
+ * Invalida o perfil junto porque é aqui que os contadores mudam — sem isso a
+ * tela de perfil continuaria mostrando o número velho.
  */
+export type Desfecho = 'ACONTECEU' | 'FUROU' | 'DESISTI'
+
 export function useDesfechoMatch() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ id, aconteceu }: { id: string; aconteceu: boolean }) =>
-      aconteceu ? concluirMatch(id) : furouMatch(id),
+    mutationFn: ({ id, desfecho }: { id: string; desfecho: Desfecho }) =>
+      desfecho === 'ACONTECEU'
+        ? concluirMatch(id)
+        : desfecho === 'FUROU'
+          ? furouMatch(id)
+          : desistirMatch(id),
 
     onSuccess: (match: Match) => {
       queryClient.setQueryData([...CHAVE, match.id], match)
       queryClient.invalidateQueries({ queryKey: CHAVE })
       queryClient.invalidateQueries({ queryKey: ['perfil'] })
+    },
+  })
+}
+
+/**
+ * Mais uma semana de prazo.
+ *
+ * Não mexe em reputação nenhuma, então o perfil fica de fora da invalidação — o
+ * que muda é a data da troca, e ela vem na resposta.
+ */
+export function useEstenderMatch() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (id: string) => estenderMatch(id),
+
+    onSuccess: (match: Match) => {
+      queryClient.setQueryData([...CHAVE, match.id], match)
+      queryClient.invalidateQueries({ queryKey: CHAVE })
     },
   })
 }

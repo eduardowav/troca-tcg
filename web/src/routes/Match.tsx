@@ -6,7 +6,13 @@ import { LinhaDeTroca } from '@/components/carta/LinhaDeTroca'
 import { Button, estiloBotao } from '@/components/ui/Button'
 import { useAcabamentoPorId } from '@/hooks/useAcabamentos'
 import { useCartasPorId, usePrecosPorId } from '@/hooks/useAnuncios'
-import { useDesfechoMatch, useMatch, useResponderMatch } from '@/hooks/useMatches'
+import {
+  type Desfecho,
+  useDesfechoMatch,
+  useEstenderMatch,
+  useMatch,
+  useResponderMatch,
+} from '@/hooks/useMatches'
 import { type Acabamento, precoDoAcabamento } from '@/lib/acabamentos'
 import { CONDICOES } from '@/lib/anuncios'
 import { ApiError } from '@/lib/api'
@@ -16,7 +22,9 @@ import {
   euConfirmei,
   type Match,
   parceiro,
+  podeEstender,
   prazoTexto,
+  prazoUrgente,
   reputacaoTexto,
 } from '@/lib/matches'
 import { linkWhatsApp } from '@/lib/telefone'
@@ -60,7 +68,7 @@ const ESPERA_ROLAGEM = 480
 const ESPERA_TRAVESSIA = 150
 
 /** Status em que a troca já acabou — o que muda o tempo verbal da tela. */
-const ENCERRADOS = ['CONCLUIDO', 'FURADO', 'EXPIRADO']
+const ENCERRADOS = ['CONCLUIDO', 'FURADO', 'EXPIRADO', 'CANCELADO']
 
 export default function MatchDetalhe() {
   const { id } = useParams<{ id: string }>()
@@ -68,6 +76,7 @@ export default function MatchDetalhe() {
   const { data: match, isPending, isError } = useMatch(id)
   const responder = useResponderMatch()
   const desfecho = useDesfechoMatch()
+  const estender = useEstenderMatch()
   // 'mirando' é o intervalo em que a tela vai até as cartas; 'tocando' é a
   // animação. Separar os dois é o que garante que ninguém celebre no vazio.
   const [selagem, setSelagem] = useState<'parada' | 'mirando' | 'tocando'>(
@@ -161,10 +170,18 @@ export default function MatchDetalhe() {
   // Uma decisão só, usada pela linha de troca e pela linha de condição. Elas
   // descrevem as mesmas duas cartas: se divergirem em ordem ou em tempo verbal,
   // a de baixo passa a falar da carta errada.
+  //
+  // São **três** tempos verbais, não dois. O passado só vale para a troca que
+  // aconteceu; numa furada, expirada ou desmarcada, "você deu" afirma uma
+  // entrega que nunca houve — e é a tela que a pessoa abre justamente para
+  // entender o que aconteceu com aquelas cartas. O histórico do perfil já
+  // distinguia os três casos; o detalhe, que é para onde ele leva, não.
   const rotulos =
-    selagem !== 'parada' || ENCERRADOS.includes(match.status)
+    selagem !== 'parada' || match.status === 'CONCLUIDO'
       ? { dou: 'Você deu', recebo: 'Você recebeu' }
-      : { dou: 'Você dá', recebo: 'Você recebe' }
+      : ENCERRADOS.includes(match.status)
+        ? { dou: 'Você daria', recebo: 'Você receberia' }
+        : { dou: 'Você dá', recebo: 'Você recebe' }
   const trocado = selagem === 'parada' ? match.status === 'CONCLUIDO' : cruzou
   const especificacoes = trocado
     ? [
@@ -192,9 +209,9 @@ export default function MatchDetalhe() {
         },
       ]
 
-  function registrarDesfecho(aconteceu: boolean) {
+  function registrarDesfecho(escolha: Desfecho) {
     desfecho.mutate(
-      { id: match!.id, aconteceu },
+      { id: match!.id, desfecho: escolha },
       {
         onSuccess: (novo) => {
           // Só quando fecha pelos dois. Quem confirma primeiro não fechou nada
@@ -204,9 +221,11 @@ export default function MatchDetalhe() {
           toast.success(
             novo.status === 'CONCLUIDO'
               ? 'Troca concluída pelos dois. Reputação atualizada.'
-              : aconteceu
+              : escolha === 'ACONTECEU'
                 ? 'Confirmado. Falta a outra pessoa confirmar.'
-                : 'Registrado. Obrigado por avisar.',
+                : escolha === 'DESISTI'
+                  ? 'Troca desmarcada. A outra pessoa foi avisada.'
+                  : 'Registrado. Obrigado por avisar.',
           )
         },
         onError: (erro) =>
@@ -292,6 +311,24 @@ export default function MatchDetalhe() {
         </dl>
       </div>
 
+      {/* Antes do aviso de desequilíbrio e das ações: prazo vencendo é a única
+          coisa nesta tela com hora marcada. */}
+      <PrazoApertado
+        match={match}
+        enviando={estender.isPending}
+        onEstender={() =>
+          estender.mutate(match.id, {
+            onSuccess: () => toast.success('Prazo estendido por mais 7 dias.'),
+            onError: (erro) =>
+              toast.error(
+                erro instanceof ApiError
+                  ? erro.message
+                  : 'Não foi possível estender agora.',
+              ),
+          })
+        }
+      />
+
       {desigual && <AvisoDesequilibrio dados={desigual} />}
 
       {match.status === 'CONCLUIDO' ? (
@@ -305,6 +342,23 @@ export default function MatchDetalhe() {
           titulo="Troca marcada como não realizada."
           texto="Registramos que o encontro não aconteceu."
           tom="alert"
+        />
+      ) : match.status === 'CANCELADO' ? (
+        // Quem desistiu e quem recebeu a desistência precisam de frases
+        // diferentes: para um é a própria decisão, para o outro é notícia. Sem
+        // isso a tela teria de escolher um texto que serve mal para os dois.
+        <Encerrado
+          titulo={
+            match.desistiu_por === meuId
+              ? 'Você desmarcou essa troca.'
+              : `${outro?.nome_exibicao ?? 'A outra pessoa'} desmarcou essa troca.`
+          }
+          texto={
+            match.desistiu_por === meuId
+              ? 'Ninguém levou furo, e sua reputação de trocas segue intacta. As cartas voltam a procurar troca; daqui a uma semana, se vocês dois ainda tiverem interesse, ela pode ser sugerida de novo.'
+              : 'Não foi um furo: a pessoa avisou antes do encontro. Suas cartas continuam disponíveis e voltam a aparecer para outras pessoas.'
+          }
+          tom="neutro"
         />
       ) : match.status === 'ACEITO' ? (
         <>
@@ -349,6 +403,60 @@ function Rodape({ match }: { match: Match }) {
       {prazo && `${prazo}. `}A troca acontece presencialmente, combinada entre
       vocês.
     </p>
+  )
+}
+
+/**
+ * O prazo quando ele vira notícia.
+ *
+ * Sai da letra miúda do rodapé e sobe para dentro da tela nos dois últimos dias.
+ * O motivo é a métrica-mãe: a troca combinada que expira calada vira EXPIRADO,
+ * que conta contra os dois sem que nenhum tenha feito nada errado. Quase sempre
+ * não é desinteresse — é a semana que passou. Um toque devolve a semana.
+ *
+ * Só aparece quando aperta. Um "expira em 6 dias" com botão ao lado convidaria a
+ * esticar o prazo antes de tentar marcar, que é o oposto do que a tela quer.
+ */
+function PrazoApertado({
+  match,
+  onEstender,
+  enviando,
+}: {
+  match: Match
+  onEstender: () => void
+  enviando: boolean
+}) {
+  if (!prazoUrgente(match)) return null
+
+  const prazo = prazoTexto(match)
+  const pode = podeEstender(match)
+
+  return (
+    <div
+      role="status"
+      data-tom="atencao"
+      className="cartela mt-5 flex flex-wrap items-center gap-x-4 gap-y-3 rounded-[var(--radius-card)] border border-[color-mix(in_oklab,var(--color-want)_40%,transparent)] bg-[color-mix(in_oklab,var(--color-want)_8%,transparent)] p-4"
+    >
+      <div className="min-w-0 flex-1">
+        <p className="titulo-tom text-[15px] font-medium text-want">{prazo}.</p>
+        <p className="mt-1 text-[13px] leading-relaxed text-muted">
+          {pode
+            ? 'Depois disso ela sai das suas trocas e conta como não realizada para vocês dois. Se ainda estão combinando, estenda.'
+            : 'Essa troca já foi estendida duas vezes. Se não der para se encontrarem agora, vale desmarcar em vez de deixar vencer.'}
+        </p>
+      </div>
+      {pode && (
+        <Button
+          variant="want"
+          size="sm"
+          loading={enviando}
+          onClick={onEstender}
+          className="shrink-0"
+        >
+          Mais 7 dias
+        </Button>
+      )}
+    </div>
   )
 }
 
@@ -515,8 +623,14 @@ function Desfecho({
   match: Match
   meuId: string | undefined
   enviando: boolean
-  onRegistrar: (aconteceu: boolean) => void
+  onRegistrar: (desfecho: Desfecho) => void
 }) {
+  // Desistir encerra a troca para os dois e não tem desfazer — nem um "Desfazer"
+  // no toast resolveria, porque o outro lado já foi avisado. Confirmar no lugar,
+  // e só nesta: as outras duas ou dependem do outro lado (concluir) ou são o
+  // registro de algo que já aconteceu (furo).
+  const [confirmandoDesistencia, setConfirmandoDesistencia] = useState(false)
+
   if (euConfirmei(match, meuId)) {
     return (
       <p className="cartela mt-5 rounded-[var(--radius-card)] border border-edge bg-surface p-4 text-center text-[14px] leading-relaxed text-muted">
@@ -538,16 +652,62 @@ function Desfecho({
           size="md"
           block
           loading={enviando}
-          onClick={() => onRegistrar(true)}
+          onClick={() => onRegistrar('ACONTECEU')}
         >
           A troca aconteceu
         </Button>
+
+        {/* As duas saídas negativas ficam juntas e abaixo, em peso menor: são o
+            caminho de exceção. A ordem entre elas não é aleatória — desistir
+            fala de você e vem primeiro; acusar o outro é o último recurso. */}
+        {confirmandoDesistencia ? (
+          <div className="mt-1 rounded-[var(--radius-control)] border border-edge-soft bg-surface-2 p-3">
+            <p className="text-[14px] leading-relaxed text-paper">
+              Desmarcar essa troca?
+            </p>
+            <p className="mt-1 text-[13px] leading-relaxed text-muted">
+              A outra pessoa é avisada e ninguém leva furo. Fica registrado como
+              desistência no seu perfil — é o que mantém o aviso confiável.
+            </p>
+            <div className="mt-3 flex gap-2">
+              <Button
+                variant="subtle"
+                size="sm"
+                disabled={enviando}
+                onClick={() => setConfirmandoDesistencia(false)}
+                className="flex-1"
+              >
+                Voltar
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                loading={enviando}
+                onClick={() => onRegistrar('DESISTI')}
+                className="flex-1"
+              >
+                Sim, desmarcar
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <Button
+            variant="ghost"
+            size="sm"
+            block
+            disabled={enviando}
+            onClick={() => setConfirmandoDesistencia(true)}
+          >
+            Não vou conseguir
+          </Button>
+        )}
+
         <Button
           variant="ghost"
           size="sm"
           block
           disabled={enviando}
-          onClick={() => onRegistrar(false)}
+          onClick={() => onRegistrar('FUROU')}
           className="text-alert hover:text-alert"
         >
           A pessoa não apareceu
@@ -557,6 +717,14 @@ function Desfecho({
   )
 }
 
+/**
+ * O painel de troca encerrada.
+ *
+ * `neutro` existe por causa da desistência, e a cor é a decisão: pintá-la de
+ * vermelho como o furo diria que alguém fez algo errado, e o produto acabou de
+ * decidir o contrário — quem avisa antes faz o oposto de furar. Cartela comum,
+ * sem moldura de alarme.
+ */
 function Encerrado({
   titulo,
   texto,
@@ -564,23 +732,26 @@ function Encerrado({
 }: {
   titulo: string
   texto: string
-  tom: 'offer' | 'alert'
+  tom: 'offer' | 'alert' | 'neutro'
 }) {
   const bom = tom === 'offer'
+  const ruim = tom === 'alert'
   return (
     <div
-      data-tom={bom ? 'bom' : 'ruim'}
+      data-tom={bom ? 'bom' : ruim ? 'ruim' : undefined}
       className={cn(
         'cartela mt-5 rounded-[var(--radius-card)] border p-5',
-        bom
-          ? 'border-[color-mix(in_oklab,var(--color-offer)_40%,transparent)] bg-[color-mix(in_oklab,var(--color-offer)_10%,transparent)]'
-          : 'border-[color-mix(in_oklab,var(--color-alert)_40%,transparent)] bg-[color-mix(in_oklab,var(--color-alert)_10%,transparent)]',
+        bom &&
+          'border-[color-mix(in_oklab,var(--color-offer)_40%,transparent)] bg-[color-mix(in_oklab,var(--color-offer)_10%,transparent)]',
+        ruim &&
+          'border-[color-mix(in_oklab,var(--color-alert)_40%,transparent)] bg-[color-mix(in_oklab,var(--color-alert)_10%,transparent)]',
+        !bom && !ruim && 'border-edge bg-surface',
       )}
     >
       <p
         className={cn(
           'titulo-tom text-[15px] font-medium',
-          bom ? 'text-offer' : 'text-alert',
+          bom ? 'text-offer' : ruim ? 'text-alert' : 'text-paper',
         )}
       >
         {titulo}
