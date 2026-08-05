@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 
 import { LinhaDeTroca } from '@/components/carta/LinhaDeTroca'
+import { cabeMaisCartas, MaisCartas } from '@/components/carta/MaisCartas'
 import { Button, estiloBotao } from '@/components/ui/Button'
 import { useAcabamentoPorId } from '@/hooks/useAcabamentos'
 import { useCartasPorId, usePrecosPorId } from '@/hooks/useAnuncios'
@@ -10,6 +11,7 @@ import {
   type Desfecho,
   useDesfechoMatch,
   useEstenderMatch,
+  useMaisCartas,
   useMatch,
   useResponderMatch,
 } from '@/hooks/useMatches'
@@ -116,6 +118,10 @@ export default function MatchDetalhe() {
   const { data: cartas } = useCartasPorId(ids)
   const { data: precos } = usePrecosPorId(ids)
   const acabamentoPorId = useAcabamentoPorId()
+  // Nem busca quando a troca acabou mal: a seção não apareceria, e pedir o
+  // acervo de quem furou é gastar requisição para esconder o resultado.
+  const cabeAcervo = match ? cabeMaisCartas(match.status) : false
+  const { data: maisCartas } = useMaisCartas(cabeAcervo ? id : undefined)
 
   if (isPending) {
     return (
@@ -383,9 +389,23 @@ export default function MatchDetalhe() {
         />
       )}
 
+      {/* Depois do desfecho e da decisão, nunca antes: a tela existe para
+          resolver *esta* troca, e o acervo é a conversa seguinte. Quem estiver
+          decidindo se vale a viagem rola e encontra. */}
+      <MaisCartas
+        cartas={maisCartas ?? []}
+        nome={primeiroNome(outro)}
+        status={match.status}
+      />
+
       <Rodape match={match} />
     </Moldura>
   )
+}
+
+/** O primeiro nome, que é como se fala de alguém. "Marina", não "Marina Alves". */
+function primeiroNome(pessoa?: { nome_exibicao: string }): string {
+  return pessoa?.nome_exibicao?.split(' ')[0] ?? 'quem está do outro lado'
 }
 
 /**

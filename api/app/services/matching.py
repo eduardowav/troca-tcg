@@ -24,6 +24,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.errors import RegraNegocio
 from app.schemas.listing import CartaProcurada, QuemProcura
 from app.schemas.match import (
+    CartaDoParceiro,
     ItemMatch,
     MatchNoHistorico,
     MatchOut,
@@ -360,6 +361,83 @@ async def demanda_pelas_minhas_ofertas(
                 )
             )
     return list(por_carta.values())
+
+
+# O acervo do parceiro, menos o que já está nesta troca.
+#
+# `reciproco` inverte o tipo de propósito: uma OFERTA dela só interessa contra o
+# meu PROCURA, e vice-versa. É a mesma regra do matcher, dita para uma pessoa só.
+#
+# A ordem é o produto inteiro desta tela: o que fecha com você primeiro, depois o
+# que a pessoa marcou como prioridade alta, e o resto por último. Sem isso a
+# lista é um monte de cartas e o trabalho de achar o que importa fica com quem lê.
+_MAIS_CARTAS = text("""
+    select l.card_id::text as card_id, l.tipo::text as tipo, l.quantidade,
+           l.condicao::text as condicao, l.finish_id, l.prioridade,
+           exists (
+             select 1 from listings meu
+             where meu.user_id = :eu and meu.ativo
+               and meu.card_id = l.card_id
+               and meu.tipo = case
+                     when l.tipo = 'OFERTA' then 'PROCURA'::listing_kind
+                     else 'OFERTA'::listing_kind
+                   end
+           ) as reciproco
+    from listings l
+    where l.user_id = :parceiro
+      and l.ativo
+      and l.card_id not in (
+        select card_id from match_items where match_id = :m
+      )
+    order by reciproco desc, l.prioridade desc, l.card_id
+    limit :limite
+""")
+
+
+async def mais_cartas_do_parceiro(
+    session: AsyncSession, user_id: UUID, match_id: UUID, limite: int = 200
+) -> list[CartaDoParceiro]:
+    """O resto do acervo de quem cruzou com você nesta troca.
+
+    Recortado pelo match de propósito: o produto é um quadro de trocas, não um
+    diretório de pessoas. Ver o acervo de alguém é consequência de já ter dado
+    match com ela, não uma busca livre por usuário.
+
+    Não exige aceite. A pergunta "vale a viagem?" é anterior ao aceite — uma
+    carta só pode não valer o encontro, três valem —, e esconder isso até o
+    aceite mútuo cobraria justamente na hora em que a pessoa está decidindo.
+    Contato segue outra regra e continua saindo só depois do aceite dos dois.
+    """
+    parceiro = await session.scalar(
+        text("""
+            select outro.user_id::text
+            from match_participants eu
+            join match_participants outro
+              on outro.match_id = eu.match_id and outro.user_id <> eu.user_id
+            where eu.match_id = :m and eu.user_id = :eu
+            limit 1
+        """),
+        {"m": str(match_id), "eu": str(user_id)},
+    )
+    if parceiro is None:
+        raise _nao_encontrado()
+
+    linhas = (
+        (
+            await session.execute(
+                _MAIS_CARTAS,
+                {
+                    "eu": str(user_id),
+                    "parceiro": parceiro,
+                    "m": str(match_id),
+                    "limite": limite,
+                },
+            )
+        )
+        .mappings()
+        .all()
+    )
+    return [CartaDoParceiro(**dict(linha)) for linha in linhas]
 
 
 async def _participantes(

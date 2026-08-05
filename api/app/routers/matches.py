@@ -8,7 +8,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import usuario_atual
 from app.db.session import get_session
-from app.schemas.match import MatchCompleto, MatchNoHistorico, MatchOut
+from app.schemas.match import (
+    CartaDoParceiro,
+    MatchCompleto,
+    MatchNoHistorico,
+    MatchOut,
+)
 from app.services import matching
 
 router = APIRouter(prefix="/me/matches", tags=["matches"])
@@ -56,6 +61,16 @@ async def detalhar(
     session: AsyncSession = Depends(get_session),
 ) -> MatchOut:
     return await matching.obter_match(session, user_id, match_id)
+
+
+@router.get("/{match_id}/mais-cartas", response_model=list[CartaDoParceiro])
+async def mais_cartas(
+    match_id: UUID,
+    user_id: UUID = Depends(usuario_atual),
+    session: AsyncSession = Depends(get_session),
+) -> list[CartaDoParceiro]:
+    """O resto do acervo de quem cruzou com você — ver services/matching."""
+    return await matching.mais_cartas_do_parceiro(session, user_id, match_id)
 
 
 @router.post("/{match_id}/concluir", response_model=MatchCompleto)

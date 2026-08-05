@@ -6,6 +6,7 @@ import {
   estenderMatch,
   furouMatch,
   listarHistorico,
+  listarMaisCartas,
   listarMatches,
   type Match,
   obterMatch,
@@ -43,6 +44,22 @@ export function useHistorico() {
     queryKey: [...CHAVE, 'historico'],
     queryFn: listarHistorico,
     staleTime: 5 * 60 * 1000,
+  })
+}
+
+/**
+ * O resto do acervo de quem cruzou com você nesta troca.
+ *
+ * Chave debaixo do match: mexer nas suas listas invalida `matches` e a marca de
+ * reciprocidade se refaz junto — sem isso, cadastrar um Procuro novo deixaria a
+ * carta dela sem o destaque até um recarregamento manual.
+ */
+export function useMaisCartas(id: string | undefined) {
+  return useQuery({
+    queryKey: [...CHAVE, id, 'mais-cartas'],
+    enabled: Boolean(id),
+    staleTime: 60 * 1000,
+    queryFn: () => listarMaisCartas(id as string),
   })
 }
 

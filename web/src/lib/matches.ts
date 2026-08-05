@@ -1,5 +1,6 @@
 import { api } from '@/lib/api'
 import type { Condicao } from '@/lib/anuncios'
+import type { ListingKind } from '@/lib/types'
 
 /**
  * Espelha ParticipanteResumo/ParticipanteCompleto da API.
@@ -143,6 +144,27 @@ export const concluirMatch = (id: string) =>
 
 /** Avisa que a outra pessoa não apareceu. */
 export const furouMatch = (id: string) => api.post<Match>(`/me/matches/${id}/furou`)
+
+/**
+ * Uma carta que a outra pessoa anuncia, fora a que já está nesta troca.
+ *
+ * `tipo` é do ponto de vista **dela**: OFERTA é o que ela tem, PROCURA é o que
+ * ela quer. Quem lê a tela inverte isso — o que ela tem é o que eu posso
+ * receber. Ver `MaisCartas`, onde a inversão vira cor.
+ */
+export interface CartaDoParceiro {
+  card_id: string
+  tipo: ListingKind
+  quantidade: number
+  condicao: Condicao
+  finish_id: number
+  prioridade: number
+  /** Fecha com as minhas listas: ela oferece o que procuro, ou procura o que ofereço. */
+  reciproco: boolean
+}
+
+export const listarMaisCartas = (id: string) =>
+  api.get<CartaDoParceiro[]>(`/me/matches/${id}/mais-cartas`)
 
 /** Desiste da troca avisando. Encerra para os dois, sem acusar ninguém. */
 export const desistirMatch = (id: string) =>

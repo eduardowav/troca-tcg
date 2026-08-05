@@ -292,3 +292,42 @@ def test_match_expoe_prorrogacoes_e_quem_desistiu():
         "trocas_desistidas"
         in MatchOut.model_fields["participantes"].annotation.__args__[0].model_fields
     )
+
+
+def test_mais_cartas_nao_repete_a_carta_da_troca():
+    """A carta que já está sendo trocada não é "mais uma carta"."""
+    sql = matching._MAIS_CARTAS.text
+    assert "card_id not in (" in sql
+    assert "select card_id from match_items where match_id = :m" in sql
+
+
+def test_mais_cartas_inverte_o_tipo_para_reciprocidade():
+    """OFERTA dela só interessa contra o meu PROCURA, e vice-versa — a mesma
+    regra do matcher, dita para uma pessoa só."""
+    sql = matching._MAIS_CARTAS.text
+    assert "when l.tipo = 'OFERTA' then 'PROCURA'::listing_kind" in sql
+    assert "else 'OFERTA'::listing_kind" in sql
+
+
+def test_mais_cartas_poe_o_reciproco_primeiro():
+    """A ordem é o produto desta tela: o que fecha com você primeiro."""
+    assert "order by reciproco desc" in matching._MAIS_CARTAS.text
+
+
+def test_mais_cartas_so_traz_anuncio_ativo():
+    assert "l.ativo" in matching._MAIS_CARTAS.text
+
+
+def test_mais_cartas_nao_expoe_contato():
+    """Acervo é público (11_grants.sql); contato continua saindo só após o
+    aceite mútuo, e este schema não tem onde guardá-lo."""
+    props = app.openapi()["components"]["schemas"]["CartaDoParceiro"]["properties"]
+    assert not [c for c in props if "contato" in c]
+    assert "user_id" not in props
+
+
+def test_mais_cartas_esta_publicada_e_exige_autenticacao():
+    assert "/v1/me/matches/{match_id}/mais-cartas" in app.openapi()["paths"]
+    client = TestClient(app)
+    resp = client.get(f"/v1/me/matches/{uuid4()}/mais-cartas")
+    assert resp.status_code in (401, 403)

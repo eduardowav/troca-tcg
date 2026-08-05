@@ -52,6 +52,35 @@ class ItemMatch(BaseModel):
     finish_id: int
 
 
+class CartaDoParceiro(BaseModel):
+    """Uma carta que a outra pessoa anuncia, fora a que já está nesta troca.
+
+    Existe para atacar o desperdício mais óbvio do produto: duas pessoas que já
+    se acharam, já combinaram e vão se encontrar levam **uma** carta cada. Se ela
+    tem outras trinta, as outras vinte e nove ficam invisíveis justamente no
+    momento em que o custo de trocar mais uma é zero — o encontro já vai
+    acontecer.
+
+    `reciproco` é o sinal que transforma lista em proposta: numa OFERTA dela quer
+    dizer "isto está no seu Procuro"; numa PROCURA dela quer dizer "você já
+    oferece isto". As duas direções importam e por isso as duas vêm — saber o que
+    pedir vale tanto quanto saber o que levar.
+
+    Nada aqui é dado novo exposto: `listings` já é leitura pública (11_grants.sql)
+    e a tela de demanda já nomeia quem procura suas cartas. O que a rota faz é
+    recortar pelo match — você vê o acervo de quem já cruzou com você, não o de
+    qualquer pessoa. Contato continua fora, como sempre.
+    """
+
+    card_id: str
+    tipo: str
+    quantidade: int
+    condicao: str
+    finish_id: int
+    prioridade: int
+    reciproco: bool
+
+
 class MatchOut(BaseModel):
     """
     Datas são `datetime`, nunca `str`.
