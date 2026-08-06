@@ -8,7 +8,7 @@ import { FolhaAdicionar } from '@/components/carta/FolhaAdicionar'
 import { useAcabamentosDaCarta } from '@/hooks/useAcabamentos'
 import { useAnuncios, useCartasPorId, usePrecosPorId } from '@/hooks/useAnuncios'
 import { useCatalogo } from '@/hooks/useCatalogo'
-import { useMundo } from '@/hooks/useMundo'
+import { useMarcaOculta, useMundo } from '@/hooks/useMundo'
 import { precoDoAcabamento } from '@/lib/acabamentos'
 import { cn } from '@/lib/cn'
 import {
@@ -40,6 +40,7 @@ import {
  */
 export default function CartaDetalhe() {
   useMundo('brutal')
+  useMarcaOculta()
 
   const { id } = useParams<{ id: string }>()
   const ids = id ? [id] : []
@@ -90,15 +91,22 @@ export default function CartaDetalhe() {
 
   return (
     <Moldura>
-      {/* O voltar do arquivo é um botão redondo com borda, não um link de texto.
-          Mesma peça do sino, e é o que dá alvo de toque de verdade no celular. */}
-      <Link
-        to="/buscar"
-        aria-label="Voltar para a busca"
-        className="grid size-9 shrink-0 place-items-center self-start rounded-full border-2 border-tinta bg-cartela font-titulo text-[16px] font-black text-tinta transition-shadow hover:shadow-[var(--shadow-duro-xs)]"
-      >
-        ←
-      </Link>
+      {/* O cabeçalho desta tela é a volta e o título, sem a marca — é o que a
+          `card-detail` do arquivo desenha, e é o que faz sentido numa tela em
+          que se entrou. O voltar é botão redondo com borda, mesma peça do sino:
+          no celular, um link de texto de 13px não é alvo de toque. */}
+      <div className="flex items-center gap-3">
+        <Link
+          to="/buscar"
+          aria-label="Voltar para a busca"
+          className="grid size-9 shrink-0 place-items-center rounded-full border-2 border-tinta bg-cartela font-titulo text-[16px] font-black text-tinta transition-shadow hover:shadow-[var(--shadow-duro-xs)]"
+        >
+          ←
+        </Link>
+        <p className="font-titulo text-[18px] leading-none font-black text-tinta">
+          Detalhes da carta
+        </p>
+      </div>
 
       {/* Empilhado no celular, lado a lado a partir de sm: a arte é o assunto,
           e no telefone ela merece a largura inteira antes dos dados. */}

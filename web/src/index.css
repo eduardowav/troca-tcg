@@ -240,6 +240,13 @@
     display: flex;
   }
 
+  /* Telas em que se entra não repetem a marca: elas trazem a volta e o
+     próprio título, como a `card-detail` do arquivo. Quem liga o
+     atributo é o hook `useMarcaOculta`. */
+  [data-marca='oculta'] .marca-app {
+    display: none;
+  }
+
   [data-mundo='brutal'] .nav-app {
     background-color: var(--color-cartela);
     border-top: 2px solid var(--color-tinta);
