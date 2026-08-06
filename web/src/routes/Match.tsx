@@ -1,9 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 
 import { LinhaDeTroca } from '@/components/carta/LinhaDeTroca'
-import { cabeMaisCartas, MaisCartas } from '@/components/carta/MaisCartas'
 import { Denunciar } from '@/components/perfil/Denunciar'
 import { Button, estiloBotao } from '@/components/ui/Button'
 import { useAcabamentoPorId } from '@/hooks/useAcabamentos'
@@ -12,7 +11,6 @@ import {
   type Desfecho,
   useDesfechoMatch,
   useEstenderMatch,
-  useMaisCartas,
   useMatch,
   useResponderMatch,
 } from '@/hooks/useMatches'
@@ -42,34 +40,6 @@ import {
 } from '@/lib/types'
 import { useUsuarioId } from '@/stores/auth'
 
-/**
- * Tudo somado: rastros (1,35s), travessia das cartas, e a marca — que entra aos
- * 800ms, segura, e sai sozinha antes disto acabar. A saída é o que faz a peça
- * desaparecer do DOM já invisível, em vez de sumir de estalo.
- */
-const DURACAO_SELAGEM = 2800
-
-/**
- * Tempo entre pedir a rolagem e soltar a animação.
- *
- * O botão que fecha a troca fica a mais de 400px abaixo das cartas: do topo da
- * linha de troca até a base dele são ~950px, mais do que cabe em qualquer
- * celular. Quem desce o dedo para confirmar não tem mais as cartas na tela — e a
- * primeira versão disto tocou a selagem inteira fora do campo de visão de quem
- * acabou de fechar a troca. Rolar até elas antes é o que faz a animação existir
- * para alguém.
- */
-const ESPERA_ROLAGEM = 480
-
-/**
- * Atraso entre o começo da selagem e a travessia das cartas.
- *
- * A primeira divisa sai na frente e a carta vem atrás dela: a seta anuncia o
- * caminho, a carta faz o caminho. Saindo tudo no mesmo quadro, o olho não tem
- * onde pousar primeiro.
- */
-const ESPERA_TRAVESSIA = 150
-
 /** Status em que a troca já acabou — o que muda o tempo verbal da tela. */
 const ENCERRADOS = ['CONCLUIDO', 'FURADO', 'EXPIRADO', 'CANCELADO']
 
@@ -80,38 +50,6 @@ export default function MatchDetalhe() {
   const responder = useResponderMatch()
   const desfecho = useDesfechoMatch()
   const estender = useEstenderMatch()
-  // 'mirando' é o intervalo em que a tela vai até as cartas; 'tocando' é a
-  // animação. Separar os dois é o que garante que ninguém celebre no vazio.
-  const [selagem, setSelagem] = useState<'parada' | 'mirando' | 'tocando'>(
-    'parada',
-  )
-  const [cruzou, setCruzou] = useState(false)
-  const linhaRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (selagem === 'parada') return
-
-    if (selagem === 'mirando') {
-      const suave = !window.matchMedia('(prefers-reduced-motion: reduce)').matches
-      linhaRef.current?.scrollIntoView({
-        block: 'center',
-        behavior: suave ? 'smooth' : 'auto',
-      })
-      // Sem rolagem suave não há o que esperar: o salto já pôs as cartas na tela.
-      const t = setTimeout(() => setSelagem('tocando'), suave ? ESPERA_ROLAGEM : 0)
-      return () => clearTimeout(t)
-    }
-
-    // Toca uma vez e sai sozinha. Quem volta à tela depois vem atrás do contato
-    // para retomar o assunto, e encontrar a festa de novo atrapalharia.
-    const travessia = setTimeout(() => setCruzou(true), ESPERA_TRAVESSIA)
-    const fim = setTimeout(() => setSelagem('parada'), DURACAO_SELAGEM)
-    return () => {
-      clearTimeout(travessia)
-      clearTimeout(fim)
-    }
-  }, [selagem])
-
   const ids = useMemo(
     () => (match?.itens ?? []).map((i) => i.card_id),
     [match],
@@ -119,10 +57,6 @@ export default function MatchDetalhe() {
   const { data: cartas } = useCartasPorId(ids)
   const { data: precos } = usePrecosPorId(ids)
   const acabamentoPorId = useAcabamentoPorId()
-  // Nem busca quando a troca acabou mal: a seção não apareceria, e pedir o
-  // acervo de quem furou é gastar requisição para esconder o resultado.
-  const cabeAcervo = match ? cabeMaisCartas(match.status) : false
-  const { data: maisCartas } = useMaisCartas(cabeAcervo ? id : undefined)
 
   if (isPending) {
     return (
@@ -184,12 +118,12 @@ export default function MatchDetalhe() {
   // entender o que aconteceu com aquelas cartas. O histórico do perfil já
   // distinguia os três casos; o detalhe, que é para onde ele leva, não.
   const rotulos =
-    selagem !== 'parada' || match.status === 'CONCLUIDO'
+    match.status === 'CONCLUIDO'
       ? { dou: 'Você deu', recebo: 'Você recebeu' }
       : ENCERRADOS.includes(match.status)
         ? { dou: 'Você daria', recebo: 'Você receberia' }
         : { dou: 'Você dá', recebo: 'Você recebe' }
-  const trocado = selagem === 'parada' ? match.status === 'CONCLUIDO' : cruzou
+  const trocado = match.status === 'CONCLUIDO'
   const especificacoes = trocado
     ? [
         {
@@ -221,10 +155,11 @@ export default function MatchDetalhe() {
       { id: match!.id, desfecho: escolha },
       {
         onSuccess: (novo) => {
-          // Só quando fecha pelos dois. Quem confirma primeiro não fechou nada
-          // ainda — celebrar ali prometeria um desfecho que ainda depende do
-          // outro lado, e é justamente o que fura.
-          if (novo.status === 'CONCLUIDO') setSelagem('mirando')
+          // A selagem — a animação que rolava até as cartas e tocava o holo
+          // quando a troca fechava pelos dois — está desligada por enquanto,
+          // por decisão do Eduardo: ela é do mundo do playmat e o mundo novo
+          // ainda não tem o momento que vai no lugar dela. O `toast` abaixo
+          // continua dando a notícia.
           toast.success(
             novo.status === 'CONCLUIDO'
               ? 'Troca concluída pelos dois. Reputação atualizada.'
@@ -301,15 +236,13 @@ export default function MatchDetalhe() {
       <div className="cartela mt-8 rounded-[var(--radius-card)] border border-edge bg-surface p-5">
         {/* Tempo verbal: numa troca encerrada, "você dá" está falando de uma
             coisa que já aconteceu. O histórico do perfil já corrigia isso; o
-            detalhe, que é para onde o histórico leva, não corrigia. Durante a
-            selagem o passado já vale — foi ela que acabou de acontecer. */}
-        <div ref={linhaRef}>
+            detalhe, que é para onde o histórico leva, não corrigia. */}
+        <div>
           <LinhaDeTroca
             dou={dou && cartas?.get(dou.card_id)}
             recebo={recebo && cartas?.get(recebo.card_id)}
             lados={{ dou: ladoDou, recebo: ladoRecebo }}
             tamanho="grande"
-            selando={selagem === 'tocando'}
             trocado={trocado}
             rotulos={rotulos}
           />
@@ -403,15 +336,6 @@ export default function MatchDetalhe() {
           onDecidir={decidir}
         />
       )}
-
-      {/* Depois do desfecho e da decisão, nunca antes: a tela existe para
-          resolver *esta* troca, e o acervo é a conversa seguinte. Quem estiver
-          decidindo se vale a viagem rola e encontra. */}
-      <MaisCartas
-        cartas={maisCartas ?? []}
-        nome={primeiroNome(outro)}
-        status={match.status}
-      />
 
       {/* Por último, e em letra miúda. A tela existe para a troca dar certo; a
           denúncia é o que sobra quando não deu, e ocupar um lugar de destaque
