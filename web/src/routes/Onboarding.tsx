@@ -5,15 +5,15 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 
+import {
+  AcoesBrutal,
+  BotaoListaBrutal,
+  CelulaBrutal,
+  GradeBrutal,
+} from '@/components/brutal/Cartas'
+import { BotaoBrutal, Cartela } from '@/components/brutal/Pecas'
 import { CartaThumb } from '@/components/carta/CartaThumb'
 import { FiltroCatalogo } from '@/components/carta/FiltroCatalogo'
-import {
-  AcoesDeLista,
-  BotaoLista,
-  CelulaCarta,
-  GradeDeCartas,
-} from '@/components/carta/GradeDeCartas'
-import { Button } from '@/components/ui/Button'
 import { useCardSearch } from '@/hooks/useCardSearch'
 import { useDebounced } from '@/hooks/useDebounced'
 import { useMundo } from '@/hooks/useMundo'
@@ -33,6 +33,7 @@ export default function Onboarding() {
   useMundo('brutal')
   const [termo, setTermo] = useState('')
   const [filtros, setFiltros] = useState<FiltrosBusca>(SEM_FILTRO)
+  const [filtrosAbertos, setFiltrosAbertos] = useState(false)
   const busca = useDebounced(termo, 250)
   const {
     cartas: resultados,
@@ -58,17 +59,48 @@ export default function Onboarding() {
 
         <BuscaCartas termo={termo} onTermo={setTermo} />
 
-        <FiltroCatalogo
-          filtros={filtros}
-          onFiltros={setFiltros}
-          className="mt-3"
-        />
+        {/* Mesmo botão da busca: três seletores abertos aqui competiriam com a
+            grade, que é o assunto da tela — e quem chega no onboarding busca
+            pelo nome, não filtra expansão. */}
+        <div className="mt-3">
+          <button
+            type="button"
+            onClick={() => setFiltrosAbertos((v) => !v)}
+            aria-expanded={filtrosAbertos}
+            className={cn(
+              'inline-flex items-center gap-2 rounded-[var(--radius-controle)] border-2 border-tinta px-4 py-2',
+              'font-titulo text-[13px] font-extrabold uppercase transition-shadow',
+              temFiltro(filtros)
+                ? 'bg-azul text-azul-tinta shadow-[var(--shadow-duro-sm)]'
+                : 'bg-cartela text-tinta hover:shadow-[var(--shadow-duro-xs)]',
+            )}
+          >
+            Filtros
+            <span aria-hidden className="font-dado text-[11px]">
+              {filtrosAbertos ? '▲' : '▼'}
+            </span>
+          </button>
+          {temFiltro(filtros) && (
+            <button
+              type="button"
+              onClick={() => setFiltros(SEM_FILTRO)}
+              className="ml-2 font-corpo text-[13px] font-medium text-azul underline underline-offset-2"
+            >
+              Limpar
+            </button>
+          )}
+          {filtrosAbertos && (
+            <Cartela className="mt-3 p-3">
+              <FiltroCatalogo filtros={filtros} onFiltros={setFiltros} />
+            </Cartela>
+          )}
+        </div>
 
         {atalho && (
-          <p role="status" className="mt-2 text-xs text-muted">
+          <p role="status" className="mt-2 font-corpo text-[13px] text-apagado">
             Lendo como carta{' '}
-            <span className="set-code text-paper">{atalho.numero}</span> de{' '}
-            <span className="text-paper">{atalho.set.nome}</span>.
+            <span className="font-dado text-tinta">{atalho.numero}</span> de{' '}
+            <span className="font-medium text-tinta">{atalho.set.nome}</span>.
           </p>
         )}
       </div>
@@ -81,21 +113,21 @@ export default function Onboarding() {
         ) : resultados && resultados.length > 0 ? (
           <>
             <Contagem mostrando={resultados.length} total={total} />
-            <GradeDeCartas>
+            <GradeBrutal>
               {resultados.map((carta) => (
                 <CartaEscolhivel key={carta.id} carta={carta} />
               ))}
-            </GradeDeCartas>
+            </GradeBrutal>
             {temMais && (
-              <Button
-                variant="subtle"
-                block
-                className="mt-3"
-                loading={carregandoMais}
+              <button
                 onClick={() => carregarMais()}
+                disabled={carregandoMais}
+                className="mt-4 w-full"
               >
-                Mostrar mais
-              </Button>
+                <BotaoBrutal className="w-full justify-center">
+                  {carregandoMais ? 'Carregando…' : 'Mostrar mais'}
+                </BotaoBrutal>
+              </button>
             )}
           </>
         ) : (
@@ -113,23 +145,22 @@ export default function Onboarding() {
 function Cabecalho({ total }: { total: number }) {
   return (
     <header className="pt-8">
-      <p className="set-code text-xs tracking-wide text-muted">TROCATCG</p>
-      <h1 className="mt-3 text-[28px] leading-[1.1]">
+      <h1 className="font-titulo text-[26px] leading-[1.1] font-black text-tinta lg:text-[30px]">
         Comece pela carta que você mais quer.
       </h1>
-      <p className="mt-2 text-[15px] leading-relaxed text-muted">
+      <p className="mt-2 font-corpo text-[15px] leading-relaxed text-apagado">
         Tudo que você colocar aqui fica disponível para troca. Monte suas listas
-        de <span className="font-medium text-offer">Ofereço</span> e{' '}
-        <span className="font-medium text-want">Procuro</span> — o app encontra
-        com quem trocar. Uma carta já basta para começar; o resto você
-        acrescenta quando quiser.
+        de <strong className="font-bold text-tinta">Ofereço</strong> e{' '}
+        <strong className="font-bold text-tinta">Procuro</strong> — o app acha
+        com quem trocar. Uma carta já basta para começar; o resto você acrescenta
+        quando quiser.
       </p>
 
       {/* Contagem só aparece depois da 1ª escolha: com a lista vazia ela não
           informa nada, e um "0" fixo no alto da tela lê como cobrança. */}
       {total > 0 && (
-        <p role="status" className="mt-5 text-sm text-muted">
-          <NumberFlow value={total} className="font-semibold text-paper" />{' '}
+        <p role="status" className="mt-5 font-corpo text-[14px] text-apagado">
+          <NumberFlow value={total} className="font-titulo font-black text-tinta" />{' '}
           {total === 1 ? 'carta escolhida' : 'cartas escolhidas'}
         </p>
       )}
@@ -149,7 +180,7 @@ function BuscaCartas({
   return (
     <div className="sticky top-3 z-20 mt-6">
       <div className="relative">
-        <IconeBusca className="pointer-events-none absolute top-1/2 left-3.5 size-5 -translate-y-1/2 text-muted" />
+        <IconeBusca className="pointer-events-none absolute top-1/2 left-3.5 size-5 -translate-y-1/2 text-apagado" />
         <input
           value={termo}
           onChange={(e) => onTermo(e.target.value)}
@@ -162,8 +193,8 @@ function BuscaCartas({
           aria-label="Buscar carta pelo nome"
           className={cn(
             'h-13 w-full rounded-[var(--radius-controle)] pl-11 pr-4',
-            'bg-cartela text-[16px] text-paper placeholder:text-muted',
-            'border-2 border-tinta shadow-[var(--shadow-card)]',
+            'bg-cartela font-corpo text-[16px] text-tinta placeholder:text-apagado',
+            'border-2 border-tinta shadow-[var(--shadow-duro-xs)]',
             'transition-colors focus:border-tinta focus:outline-none',
           )}
         />
@@ -179,20 +210,20 @@ function CartaEscolhivel({ carta }: { carta: Carta }) {
   const tipo = useOnboarding((s) => s.selecoes[carta.id]?.tipo)
 
   return (
-    <CelulaCarta carta={carta} destaque={tipo}>
-      <AcoesDeLista>
-        <BotaoLista
+    <CelulaBrutal carta={carta} destaque={tipo}>
+      <AcoesBrutal>
+        <BotaoListaBrutal
           tipo="OFERTA"
           ativo={tipo === 'OFERTA'}
           onClick={() => alternar(carta, 'OFERTA')}
         />
-        <BotaoLista
+        <BotaoListaBrutal
           tipo="PROCURA"
           ativo={tipo === 'PROCURA'}
           onClick={() => alternar(carta, 'PROCURA')}
         />
-      </AcoesDeLista>
-    </CelulaCarta>
+      </AcoesBrutal>
+    </CelulaBrutal>
   )
 }
 
@@ -201,7 +232,7 @@ function CartaEscolhivel({ carta }: { carta: Carta }) {
 function Contagem({ mostrando, total }: { mostrando: number; total: number }) {
   if (total <= mostrando) return null
   return (
-    <p role="status" className="mb-2 text-xs text-muted">
+    <p role="status" className="mb-3 font-dado text-[12px] uppercase text-apagado">
       Mostrando {mostrando} de {total} cartas
     </p>
   )
@@ -213,9 +244,9 @@ function EstadoVazio({ temSelecoes }: { temSelecoes: boolean }) {
   return (
     <div className="flex flex-col items-center px-6 pt-10 text-center">
       <div className="grid place-items-center rounded-2xl border-2 border-tinta bg-cartela p-4">
-        <IconeBusca className="size-6 text-muted" />
+        <IconeBusca className="size-6 text-tinta" />
       </div>
-      <p className="mt-4 text-[15px] text-muted">
+      <p className="mt-4 font-corpo text-[14px] leading-relaxed text-apagado">
         {temSelecoes
           ? 'Continue adicionando — quanto maior a lista, mais rápido o match aparece.'
           : 'Busque pelo nome, ou escolha uma expansão para navegar carta a carta.'}
@@ -233,10 +264,10 @@ function SemResultados({
 }) {
   return (
     <div className="px-6 pt-10 text-center">
-      <p className="text-[15px] text-paper">
+      <p className="font-titulo text-[17px] font-bold text-tinta">
         {termo ? `Nenhuma carta para “${termo}”.` : 'Nenhuma carta aqui.'}
       </p>
-      <p className="mt-1 text-sm text-muted">
+      <p className="mt-2 font-corpo text-[14px] text-apagado">
         {comFiltro
           ? 'Talvez esteja em outra expansão — tente limpar o filtro.'
           : 'Tente outro nome — em português ou inglês.'}
@@ -284,41 +315,54 @@ function BandejaSelecao({ total }: { total: number }) {
           animate={{ y: 0 }}
           exit={{ y: 80 }}
           transition={{ type: 'spring', stiffness: 300, damping: 32 }}
-          className="fixed inset-x-0 bottom-0 z-30 border-t border-edge bg-ink/85 backdrop-blur-md"
+          className="fixed inset-x-0 bottom-0 z-30 border-t-2 border-tinta bg-cartela"
         >
-          <div className="mx-auto w-full max-w-[100rem] 2xl:max-w-[120rem] px-5 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
-            <ul className="mb-3 flex gap-2 overflow-x-auto pb-1">
-              {lista.map(({ carta, tipo }) => (
-                <li key={carta.id} className="relative shrink-0">
-                  <CartaThumb
-                    carta={carta}
-                    className={cn(
-                      'w-10 ring-2',
-                      tipo === 'OFERTA' ? 'ring-offer' : 'ring-want',
-                    )}
-                  />
-                  <button
-                    onClick={() => remover(carta.id)}
-                    aria-label={`Remover ${nomeCarta(carta)}`}
-                    className="absolute -top-1.5 -right-1.5 grid size-5 place-items-center rounded-full border-2 border-tinta bg-meu text-muted hover:text-paper"
+          <div className="mx-auto w-full max-w-[100rem] px-6 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] 2xl:max-w-[120rem]">
+            {/* Agrupado por lista, com um rótulo em mono antes de cada grupo.
+                No playmat cada carta levava um anel colorido — verde-água para
+                Ofereço, âmbar para Procuro —, e essas duas cores não existem no
+                mundo novo: aqui azul é ação e âmbar é raridade. Rotular o grupo
+                diz a mesma coisa sem gastar cor, e ainda funciona para quem não
+                distingue as duas. */}
+            <ul className="mb-3 flex items-center gap-2 overflow-x-auto pb-1">
+              {(['OFERTA', 'PROCURA'] as const).flatMap((t) => {
+                const doTipo = lista.filter((s) => s.tipo === t)
+                if (!doTipo.length) return []
+                return [
+                  <li
+                    key={`r-${t}`}
+                    className="shrink-0 rounded-[var(--radius-etiqueta)] border-2 border-tinta bg-meu px-2 py-1 font-dado text-[10px] font-bold uppercase text-tinta"
                   >
-                    <span className="text-xs leading-none">×</span>
-                  </button>
-                </li>
-              ))}
+                    {t === 'OFERTA' ? 'Ofereço' : 'Procuro'} {doTipo.length}
+                  </li>,
+                  ...doTipo.map(({ carta }) => (
+                    <li key={carta.id} className="relative shrink-0">
+                      <CartaThumb
+                        carta={carta}
+                        className="w-10 rounded-[var(--radius-imagem)] border-2 border-tinta"
+                      />
+                      <button
+                        onClick={() => remover(carta.id)}
+                        aria-label={`Remover ${nomeCarta(carta)}`}
+                        className="absolute -top-1.5 -right-1.5 grid size-5 place-items-center rounded-full border-2 border-tinta bg-cartela font-dado text-[11px] leading-none text-tinta"
+                      >
+                        ×
+                      </button>
+                    </li>
+                  )),
+                ]
+              })}
             </ul>
 
             {/* A bandeja só existe com ao menos uma carta escolhida, então o
                 botão nunca precisa estar travado: a 1ª carta já conclui. */}
-            <Button
-              variant="primary"
-              size="lg"
-              block
-              loading={salvando}
+            <button
               onClick={salvar}
+              disabled={salvando}
+              className="w-full rounded-[var(--radius-controle)] border-2 border-tinta bg-azul py-3.5 font-titulo text-[15px] font-black uppercase text-azul-tinta shadow-[var(--shadow-duro-sm)] disabled:opacity-45 disabled:shadow-none"
             >
               {salvando ? 'Salvando suas listas…' : 'Ver meus matches'}
-            </Button>
+            </button>
           </div>
         </motion.div>
       )}

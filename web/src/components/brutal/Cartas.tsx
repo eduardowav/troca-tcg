@@ -133,9 +133,13 @@ export function BotaoListaBrutal({
       className={cn(
         'rounded-[var(--radius-etiqueta)] border-2 border-tinta px-1 py-1.5',
         'font-titulo text-[11px] font-extrabold uppercase transition-shadow',
-        ativo
-          ? 'cursor-default bg-azul text-azul-tinta opacity-60'
-          : 'bg-cartela text-tinta hover:shadow-[var(--shadow-duro-xs)]',
+        // `cursor-default` segue o `disabled`, não o `ativo`: na busca o botão
+        // ativo é mesmo um beco sem saída (a carta já está na lista e sai por
+        // Minhas cartas), mas no onboarding tocar de novo desmarca. Amarrar o
+        // cursor ao estado visual mentiria num dos dois.
+        ativo ? 'bg-azul text-azul-tinta' : 'bg-cartela text-tinta',
+        ativo && disabled && 'cursor-default opacity-60',
+        !disabled && 'hover:shadow-[var(--shadow-duro-xs)]',
       )}
     >
       {ativo ? 'Na lista' : nome}
