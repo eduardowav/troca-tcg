@@ -1,6 +1,11 @@
 import { Link, Navigate } from 'react-router-dom'
 
-import { IconeBusca, IconeCartas, IconeTroca } from '@/components/ui/Icone'
+import {
+  IconeCartasBrutal,
+  IconeRaio,
+  IconeTrocas,
+} from '@/components/brutal/Pecas'
+import { useMundo } from '@/hooks/useMundo'
 import { useAuth } from '@/stores/auth'
 
 /**
@@ -10,8 +15,19 @@ import { useAuth } from '@/stores/auth'
  * perguntas na ordem em que elas aparecem na cabeça de quem chega: o que é,
  * como funciona e é seguro? Quem já tem sessão nunca vê isto — vai direto para
  * o app.
+ *
+ * O tom é mais solto que o do resto do app, por decisão do Eduardo. Aqui a
+ * pessoa ainda não é usuária: não há tarefa em andamento para atrapalhar, e um
+ * texto de folheto institucional é o jeito mais rápido de perder alguém que
+ * chegou por curiosidade. Dentro do app o registro volta ao seco, porque lá
+ * cada frase acompanha uma decisão.
+ *
+ * Nada aqui promete o que o produto não faz. Os números são medidos: o catálogo
+ * tem 15.997 cartas.
  */
 export default function Home() {
+  useMundo('brutal')
+
   const carregando = useAuth((s) => s.carregando)
   const session = useAuth((s) => s.session)
 
@@ -21,7 +37,7 @@ export default function Home() {
         <span
           role="status"
           aria-label="Carregando"
-          className="size-6 animate-spin rounded-full border-2 border-faint border-t-transparent"
+          className="size-6 animate-spin rounded-full border-2 border-tinta border-t-transparent"
         />
       </div>
     )
@@ -32,77 +48,90 @@ export default function Home() {
   if (session) return <Navigate to="/app" replace />
 
   return (
-    <div className="mx-auto w-full max-w-xl px-5 pb-20">
-      <header className="pt-16">
-        <p className="set-code text-xs tracking-wide text-muted">TROCATCG</p>
-        <h1 className="mt-4 text-[34px] leading-[1.05] text-balance">
-          A carta que falta na sua está sobrando na de alguém.
+    <div className="mx-auto w-full max-w-xl px-6 pb-20">
+      <header className="pt-10">
+        <span className="inline-flex items-center gap-2">
+          <span className="grid size-7 shrink-0 place-items-center rounded-[var(--radius-etiqueta)] border-2 border-tinta bg-azul text-azul-tinta">
+            <IconeRaio className="size-4" />
+          </span>
+          <span className="font-titulo text-[24px] leading-none font-black text-tinta">
+            TrocaTCG
+          </span>
+        </span>
+
+        <h1 className="mt-8 font-titulo text-[32px] leading-[1.05] font-black text-balance text-tinta lg:text-[38px]">
+          Alguém aí tem a carta que te falta. E quer a que te sobra.
         </h1>
-        <p className="mt-4 text-[16px] leading-relaxed text-muted">
-          Quadro de trocas de Pokémon TCG para a comunidade de Belém. Você diz o
-          que tem e o que procura — o app encontra com quem a troca fecha dos
-          dois lados.
+        <p className="mt-4 font-corpo text-[16px] leading-relaxed text-apagado">
+          Quadro de trocas de Pokémon TCG, feito em Belém. Você monta duas
+          listas — o que tem sobrando e o que está caçando — e o app avisa quando
+          a troca fecha dos dois lados.
         </p>
 
         <div className="mt-8 flex flex-col gap-2">
           <Link
             to="/entrar"
-            className="flex h-13 items-center justify-center rounded-[var(--radius-control)] bg-volt text-[15px] font-bold text-[var(--color-volt-ink)] shadow-[0_1px_0_rgba(255,255,255,0.18)_inset,0_6px_20px_-8px_var(--color-volt)] transition-colors hover:bg-volt-strong"
+            className="flex h-13 items-center justify-center rounded-[var(--radius-controle)] border-2 border-tinta bg-azul font-titulo text-[15px] font-black uppercase text-azul-tinta shadow-[var(--shadow-duro-sm)] transition-shadow hover:shadow-[var(--shadow-duro)]"
           >
             Criar minha conta
           </Link>
           <Link
             to="/entrar"
-            className="flex h-13 items-center justify-center rounded-[var(--radius-control)] border border-edge bg-surface-2 text-[15px] text-paper transition-colors hover:border-[var(--color-faint)]"
+            className="flex h-13 items-center justify-center rounded-[var(--radius-controle)] border-2 border-tinta bg-cartela font-titulo text-[15px] font-black uppercase text-tinta transition-shadow hover:shadow-[var(--shadow-duro-xs)]"
           >
             Já tenho conta
           </Link>
         </div>
       </header>
 
-      <section className="mt-16">
-        <h2 className="text-[13px] tracking-wide text-muted uppercase">
+      <section className="mt-14">
+        <h2 className="font-dado text-[11px] uppercase text-apagado">
           Como funciona
         </h2>
-        <ol className="mt-5 flex flex-col gap-5">
+        <ol className="mt-4 flex flex-col gap-3">
           <Passo
             numero={1}
-            icone={<IconeCartas className="size-5" />}
-            titulo="Monte suas duas listas"
-            texto="Ofereço, para as repetidas que você topa trocar. Procuro, para as que faltam. Busca no catálogo real, com imagem."
+            icone={<IconeCartasBrutal className="size-5" />}
+            titulo="Diga o que tem e o que quer"
+            texto="Duas listas: Ofereço, para as repetidas que você topa trocar, e Procuro, para as que faltam. São quase 16 mil cartas no catálogo, com imagem."
           />
           <Passo
             numero={2}
-            icone={<IconeTroca className="size-5" />}
-            titulo="O app acha a troca"
-            texto="Quando alguém tem o que você procura e quer o que você oferece, a troca aparece pronta — com as duas cartas lado a lado."
+            icone={<IconeTrocas className="size-5" />}
+            titulo="O app cruza sozinho"
+            texto="Quando alguém tem o que você procura e quer o que você oferece, a troca aparece pronta — as duas cartas lado a lado, sem você caçar ninguém."
           />
           <Passo
             numero={3}
-            icone={<IconeBusca className="size-5" />}
+            icone={<IconeRaio className="size-5" />}
             titulo="Vocês combinam e trocam"
-            texto="Os dois aceitam, os contatos aparecem, e o encontro é de vocês. Presencial, como troca de carta sempre foi."
+            texto="Os dois aceitam, o contato aparece, e o encontro é de vocês. Presencial, como troca de carta sempre foi."
           />
         </ol>
       </section>
 
-      <section className="mt-16 rounded-card border border-edge bg-surface p-5">
-        <h2 className="text-[17px] text-paper">O que o TrocaTCG não faz</h2>
-        <p className="mt-2 text-[15px] leading-relaxed text-muted">
-          Não vende, não compra, não guarda carta e não cobra comissão. Não pede
-          seu endereço nem sua localização. Seu telefone só aparece para quem
-          fechar uma troca com você — antes disso, ninguém vê.
+      {/* A seção de confiança fica antes do rodapé e não escondida nos termos:
+          quem chega de fora está decidindo se entrega o telefone a um app que
+          nunca viu, e essa dúvida vem antes de qualquer funcionalidade. */}
+      <section className="mt-14 rounded-[var(--radius-cartela)] border-2 border-tinta bg-cartela p-5 shadow-[var(--shadow-duro)]">
+        <h2 className="font-titulo text-[18px] font-black text-tinta">
+          O que a gente não faz
+        </h2>
+        <p className="mt-2 font-corpo text-[15px] leading-relaxed text-apagado">
+          Não vende, não compra, não guarda carta e não fica com comissão. Não
+          pede seu endereço nem sua localização. Seu telefone só aparece para
+          quem fechar troca com você — antes disso, ninguém vê.
         </p>
         <Link
           to="/termos"
-          className="mt-4 inline-block text-[14px] text-paper underline underline-offset-4"
+          className="mt-4 inline-block font-corpo text-[14px] font-medium text-azul underline underline-offset-2"
         >
           Termos e privacidade
         </Link>
       </section>
 
-      <footer className="mt-16 border-t border-edge-soft pt-6 text-[13px] text-faint">
-        <p>Feito em Belém, para quem troca em Belém.</p>
+      <footer className="mt-14 border-t-2 border-dashed border-tinta/25 pt-6 font-dado text-[11px] uppercase text-apagado">
+        <p>Feito em Belém, para quem troca em Belém</p>
       </footer>
     </div>
   )
@@ -120,16 +149,21 @@ function Passo({
   texto: string
 }) {
   return (
-    <li className="flex gap-4">
-      <span className="relative grid size-10 shrink-0 place-items-center rounded-[10px] border border-edge bg-surface text-muted">
+    <li className="flex gap-3 rounded-[var(--radius-controle)] border-2 border-tinta bg-cartela p-4 shadow-[var(--shadow-duro-xs)]">
+      {/* A numeração é a única do app, e ela se justifica: os três passos são
+          uma sequência de verdade — sem a primeira lista não existe match, e sem
+          match não existe encontro. Em qualquer outra tela seria enfeite. */}
+      <span className="relative grid size-10 shrink-0 place-items-center rounded-[var(--radius-etiqueta)] border-2 border-tinta bg-meu text-tinta">
         {icone}
-        <span className="set-code absolute -top-1.5 -right-1.5 grid size-5 place-items-center rounded-full border border-edge bg-surface-2 text-[10px] text-paper">
+        <span className="absolute -top-2 -right-2 grid size-5 place-items-center rounded-full border-2 border-tinta bg-azul font-dado text-[10px] font-bold text-azul-tinta">
           {numero}
         </span>
       </span>
       <span className="min-w-0">
-        <span className="block text-[16px] text-paper">{titulo}</span>
-        <span className="mt-1 block text-[15px] leading-relaxed text-muted">
+        <span className="block font-titulo text-[16px] font-bold text-tinta">
+          {titulo}
+        </span>
+        <span className="mt-1 block font-corpo text-[14px] leading-relaxed text-apagado">
           {texto}
         </span>
       </span>
