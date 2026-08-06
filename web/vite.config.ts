@@ -23,11 +23,17 @@ export default defineConfig({
         background_color: '#0E1116',
         display: 'standalone',
         orientation: 'portrait',
+        // O maskable é arquivo à parte, não o mesmo `pwa-512.png`: o Android
+        // recorta um círculo de 80% do lado, e a carta do desenho vai de 19% a
+        // 81% da altura — reaproveitar o ícone comum decepa o topo e a base
+        // dela. O arquivo maskable tem a arte reduzida para caber na zona
+        // segura e o fundo sangrando até a borda, sem canto arredondado,
+        // porque quem arredonda é a máscara do sistema.
         icons: [
           { src: 'pwa-192.png', sizes: '192x192', type: 'image/png' },
           { src: 'pwa-512.png', sizes: '512x512', type: 'image/png' },
           {
-            src: 'pwa-512.png',
+            src: 'pwa-maskable-512.png',
             sizes: '512x512',
             type: 'image/png',
             purpose: 'maskable',
