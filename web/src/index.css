@@ -326,6 +326,113 @@
     border-color: var(--color-tinta);
   }
 
+  /* Rede de segurança dos textos herdados.
+     ------------------------------------------------------------------
+     Enquanto a migração corre, tela nova mostra pedaço de componente
+     antigo, e os tokens de texto do playmat são todos claros: `paper`
+     é quase branco, `muted` e `faint` são cinza-azulado. Sobre papel
+     creme, o primeiro some e os outros dois ficam ilegíveis.
+
+     Mapeá-los aqui vale mais do que caçar cada `className`: pega o que
+     eu ainda não migrei e o que eu não vi. Some inteiro quando a última
+     tela migrar e os tokens antigos forem apagados. */
+  [data-mundo='brutal'] .text-paper {
+    color: var(--color-tinta);
+  }
+
+  [data-mundo='brutal'] .text-muted,
+  [data-mundo='brutal'] .text-faint {
+    color: var(--color-apagado);
+  }
+
+  /* O detalhe da troca.
+     ------------------------------------------------------------------
+     A tela tem nove blocos — prazo, desequilíbrio, aceite, desfecho,
+     encerramento, contato, denúncia, rodapé — e a lógica de cada um é
+     densa e bem raciocinada. Repintar por gancho preserva tudo isso
+     intacto: os nomes (`cartela`, `titulo-tom`, `fileira`, `voltar`,
+     `data-tom`) já estavam no código desde o protótipo de agosto,
+     esperando exatamente por isto.
+
+     Vale para o `Button` também, que é compartilhado com as telas
+     ainda no playmat — por isso `[data-mundo]` e não classe nova. */
+  [data-mundo='brutal'] .cartela {
+    border: 2px solid var(--color-tinta);
+    border-radius: var(--radius-cartela);
+    background-color: var(--color-cartela);
+    box-shadow: var(--shadow-duro);
+  }
+
+  /* Atenção — prazo vencendo, troca desigual. O âmbar é o do arquivo
+     (`rarity-tag` de ULTRA RARE), o único que ele tem para este papel.
+     Divide o tom com a raridade, mas não a leitura: aqui é cartela de
+     largura inteira, lá é etiqueta de 10px dentro da carta. Vermelho
+     ficaria reservado ao destrutivo, e prazo apertado não é erro. */
+  [data-mundo='brutal'] .cartela[data-tom='atencao'] {
+    background-color: #fff4e5;
+    border-color: var(--color-tinta);
+  }
+
+  [data-mundo='brutal'] .titulo-tom {
+    color: var(--color-tinta);
+    font-family: var(--font-titulo);
+    font-weight: 800;
+  }
+
+  [data-mundo='brutal'] .titulo-pagina {
+    font-family: var(--font-titulo);
+    font-weight: 900;
+    letter-spacing: -0.02em;
+    color: var(--color-tinta);
+  }
+
+  [data-mundo='brutal'] .fileira dt {
+    font-family: var(--font-dado);
+    font-size: 11px;
+    text-transform: uppercase;
+    color: var(--color-apagado);
+  }
+
+  [data-mundo='brutal'] .fileira dd {
+    color: var(--color-tinta);
+  }
+
+  [data-mundo='brutal'] .fileira dd span {
+    color: var(--color-apagado);
+  }
+
+  /* Os botões. `primary` vira o azul cheio com sombra dura; `want` e
+     `offer`, que no playmat eram âmbar e verde-água, viram cartela —
+     no mundo novo cor é significado, e essas duas ali eram decoração
+     herdada. `ghost` e `subtle` já eram os discretos e continuam. */
+  [data-mundo='brutal'] .botao {
+    border: 2px solid var(--color-tinta);
+    border-radius: var(--radius-controle);
+    font-family: var(--font-titulo);
+    font-weight: 800;
+    text-transform: uppercase;
+    box-shadow: none;
+  }
+
+  [data-mundo='brutal'] .botao-primary {
+    background: var(--color-azul);
+    color: var(--color-azul-tinta);
+    box-shadow: var(--shadow-duro-sm);
+  }
+
+  [data-mundo='brutal'] .botao-offer,
+  [data-mundo='brutal'] .botao-want,
+  [data-mundo='brutal'] .botao-subtle,
+  [data-mundo='brutal'] .botao-ghost {
+    background: var(--color-cartela);
+    color: var(--color-tinta);
+  }
+
+  [data-mundo='brutal'] .botao:disabled {
+    opacity: 0.45;
+    box-shadow: none;
+  }
+
   /* A folha de edição do anúncio.
 
      É a mesma peça da folha de adicionar, que serve telas ainda no

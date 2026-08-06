@@ -2,11 +2,12 @@ import { useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 
-import { LinhaDeTroca } from '@/components/carta/LinhaDeTroca'
+import { ParDeCartas } from '@/components/brutal/Pecas'
 import { Denunciar } from '@/components/perfil/Denunciar'
 import { Button, estiloBotao } from '@/components/ui/Button'
 import { useAcabamentoPorId } from '@/hooks/useAcabamentos'
 import { useCartasPorId, usePrecosPorId } from '@/hooks/useAnuncios'
+import { useMarcaOculta, useMundo } from '@/hooks/useMundo'
 import {
   type Desfecho,
   useDesfechoMatch,
@@ -44,6 +45,9 @@ import { useUsuarioId } from '@/stores/auth'
 const ENCERRADOS = ['CONCLUIDO', 'FURADO', 'EXPIRADO', 'CANCELADO']
 
 export default function MatchDetalhe() {
+  useMundo('brutal')
+  useMarcaOculta()
+
   const { id } = useParams<{ id: string }>()
   const meuId = useUsuarioId()
   const { data: match, isPending, isError } = useMatch(id)
@@ -204,12 +208,20 @@ export default function MatchDetalhe() {
 
   return (
     <Moldura>
-      <Link
-        to="/matches"
-        className="voltar text-[13px] text-muted underline underline-offset-4 hover:text-paper"
-      >
-        ← Trocas
-      </Link>
+      {/* Tela em que se entra: volta e título próprio, sem a marca do app —
+          mesma regra da página da carta, ligada pelo `useMarcaOculta`. */}
+      <div className="flex items-center gap-3">
+        <Link
+          to="/matches"
+          aria-label="Voltar para as trocas"
+          className="voltar grid size-9 shrink-0 place-items-center rounded-full border-2 border-tinta bg-cartela font-titulo text-[16px] font-black text-tinta transition-shadow hover:shadow-[var(--shadow-duro-xs)]"
+        >
+          ←
+        </Link>
+        <p className="font-titulo text-[18px] leading-none font-black text-tinta">
+          A troca
+        </p>
+      </div>
 
       <h1 className="titulo-pagina mt-5 text-[26px] leading-[1.15] lg:text-[32px]">
         Troca com {outro?.nome_exibicao ?? 'alguém'}.
@@ -223,7 +235,7 @@ export default function MatchDetalhe() {
         {outro ? (
           <Link
             to={`/u/${outro.username}`}
-            className="text-paper underline underline-offset-4 hover:text-volt"
+            className="font-medium text-azul underline underline-offset-2"
           >
             @{outro.username}
           </Link>
@@ -238,7 +250,7 @@ export default function MatchDetalhe() {
             coisa que já aconteceu. O histórico do perfil já corrigia isso; o
             detalhe, que é para onde o histórico leva, não corrigia. */}
         <div>
-          <LinhaDeTroca
+          <ParDeCartas
             dou={dou && cartas?.get(dou.card_id)}
             recebo={recebo && cartas?.get(recebo.card_id)}
             lados={{ dou: ladoDou, recebo: ladoRecebo }}

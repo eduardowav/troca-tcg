@@ -14,9 +14,15 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 
+import { SeloRaridade } from '@/components/brutal/Cartas'
 import { CartaThumb } from '@/components/carta/CartaThumb'
+import {
+  type Acabamento,
+  NORMAL,
+  type PrecoEscolhido,
+} from '@/lib/acabamentos'
 import { cn } from '@/lib/cn'
-import type { Carta } from '@/lib/types'
+import { type Carta, formatarPreco } from '@/lib/types'
 
 /* ------------------------------------------------------------------ ícones */
 
@@ -379,22 +385,96 @@ export function Selo({
  * numa faixa horizontal apaga nome, número e borda, que é justamente o que
  * identifica a carta. Decisão do Eduardo, tomada olhando as duas opções.
  */
+/** O que cada ponta carrega além da carta. Só o detalhe da troca passa isto. */
+export interface LadoDaTrocaBrutal {
+  acabamento?: Acabamento
+  preco?: PrecoEscolhido
+}
+
 export function ParDeCartas({
   dou,
   recebo,
+  rotulos = { dou: 'Sua', recebo: 'Dela' },
+  tamanho = 'compacto',
+  lados,
+  trocado = false,
 }: {
   dou: Carta | undefined
   recebo: Carta | undefined
+  /**
+   * O tempo verbal dos dois rótulos.
+   *
+   * O feed não passa nada e fica com "Sua/Dela", que é o que cabe numa linha de
+   * lista. O detalhe passa "Você dá/Você recebe" — e, quando a troca já
+   * aconteceu ou já não vai acontecer, "Você deu" ou "Você daria". São três
+   * tempos, e quem decide é o status da troca, não esta peça.
+   */
+  rotulos?: { dou: string; recebo: string }
+  /**
+   * `grande` no detalhe da troca: arte maior, nome em dois tamanhos acima, e as
+   * informações que só ali importam — raridade, acabamento e preço. No feed
+   * nada disso cabe, e mostrar seria disputar espaço com a decisão de abrir.
+   */
+  tamanho?: 'compacto' | 'grande'
+  /**
+   * Acabamento e preço de cada ponta. Vem por lado, e não por carta, porque as
+   * duas coisas dependem do anúncio e não do catálogo: a mesma carta pode
+   * aparecer numa troca como reverse e noutra como normal, com preços
+   * diferentes.
+   */
+  lados?: { dou?: LadoDaTrocaBrutal; recebo?: LadoDaTrocaBrutal }
+  /**
+   * A troca aconteceu: cada carta já está do lado do novo dono.
+   *
+   * O lado esquerdo é você. Enquanto a troca está de pé, ele mostra o que você
+   * vai entregar — o custo primeiro. Depois de concluída, mostra o que ficou
+   * com você. Só CONCLUIDO troca de lado: numa furada ou expirada a carta não
+   * saiu da mão de ninguém.
+   */
+  trocado?: boolean
 }) {
+  const grande = tamanho === 'grande'
+
+  const meu = (
+    <LadoDaTroca
+      carta={dou}
+      etiqueta={rotulos.dou}
+      lado="meu"
+      grande={grande}
+      acabamento={lados?.dou?.acabamento}
+      preco={lados?.dou?.preco}
+    />
+  )
+  const dele = (
+    <LadoDaTroca
+      carta={recebo}
+      etiqueta={rotulos.recebo}
+      lado="dele"
+      grande={grande}
+      acabamento={lados?.recebo?.acabamento}
+      preco={lados?.recebo?.preco}
+    />
+  )
+
   return (
-    <div className="flex items-center gap-2">
-      <LadoDaTroca carta={dou} etiqueta="Sua" lado="meu" />
+    // Alinhado pelo topo, não pelo centro: as duas colunas quase nunca têm a
+    // mesma altura — nome de duas linhas de um lado, selo de acabamento do
+    // outro — e centralizar faria uma carta subir e a outra descer sem que nada
+    // nelas justificasse o degrau.
+    <div className={cn('flex gap-2', grande ? 'items-start' : 'items-center')}>
+      {trocado ? dele : meu}
       {/* A seta fica fora das duas molduras, sobre o vão: ela é a relação entre
-          elas, não propriedade de nenhuma. */}
-      <span className="grid size-8 shrink-0 place-items-center rounded-[16px] border-2 border-tinta bg-cartela shadow-[var(--shadow-duro-xs)]">
+          elas, não propriedade de nenhuma. No tamanho grande ela desce para o
+          meio das artes, que é onde o eixo da troca realmente está. */}
+      <span
+        className={cn(
+          'grid size-8 shrink-0 place-items-center rounded-[16px] border-2 border-tinta bg-cartela shadow-[var(--shadow-duro-xs)]',
+          grande && 'mt-16 self-start',
+        )}
+      >
         <IconeSetaDireita className="size-4 text-tinta" />
       </span>
-      <LadoDaTroca carta={recebo} etiqueta="Dela" lado="dele" />
+      {trocado ? meu : dele}
     </div>
   )
 }
@@ -403,11 +483,18 @@ function LadoDaTroca({
   carta,
   etiqueta,
   lado,
+  grande = false,
+  acabamento,
+  preco,
 }: {
   carta: Carta | undefined
   etiqueta: string
   lado: 'meu' | 'dele'
+  grande?: boolean
+  acabamento?: Acabamento
+  preco?: PrecoEscolhido
 }) {
+  const valor = formatarPreco(preco?.preco)
   const classe = cn(
     'flex min-w-0 flex-1 flex-col gap-2 rounded-[var(--radius-controle)] border-2 border-tinta p-2',
     lado === 'meu' ? 'bg-meu' : 'bg-papel',
@@ -442,7 +529,12 @@ function LadoDaTroca({
             parecidas, o nome cortado deixa as duas idênticas na tela.
             O `line-clamp` segura em duas e ainda evita que um nome
             comprido empurre a cartela. */}
-        <span className="line-clamp-2 font-titulo text-[14px] leading-tight font-bold text-tinta">
+        <span
+          className={cn(
+            'line-clamp-2 font-titulo leading-tight font-bold text-tinta',
+            grande ? 'text-[17px] lg:text-[19px]' : 'text-[14px]',
+          )}
+        >
           {carta?.nome_pt ?? carta?.nome_en ?? '—'}
         </span>
         {/* A linha de baixo continua em uma: é qualificador, e o nome já
@@ -451,6 +543,36 @@ function LadoDaTroca({
           {carta?.set_sigla ?? carta?.set_nome ?? carta?.set_code}
           {carta?.numero && ` • ${carta.numero}`}
         </span>
+
+        {/* Só no detalhe. Numa linha de feed, raridade e acabamento competiriam
+            com a única decisão daquela tela, que é abrir a troca. Aqui são o
+            que a pessoa confere antes de topar: é a reverse ou a normal? é a
+            ilustração rara ou a comum? */}
+        {grande && carta?.raridade && (
+          <span className="mt-1 self-start">
+            <SeloRaridade raridade={carta.raridade} />
+          </span>
+        )}
+
+        {/* Normal não vira selo: é o acabamento da maioria das cartas e
+            repeti-lo em toda troca gastaria destaque com o que não distingue.
+            Reverse, Poké Ball e companhia mudam o que está sendo trocado — e
+            mudam o preço — então precisam ser vistos sem ler a linha de baixo. */}
+        {grande && acabamento && acabamento.id !== NORMAL && (
+          <span
+            title={acabamento.nome_pt}
+            className="mt-1 self-start rounded-[var(--radius-etiqueta)] border-2 border-tinta bg-cartela px-1.5 py-0.5 font-dado text-[10px] font-bold uppercase text-tinta"
+          >
+            {acabamento.nome_curto}
+          </span>
+        )}
+
+        {grande && valor && (
+          <span className="mt-1 font-dado text-[12px] font-bold text-azul">
+            {valor}
+            {!preco?.exato && <span aria-hidden> ~</span>}
+          </span>
+        )}
       </span>
     </>
   )
