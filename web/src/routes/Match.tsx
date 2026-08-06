@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 
 import { LinhaDeTroca } from '@/components/carta/LinhaDeTroca'
 import { cabeMaisCartas, MaisCartas } from '@/components/carta/MaisCartas'
+import { Denunciar } from '@/components/perfil/Denunciar'
 import { Button, estiloBotao } from '@/components/ui/Button'
 import { useAcabamentoPorId } from '@/hooks/useAcabamentos'
 import { useCartasPorId, usePrecosPorId } from '@/hooks/useAnuncios'
@@ -278,8 +279,22 @@ export default function MatchDetalhe() {
       <h1 className="titulo-pagina mt-5 text-[26px] leading-[1.15] lg:text-[32px]">
         Troca com {outro?.nome_exibicao ?? 'alguém'}.
       </h1>
+      {/* O @ leva ao perfil dela. É o único caminho para "quem é essa pessoa?",
+          e a pergunta vem antes de topar um encontro presencial com um estranho
+          — por isso o link fica aqui em cima, e não escondido no rodapé. A
+          reputação resumida continua ao lado: quem só quer o número não precisa
+          sair da tela para lê-lo. */}
       <p className="mt-2 text-[15px] leading-relaxed text-muted lg:text-[16px]">
-        @{outro?.username}
+        {outro ? (
+          <Link
+            to={`/u/${outro.username}`}
+            className="text-paper underline underline-offset-4 hover:text-volt"
+          >
+            @{outro.username}
+          </Link>
+        ) : (
+          '@—'
+        )}
         {reputacao && ` · ${reputacao}`}
       </p>
 
@@ -394,6 +409,15 @@ export default function MatchDetalhe() {
           decidindo se vale a viagem rola e encontra. */}
       <MaisCartas
         cartas={maisCartas ?? []}
+        nome={primeiroNome(outro)}
+        status={match.status}
+      />
+
+      {/* Por último, e em letra miúda. A tela existe para a troca dar certo; a
+          denúncia é o que sobra quando não deu, e ocupar um lugar de destaque
+          com ela sugeriria que dar errado é o caso comum. */}
+      <Denunciar
+        matchId={match.id}
         nome={primeiroNome(outro)}
         status={match.status}
       />

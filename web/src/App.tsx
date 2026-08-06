@@ -13,6 +13,7 @@ import Matches from '@/routes/Matches'
 import MinhasCartas from '@/routes/MinhasCartas'
 import Onboarding from '@/routes/Onboarding'
 import PerfilTela from '@/routes/Perfil'
+import PerfilPublicoTela from '@/routes/PerfilPublico'
 import Pronto from '@/routes/Pronto'
 import Termos from '@/routes/Termos'
 
@@ -37,6 +38,9 @@ export default function App() {
             <Route path="/matches" element={<Matches />} />
             <Route path="/matches/:id" element={<MatchDetalhe />} />
             <Route path="/perfil" element={<PerfilTela />} />
+            {/* Depois de "/perfil" e com prefixo próprio: um "/:username" solto
+                na raiz engoliria toda rota nova que viesse depois dele. */}
+            <Route path="/u/:username" element={<PerfilPublicoTela />} />
           </Route>
         </Route>
       </Route>

@@ -1,8 +1,14 @@
 import { api, ApiError } from '@/lib/api'
 import { supabase } from '@/lib/supabase'
 
-/** Espelha PerfilOut da API (api/app/schemas/profile.py). */
-export interface Perfil {
+/**
+ * Espelha PerfilPublicoOut da API — o perfil como terceiros o veem.
+ *
+ * A herança segue a da API de propósito (api/app/schemas/profile.py): o público
+ * é a base e o próprio estende. Na direção contrária, todo campo privado novo
+ * apareceria aqui como opcional e a tela pública passaria a ter onde exibi-lo.
+ */
+export interface PerfilPublico {
   id: string
   username: string
   nome_exibicao: string
@@ -10,13 +16,19 @@ export interface Perfil {
   bairro: string | null
   avatar_url: string | null
   bio: string | null
-  /** Só vem em /me — o dono vendo o próprio contato. */
-  contato_visivel: string | null
   trocas_concluidas: number
   trocas_furadas: number
   /** Desistências declaradas. Fora da razão da reputação — não são furo. */
   trocas_desistidas?: number
   reputacao: number | null
+  /** Quando a conta foi criada, em ISO 8601. */
+  desde: string
+}
+
+/** Espelha PerfilOut da API — o dono vendo o próprio perfil, só em /me. */
+export interface Perfil extends PerfilPublico {
+  /** Só vem em /me — o dono vendo o próprio contato. */
+  contato_visivel: string | null
   plano: string
   onboarding_ok: boolean
 }
@@ -44,6 +56,24 @@ export const atualizarPerfil = (dados: PerfilEdicao) =>
 
 /** Apaga a conta no servidor. Irreversível — a sessão é encerrada depois. */
 export const excluirConta = () => api.del('/me')
+
+/** O perfil de outra pessoa, por @. Exige login — ver routers/users.py. */
+export const obterPerfilPublico = (username: string) =>
+  api.get<PerfilPublico>(`/u/${encodeURIComponent(username)}`)
+
+/**
+ * "Trocando desde março de 2026" — a antiguidade como ela se lê.
+ *
+ * Mês e ano, nunca o dia: a data exata da criação da conta não diz nada a quem
+ * está decidindo se encontra a pessoa, e ainda cria a falsa impressão de um
+ * registro preciso sobre alguém. O que importa é a ordem de grandeza — semanas
+ * ou anos. Data ilegível devolve nulo, como `dataDoDesfecho` em lib/matches.
+ */
+export function membroDesde(iso: string): string | null {
+  const quando = new Date(iso)
+  if (Number.isNaN(quando.getTime())) return null
+  return quando.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
+}
 
 /**
  * Dados do cadastro que ficam no user_metadata do Supabase até virarem perfil.

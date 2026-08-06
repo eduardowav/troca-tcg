@@ -4,11 +4,11 @@ import { toast } from 'sonner'
 import { z } from 'zod'
 
 import { MinhasTrocas } from '@/components/perfil/MinhasTrocas'
+import { Reputacao } from '@/components/perfil/Reputacao'
 import { Button } from '@/components/ui/Button'
 import { Campo } from '@/components/ui/Campo'
 import { usePerfil } from '@/hooks/usePerfil'
 import { ApiError } from '@/lib/api'
-import { cn } from '@/lib/cn'
 import {
   atualizarPerfil,
   excluirConta,
@@ -74,69 +74,6 @@ export default function PerfilTela() {
 
       <ExcluirConta perfil={perfil} />
     </Moldura>
-  )
-}
-
-/** Reputação é pública e não editável — é o que sustenta a confiança. */
-function Reputacao({ perfil }: { perfil: Perfil }) {
-  const total = perfil.trocas_concluidas + perfil.trocas_furadas
-  // A desistência não entra na razão da reputação, e o placar dela só aparece
-  // depois da primeira: um "0" fixo ao lado dos outros números sugeriria que
-  // existe algo a vigiar aí, e para quase todo mundo não existe.
-  const desistencias = perfil.trocas_desistidas ?? 0
-
-  return (
-    <dl
-      className={cn(
-        'mt-7 grid gap-3',
-        desistencias > 0 ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-3',
-      )}
-    >
-      <Placar
-        rotulo="Reputação"
-        valor={perfil.reputacao != null ? `${perfil.reputacao}%` : '—'}
-        dica={total === 0 ? 'sem trocas ainda' : `${total} troca(s)`}
-      />
-      <Placar
-        rotulo="Concluídas"
-        valor={String(perfil.trocas_concluidas)}
-        cor="text-offer"
-      />
-      <Placar
-        rotulo="Furadas"
-        valor={String(perfil.trocas_furadas)}
-        cor="text-alert"
-      />
-      {desistencias > 0 && (
-        <Placar
-          rotulo="Desmarcadas"
-          valor={String(desistencias)}
-          dica="avisadas antes"
-        />
-      )}
-    </dl>
-  )
-}
-
-function Placar({
-  rotulo,
-  valor,
-  dica,
-  cor = 'text-paper',
-}: {
-  rotulo: string
-  valor: string
-  dica?: string
-  cor?: string
-}) {
-  return (
-    <div className="rounded-card border border-edge bg-surface p-3.5">
-      <dt className="text-[12px] text-muted">{rotulo}</dt>
-      <dd className={`mt-1 text-[22px] font-bold tabular-nums ${cor}`}>
-        {valor}
-      </dd>
-      {dica && <p className="mt-0.5 text-[11px] text-faint">{dica}</p>}
-    </div>
   )
 }
 

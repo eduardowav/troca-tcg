@@ -12,17 +12,26 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.errors import RegraNegocio
-from app.schemas.profile import PerfilAtualizar, PerfilCriar, PerfilOut
+from app.schemas.profile import (
+    PerfilAtualizar,
+    PerfilCriar,
+    PerfilOut,
+    PerfilPublicoOut,
+)
+
+# O que qualquer pessoa logada pode ver. Sem contato_visivel, sem plano e sem
+# onboarding_ok: contato tem regra própria (só após aceite mútuo), e os outros
+# dois são estado interno da conta, não informação sobre quem é a pessoa.
+_COLUNAS_PUBLICAS = """
+  id::text, username, nome_exibicao, cidade, bairro, avatar_url, bio,
+  trocas_concluidas, trocas_furadas, trocas_desistidas, criado_em as desde
+"""
 
 # contato_visivel entra aqui porque estas colunas só alimentam o PerfilOut, que
 # só é servido em /me — é o dono vendo o próprio contato para poder editá-lo. A
 # regra de nunca revelar contato de terceiros vive em schemas/match.py, e é lá
 # que ela precisa continuar valendo.
-_COLUNAS = """
-  id::text, username, nome_exibicao, cidade, bairro, avatar_url, bio,
-  contato_visivel, trocas_concluidas, trocas_furadas, trocas_desistidas,
-  plano, onboarding_ok
-"""
+_COLUNAS = f"{_COLUNAS_PUBLICAS}, contato_visivel, plano, onboarding_ok"
 
 
 def _reputacao(concluidas: int, furadas: int) -> int | None:
@@ -44,6 +53,42 @@ async def obter_perfil(session: AsyncSession, user_id: UUID) -> PerfilOut | None
     )
     row = res.mappings().first()
     return _para_out(dict(row)) if row else None
+
+
+async def perfil_publico(
+    session: AsyncSession, username: str
+) -> PerfilPublicoOut | None:
+    """O perfil de outra pessoa, por @.
+
+    Existe para uma pergunta só: **com quem eu vou me encontrar?** Até aqui o app
+    pedia que alguém combinasse um encontro presencial com um estranho sabendo
+    dele apenas o nome de exibição. A reputação já era calculada e já vinha no
+    match em contadores; o que faltava era o lugar onde ela se lê inteira, junto
+    do bairro, da bio e de há quanto tempo a pessoa está por aqui.
+
+    Busca por `username` e não por id porque o @ é o que a pessoa digita, o que
+    cabe numa URL e o que ela passa para um amigo. O id continua saindo no corpo
+    — é dele que o app precisa para abrir uma denúncia.
+
+    `bloqueado = false` repete o filtro do matcher (services/matching): quem está
+    bloqueado não aparece em sugestão nenhuma, e um perfil ainda navegável seria
+    a brecha por onde ele voltaria a ser encontrado.
+    """
+    res = await session.execute(
+        text(
+            f"select {_COLUNAS_PUBLICAS} from profiles "
+            "where username = :u and bloqueado = false"
+        ),
+        {"u": username.strip().lower()},
+    )
+    row = res.mappings().first()
+    if row is None:
+        return None
+    dados = dict(row)
+    return PerfilPublicoOut(
+        **dados,
+        reputacao=_reputacao(dados["trocas_concluidas"], dados["trocas_furadas"]),
+    )
 
 
 async def criar_perfil(

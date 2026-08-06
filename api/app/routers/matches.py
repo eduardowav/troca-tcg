@@ -2,7 +2,7 @@
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,7 +14,8 @@ from app.schemas.match import (
     MatchNoHistorico,
     MatchOut,
 )
-from app.services import matching
+from app.schemas.report import DenunciaCriar, DenunciaOut
+from app.services import matching, reports
 
 router = APIRouter(prefix="/me/matches", tags=["matches"])
 
@@ -109,6 +110,22 @@ async def estender(
 ) -> MatchOut:
     """Mais uma semana de prazo. Qualquer um dos dois, até duas vezes."""
     return await matching.prorrogar(session, user_id, match_id)
+
+
+@router.post(
+    "/{match_id}/denunciar",
+    response_model=DenunciaOut,
+    status_code=status.HTTP_201_CREATED,
+)
+async def denunciar(
+    match_id: UUID,
+    dados: DenunciaCriar,
+    user_id: UUID = Depends(usuario_atual),
+    session: AsyncSession = Depends(get_session),
+) -> DenunciaOut:
+    """Relata a outra pessoa desta troca. Não muda a reputação dela — ver
+    services/reports."""
+    return await reports.denunciar(session, user_id, match_id, dados)
 
 
 @router.post("/{match_id}/responder", response_model=MatchCompleto)

@@ -1,6 +1,7 @@
 """Schemas de perfil (entrada e saída)."""
 
 import re
+from datetime import datetime
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -47,7 +48,20 @@ class PerfilAtualizar(BaseModel):
         return v
 
 
-class PerfilOut(BaseModel):
+class PerfilPublicoOut(BaseModel):
+    """O perfil como terceiros o veem — a base, não um recorte do /me.
+
+    A herança aponta para cá de propósito, na mesma lógica de
+    `ParticipanteResumo`/`ParticipanteCompleto` em schemas/match.py: quem tem
+    menos campos é a classe-mãe, e quem tem mais estende. No sentido contrário
+    — público herdando de /me e apagando o que sobra — todo campo privado novo
+    nasceria público, e só um `del` bem lembrado o tiraria de lá. Aqui um campo
+    novo só vaza se alguém o escrever nesta classe, de propósito.
+
+    `reputacao` vem acompanhada dos três contadores porque porcentagem sozinha
+    mente com amostra pequena — a razão longa está em schemas/match.py.
+    """
+
     id: str
     username: str
     nome_exibicao: str
@@ -55,13 +69,21 @@ class PerfilOut(BaseModel):
     bairro: str | None = None
     avatar_url: str | None = None
     bio: str | None = None
-    # Só aparece em /me: é o dono vendo o próprio contato.
-    contato_visivel: str | None = None
     trocas_concluidas: int
     trocas_furadas: int
     # Fora da razão da `reputacao` de propósito: desistir avisando não é furar.
     # Aparece como contador próprio — o custo da desistência é transparência.
     trocas_desistidas: int = 0
     reputacao: int | None = None
+    #: `datetime`, nunca `str` — o `::text` do Postgres não é ISO 8601 e o Safari
+    #: do iOS devolve Invalid Date. A história completa está em schemas/match.py.
+    desde: datetime
+
+
+class PerfilOut(PerfilPublicoOut):
+    """O dono vendo o próprio perfil. Só é servido em /me."""
+
+    # Só aparece em /me: é o dono vendo o próprio contato, para poder editá-lo.
+    contato_visivel: str | None = None
     plano: str
     onboarding_ok: bool
