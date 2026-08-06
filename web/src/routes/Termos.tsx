@@ -9,8 +9,16 @@ import { Link } from 'react-router-dom'
  */
 const VERSAO = '2026-07-28'
 
-/** Canal do controlador para pedidos de LGPD. Trocar antes do lançamento. */
-const CONTATO = 'contato@trocatcg.com.br'
+/**
+ * Canal do controlador para pedidos de LGPD. Caixa pessoal por enquanto: o
+ * domínio próprio ainda não existe, e um endereço que ninguém lê é pior do que
+ * um endereço sem marca. Trocar por `contato@` quando o domínio subir — e aí
+ * não precisa mexer na VERSAO, pelo mesmo motivo abaixo.
+ *
+ * A troca do endereço morto por este não subiu a VERSAO de propósito: quem
+ * aceitou não perdeu direito nenhum, ganhou um canal que responde.
+ */
+const CONTATO = 'eduardowav@icloud.com'
 
 export default function Termos() {
   return (
