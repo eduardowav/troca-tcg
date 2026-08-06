@@ -7,20 +7,23 @@ import {
   CelulaBrutal,
   GradeBrutal,
 } from '@/components/brutal/Cartas'
-import { BotaoBrutal } from '@/components/brutal/Pecas'
+import { BotaoBrutal, Cartela } from '@/components/brutal/Pecas'
 import { FiltroCatalogo } from '@/components/carta/FiltroCatalogo'
 import { FolhaAdicionar } from '@/components/carta/FolhaAdicionar'
 import { IconeBusca } from '@/components/ui/Icone'
+import { useAcabamentosDaCarta } from '@/hooks/useAcabamentos'
 import { useMundo } from '@/hooks/useMundo'
 import { useAnuncios, usePrecosPorId } from '@/hooks/useAnuncios'
 import { useCardSearch } from '@/hooks/useCardSearch'
 import { useDebounced } from '@/hooks/useDebounced'
 import { precoDoAcabamento } from '@/lib/acabamentos'
+import { cn } from '@/lib/cn'
 import {
   type Carta,
   type FiltrosBusca,
   type ListingKind,
   SEM_FILTRO,
+  temFiltro,
 } from '@/lib/types'
 
 /**
@@ -50,8 +53,15 @@ export default function Buscar() {
     ativa,
   } = useCardSearch(busca, filtros)
 
+  const [filtrosAbertos, setFiltrosAbertos] = useState(false)
+
   const { data: anuncios } = useAnuncios()
-  const precos = usePrecosPorId((resultados ?? []).map((c) => c.id)).data
+  const idsVisiveis = useMemo(
+    () => (resultados ?? []).map((c) => c.id),
+    [resultados],
+  )
+  const precos = usePrecosPorId(idsVisiveis).data
+  const { data: acabamentos } = useAcabamentosDaCarta(idsVisiveis)
   // A carta escolhida e a lista de destino; `null` mantém a folha fechada.
   const [aAdicionar, setAAdicionar] = useState<{
     carta: Carta
@@ -105,11 +115,52 @@ export default function Buscar() {
           />
         </div>
 
-        <FiltroCatalogo
-          filtros={filtros}
-          onFiltros={setFiltros}
-          className="mt-3"
-        />
+        {/* Um botão só, e os três seletores atrás dele.
+            Três `<select>` sempre abertos ocupavam a largura inteira embaixo do
+            campo e competiam com o resultado, que é o que a pessoa veio ver — e
+            a maioria das buscas é por nome, sem filtro nenhum. Fechado por
+            padrão, com a contagem de quantos estão ativos, para que estar
+            fechado nunca esconda que há filtro aplicado. */}
+        <div className="mt-3">
+          <button
+            type="button"
+            onClick={() => setFiltrosAbertos((v) => !v)}
+            aria-expanded={filtrosAbertos}
+            className={cn(
+              'inline-flex items-center gap-2 rounded-[var(--radius-controle)] border-2 border-tinta px-4 py-2',
+              'font-titulo text-[13px] font-extrabold uppercase transition-shadow',
+              temFiltro(filtros)
+                ? 'bg-azul text-azul-tinta shadow-[var(--shadow-duro-sm)]'
+                : 'bg-cartela text-tinta hover:shadow-[var(--shadow-duro-xs)]',
+            )}
+          >
+            Filtros
+            {quantosFiltros(filtros) > 0 && (
+              <span className="font-dado text-[12px]">
+                {quantosFiltros(filtros)}
+              </span>
+            )}
+            <span aria-hidden className="font-dado text-[11px]">
+              {filtrosAbertos ? '▲' : '▼'}
+            </span>
+          </button>
+
+          {temFiltro(filtros) && (
+            <button
+              type="button"
+              onClick={() => setFiltros(SEM_FILTRO)}
+              className="ml-2 font-corpo text-[13px] font-medium text-azul underline underline-offset-2"
+            >
+              Limpar
+            </button>
+          )}
+
+          {filtrosAbertos && (
+            <Cartela className="mt-3 p-3">
+              <FiltroCatalogo filtros={filtros} onFiltros={setFiltros} />
+            </Cartela>
+          )}
+        </div>
 
         {atalho && (
           <p role="status" className="mt-2 font-corpo text-[13px] text-apagado">
@@ -146,6 +197,7 @@ export default function Buscar() {
                     // acabamento é quem anuncia.
                     preco={precoDoAcabamento(precos?.get(carta.id), undefined)}
                     precoCarregado={precos != null}
+                    acabamentos={acabamentos?.get(carta.id)}
                     para={`/carta/${carta.id}`}
                   >
                     <AcoesBrutal>
@@ -192,6 +244,11 @@ export default function Buscar() {
       />
     </div>
   )
+}
+
+/** Quantos filtros estão ativos — o número que aparece no botão. */
+function quantosFiltros(f: FiltrosBusca): number {
+  return [f.serie, f.set, f.raridade].filter(Boolean).length
 }
 
 function Convite() {

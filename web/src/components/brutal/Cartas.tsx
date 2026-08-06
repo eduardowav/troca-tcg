@@ -15,7 +15,7 @@ import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 
 import { CartaThumb } from '@/components/carta/CartaThumb'
-import type { PrecoEscolhido } from '@/lib/acabamentos'
+import type { Acabamento, PrecoEscolhido } from '@/lib/acabamentos'
 import { cn } from '@/lib/cn'
 import {
   type Carta,
@@ -151,6 +151,7 @@ export function CelulaBrutal({
   precoCarregado = false,
   destaque,
   para,
+  acabamentos,
   children,
 }: {
   carta: Carta
@@ -167,6 +168,8 @@ export function CelulaBrutal({
   destaque?: ListingKind | null
   /** Destino ao tocar na arte. Só as telas de descoberta passam isto. */
   para?: string
+  /** Em que acabamentos esta carta existe. Só a busca passa. */
+  acabamentos?: Acabamento[]
   /**
    * Se a consulta de preços já respondeu.
    *
@@ -223,6 +226,29 @@ export function CelulaBrutal({
         </p>
 
         {carta.raridade && <SeloRaridade raridade={carta.raridade} />}
+
+        {/* Os acabamentos em que esta carta existe.
+            Só quando há mais de um: "Normal" sozinho não distingue nada — é a
+            impressão da maioria —, e no catálogo 4.171 cartas têm só ele. As
+            outras 10.145 têm duas ou mais, e aí a informação decide a troca:
+            uma reverse não é a mesma carta que a normal, e nem vale o mesmo.
+
+            Sem quebra de linha e sem estourar: numa célula de ~150px cabem dois
+            selos curtos, e quem tiver quatro vê os que couberem. A página da
+            carta lista todos com preço. */}
+        {acabamentos && acabamentos.length > 1 && (
+          <span className="flex min-w-0 flex-wrap gap-1">
+            {acabamentos.map((a) => (
+              <span
+                key={a.id}
+                title={a.nome_pt}
+                className="max-w-full truncate rounded-[var(--radius-etiqueta)] border-[1.5px] border-tinta bg-cartela px-1.5 py-0.5 font-dado text-[9px] font-bold uppercase text-apagado"
+              >
+                {a.nome_curto}
+              </span>
+            ))}
+          </span>
+        )}
 
         {/* Carta sem preço não fica em silêncio.
             O catálogo tem carta que a TCGplayer não lista — as promo da SVP, por
