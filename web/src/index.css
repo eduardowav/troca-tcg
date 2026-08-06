@@ -223,6 +223,18 @@
    não migraram. As duas já tinham gancho reservado para isto.
    ------------------------------------------------------------------ */
 @layer utilities {
+  /* A marca do topo só existe no mundo novo. As telas do playmat trazem a
+     própria — a linha `TROCATCG` em mono no cabeçalho —, e as duas juntas
+     dariam marca em dobro. Quando a última tela migrar, isto vira só o
+     `display: flex` e o seletor de mundo some. */
+  .marca-app {
+    display: none;
+  }
+
+  [data-mundo='brutal'] .marca-app {
+    display: flex;
+  }
+
   [data-mundo='brutal'] .nav-app {
     background-color: var(--color-cartela);
     border-top: 2px solid var(--color-tinta);

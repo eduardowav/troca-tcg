@@ -55,11 +55,10 @@ export default function Matches() {
     // Mesma moldura de Minhas cartas e do Onboarding: container largo para as
     // cartas respirarem, coluna estreita para o texto — linha longa cansa de ler.
     <div className="mx-auto flex min-h-[100dvh] w-full max-w-[100rem] flex-col px-6 2xl:max-w-[120rem]">
-      {/* `safe-area-inset-top` porque isto é PWA instalado: em standalone não
-          existe barra do navegador empurrando o conteúdo, e num aparelho com
-          notch o título nasce debaixo dele. No navegador comum o inset é 0 e
-          sobra só o pt-10. */}
-      <header className="w-full max-w-xl pt-[calc(2.5rem+env(safe-area-inset-top))]">
+      {/* O recuo do notch é da `MarcaApp`, que vem antes desta tela e é a
+          primeira coisa da página. Aqui sobra só o vão entre a marca e o
+          título — 20px, como no arquivo. */}
+      <header className="w-full max-w-xl pt-5">
         <h1 className="font-titulo text-[22px] leading-[1.15] font-black text-tinta lg:text-[28px]">
           Trocas possíveis
         </h1>
