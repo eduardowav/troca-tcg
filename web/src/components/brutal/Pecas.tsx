@@ -142,6 +142,113 @@ export function IconeMensagem({ className }: { className?: string }) {
   )
 }
 
+/* -------------------------------------------------- ícones da navegação */
+
+/**
+ * Trocas. No arquivo é composto: duas setas de 10px dentro de uma caixa de 22,
+ * uma no canto superior esquerdo e outra deslocada 10px nos dois eixos. As duas
+ * apontam para lados opostos e não se tocam — é troca, não ida e volta.
+ *
+ * Reproduzo a composição com `translate` em vez de reescrever os paths num
+ * sistema de coordenadas só: os `d` continuam sendo os do arquivo, e a
+ * geometria é a mesma que o Figma desenha.
+ */
+export function IconeTrocas({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 22 22"
+      fill="none"
+      aria-hidden
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <g transform="translate(2 2)">
+        <path
+          d="M5 2.083L2.083 5L5 7.917M2.083 5H7.917"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+        />
+      </g>
+      <g transform="translate(10 10)">
+        <path
+          d="M2.083 5H7.917M5 7.917L7.917 5L5 2.083"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+        />
+      </g>
+    </svg>
+  )
+}
+
+/**
+ * Perfil. Asset do arquivo, path preservado.
+ */
+export function IconePessoa({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 22 22"
+      fill="none"
+      aria-hidden
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path
+        d="M17.4174 19.25V17.4167C17.4174 16.4442 17.031 15.5116 16.3433 14.8239C15.6556 14.1363 14.7229 13.75 13.7503 13.75H8.24969C7.27711 13.75 6.34438 14.1363 5.65666 14.8239C4.96895 15.5116 4.5826 16.4442 4.5826 17.4167V19.25M14.6671 6.41667C14.6671 8.44171 13.0253 10.0833 11 10.0833C8.97472 10.0833 7.33291 8.44171 7.33291 6.41667C7.33291 4.39162 8.97472 2.75 11 2.75C13.0253 2.75 14.6671 4.39162 14.6671 6.41667Z"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
+}
+
+/**
+ * Minhas cartas — duas cartas empilhadas, uma atrás da outra.
+ *
+ * Este não veio do arquivo. O Figma usa um `card-sim`, que é o glifo de chip de
+ * celular: num app de troca de cartas, a leitura errada é grande demais para o
+ * ganho de fidelidade. Mantive o conceito que o app já tinha e redesenhei na
+ * mesma língua dos outros — caixa de 22, traço de 2, ponta redonda, mesma
+ * proporção de margem. Decisão do Eduardo.
+ *
+ * A carta de trás aparece só nos dois lados que a da frente não cobre: desenhar
+ * o retângulo inteiro atrás deixaria um cruzamento visível no traço, e a 22px
+ * isso vira sujeira.
+ */
+export function IconeCartasBrutal({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 22 22"
+      fill="none"
+      aria-hidden
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      {/* Carta de trás: só o ombro esquerdo e o topo. */}
+      <path
+        d="M5.5 15.5H4.4C3.6 15.5 3 14.9 3 14.1V4.4C3 3.6 3.6 3 4.4 3H12.5C13.3 3 13.9 3.6 13.9 4.4V5.5"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      {/* Carta da frente, inteira. */}
+      <rect
+        x="6.5"
+        y="6.5"
+        width="12.5"
+        height="12.5"
+        rx="1.6"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
 /* --------------------------------------------------------------- pokébola */
 
 /**

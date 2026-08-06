@@ -1,11 +1,13 @@
 import { NavLink, Outlet } from 'react-router-dom'
 
 import {
+  IconeCartasBrutal,
   IconeMensagem,
+  IconePessoa,
   IconeRaio,
   IconeSino,
+  IconeTrocas,
 } from '@/components/brutal/Pecas'
-import { IconeCartas, IconePerfil, IconeTroca } from '@/components/ui/Icone'
 import { cn } from '@/lib/cn'
 
 /**
@@ -16,15 +18,19 @@ import { cn } from '@/lib/cn'
  * propósito: é um fluxo de foco, com bandeja própria no rodapé, e sair no meio
  * dele não ajuda ninguém.
  */
+// Os quatro ícones vêm do arquivo do Figma, menos o de cartas: lá ele é um
+// `card-sim` (chip de celular), e num app de troca de cartas essa leitura errada
+// custa mais do que a fidelidade ganha. Esse foi redesenhado na mesma língua dos
+// outros — caixa de 22, traço de 2, ponta redonda.
 const ABAS = [
-  { para: '/matches', rotulo: 'Trocas', Icone: IconeTroca },
-  { para: '/minhas-cartas', rotulo: 'Minhas cartas', Icone: IconeCartas },
+  { para: '/matches', rotulo: 'Trocas', Icone: IconeTrocas },
+  { para: '/minhas-cartas', rotulo: 'Minhas cartas', Icone: IconeCartasBrutal },
   // Mensagens ainda não existem: a aba leva para uma tela que diz isso e
   // aponta o caminho de hoje (WhatsApp depois do aceite). Está aqui, e não
   // escondida até o chat ficar pronto, porque a ausência da aba faz a pessoa
   // procurar a função achando que ela está em algum canto.
   { para: '/mensagens', rotulo: 'Mensagens', Icone: IconeMensagem },
-  { para: '/perfil', rotulo: 'Perfil', Icone: IconePerfil },
+  { para: '/perfil', rotulo: 'Perfil', Icone: IconePessoa },
 ]
 
 export function LayoutApp() {
