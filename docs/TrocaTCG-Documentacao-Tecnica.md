@@ -1277,13 +1277,28 @@ O campo `matches_imediatos` é deliberado: dá feedback instantâneo de valor lo
 
 | Método | Rota | Descrição |
 |---|---|---|
-| `GET` | `/users/{username}` | Perfil público: reputação, o que oferece e procura |
+| `GET` | `/u/{username}` | Perfil público: reputação com os contadores, bairro, bio e antiguidade. Exige login |
 | `GET` | `/me` | Perfil próprio |
 | `PATCH` | `/me` | Atualiza perfil |
-| `POST` | `/reports` | Denuncia usuário. Motivos incluem `USO_PARA_VENDA` |
+| `POST` | `/me/matches/{id}/denunciar` | Denuncia a outra pessoa **desta troca**. Motivos incluem `USO_PARA_VENDA` |
 | `GET` | `/me/notifications` | Lista, com `?nao_lidas=true` |
 | `POST` | `/me/notifications/read` | Marca como lidas |
 | `POST` | `/me/push-subscription` | Registra endpoint Web Push |
+
+A denúncia é presa ao match, e não a `/reports` com um `denunciado_id` no corpo
+como esta seção previa. O motivo é antiabuso e vale a mudança de rota: com o id
+no corpo, participar de um match qualquer viraria licença para denunciar
+qualquer pessoa iterando @s; preso ao match, denunciar custa ter cruzado com
+quem se denuncia. O denunciado sai do banco, não do cliente.
+
+**Não há rota de leitura de denúncias, e é de propósito.** A API grava e não lê;
+`22_denuncias.sql` revoga `anon` e `authenticated` da tabela. Quem modera lê pelo
+SQL Editor do Supabase com o runbook versionado em `db/queries/moderacao.sql` —
+fila, contexto do match, reincidência dos dois lados, e as duas únicas ações
+(marcar resolvida, `profiles.bloqueado`). Reputação não se mexe daí: ela é dos
+desfechos do match, que exigem os dois lados, senão a denúncia viraria arma.
+Quando a fila crescer a ponto de o SQL Editor incomodar, o caminho é uma rota
+atrás do `X-Job-Secret`, no padrão dos internos abaixo.
 
 ### Públicos
 

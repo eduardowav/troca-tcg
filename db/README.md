@@ -22,6 +22,18 @@ foreign key entre eles (ex.: `listings` referencia `finishes`, `cards` e `profil
 | 08 | `schema/08_notifications.sql` | notificações, push subscriptions |
 | 09 | `schema/09_rls.sql` | Row Level Security (tabelas de usuário) |
 | 10 | `schema/10_hardening.sql` | RLS do catálogo (leitura pública) + trava de `match_events` + search_path da função |
+| 11 | `schema/11_grants.sql` | GRANTs do PostgREST — a camada abaixo das policies |
+| 12 | `schema/12_series_sets.sql` | séries e expansões, saindo de `cards.set_code` desnormalizado |
+| 13 | `schema/13_busca_cartas.sql` | busca por nome com ranking (trigram) |
+| 14 | `schema/14_busca_filtros.sql` | filtro por série, expansão e número |
+| 15 | `schema/15_precos_tcgplayer.sql` | preço de referência da TCGplayer |
+| 16 | `schema/16_raridades.sql` | raridade normalizada em 28 rótulos, com ordem |
+| 17 | `schema/17_busca_raridade.sql` | filtro por raridade |
+| 18 | `schema/18_busca_plano.sql` | correção de plano: a busca volta a usar o índice |
+| 19 | `schema/19_acabamentos.sql` | seed de `card_finishes` e `set_finish_rules` |
+| 20 | `schema/20_prazo_e_desistencia.sql` | prorrogação, `CANCELADO` e `trocas_desistidas` |
+| 21 | `schema/21_acabamento_dos_anuncios_antigos.sql` | correção dos anúncios que diziam "Normal" |
+| 22 | `schema/22_denuncias.sql` | `user_reports` acertada: match obrigatório, motivos em check, uma por troca |
 
 > **Dependência do Supabase Auth:** `profiles.id` referencia `auth.users(id)`.
 > Aplique este schema em um projeto Supabase (onde o schema `auth` já existe).
@@ -40,6 +52,21 @@ done
 ### Via Supabase (MCP / dashboard)
 
 Aplique cada arquivo na ordem numérica pelo SQL Editor ou por migration.
+
+## `queries/` — o que não roda no deploy
+
+`schema/` é aplicado; `queries/` é consultado. São queries de operação, que uma
+pessoa executa à mão no SQL Editor do Supabase e que ficam versionadas porque
+representam uma decisão de produto, não um comando avulso.
+
+| Arquivo | Quando se usa |
+|---|---|
+| `queries/moderacao.sql` | Ler e decidir denúncias: a fila, o contexto do match, reincidência dos dois lados, e as duas únicas ações (marcar resolvida, bloquear) |
+
+A moderação é deliberadamente manual e sem tela. A API grava denúncia e não lê
+nenhuma, e o 22 revoga `anon`/`authenticated` da tabela — ler exige a connection
+string. O runbook explica por quê, e o que a moderação **não** pode fazer
+(mexer em reputação é o principal).
 
 ## Convenção
 
