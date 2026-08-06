@@ -65,6 +65,54 @@
   /* Sombra — offset + blur (nunca halo de raio zero) */
   --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px -12px rgb(0 0 0 / 0.6);
   --shadow-pop: 0 12px 40px -12px rgb(0 0 0 / 0.7);
+
+  /* ==========================================================
+     MUNDO NOVO — neobrutalismo (Figma "TrocaTCG - Design")
+     ==========================================================
+     Convivem com os tokens do playmat acima enquanto as telas
+     migram uma a uma. Quando a última migrar, o bloco de cima
+     sai inteiro e estes perdem o sufixo de mundo.
+
+     Os valores não foram escolhidos: saíram do arquivo do Figma
+     nó a nó. Não invente vizinhos — se faltar um tom, ele vem
+     do frame que precisa dele.
+     ========================================================== */
+
+  /* Superfícies. O papel é o fundo da página; a cartela é tudo
+     que se levanta dela com borda e sombra. */
+  --color-papel: #fffdf5;
+  --color-cartela: #ffffff;
+  --color-meu: #f2f4ff; /* o que é meu numa troca (fundo do par) */
+
+  /* Tinta. Uma cor só para borda e texto — é o que dá a dureza
+     do neobrutalismo: nada de cinza-borda decorativo. */
+  --color-tinta: #000000;
+  --color-apagado: #555552; /* secundário, letra miúda, dado frio */
+
+  /* Ação. Azul chapado, sem gradiente. */
+  --color-azul: #0038ff;
+  --color-azul-claro: #6082ff; /* aba ativa da navegação */
+  --color-azul-tinta: #ffffff; /* texto sobre azul */
+
+  /* Raios. Quatro degraus, do container à etiqueta. */
+  --radius-cartela: 20px;
+  --radius-controle: 12px;
+  --radius-imagem: 8px;
+  --radius-etiqueta: 6px;
+
+  /* Sombra dura: deslocada, sem blur, preta. O tamanho do
+     deslocamento é a hierarquia — 4 para cartela, 3 para botão,
+     2 para peça pequena. */
+  --shadow-duro: 4px 4px 0 var(--color-tinta);
+  --shadow-duro-sm: 3px 3px 0 var(--color-tinta);
+  --shadow-duro-xs: 2px 2px 0 var(--color-tinta);
+
+  /* Tipografia do mundo novo. Nomes por papel, não por família:
+     título (Outfit, pesos 500–900), corpo (Inter) e dado
+     (Geist Mono — id de match, código de set, nota, data). */
+  --font-titulo: 'Outfit', ui-sans-serif, system-ui, sans-serif;
+  --font-corpo: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-dado: 'Geist Mono', ui-monospace, 'SFMono-Regular', monospace;
 }
 
 /* Gradiente holo reutilizável (linha de troca) */
@@ -120,6 +168,101 @@
     font-weight: 800;
     letter-spacing: -0.03em;
     text-wrap: balance;
+  }
+
+  /* ----------------------------------------------------------------
+     Mundo novo — o que precisa valer fora da árvore da rota.
+     ----------------------------------------------------------------
+     Quem liga o atributo é o hook `useMundo('brutal')`, montado na
+     tela. Vai no <html> porque o fundo da página e a barra de
+     navegação não estão dentro da rota: sem isto, a tela nova
+     apareceria recortada dentro do mundo antigo.
+
+     Só o que é global mora aqui. Cor de peça é da peça. */
+  [data-mundo='brutal'] body {
+    background-color: var(--color-papel);
+    background-image: none; /* apaga a vinheta de feltro do playmat */
+    color: var(--color-tinta);
+    font-family: var(--font-corpo);
+  }
+
+  [data-mundo='brutal'] h1,
+  [data-mundo='brutal'] h2,
+  [data-mundo='brutal'] h3 {
+    font-family: var(--font-titulo);
+    font-weight: 900;
+    letter-spacing: -0.02em;
+  }
+
+  [data-mundo='brutal'] ::selection {
+    background: var(--color-azul);
+    color: var(--color-azul-tinta);
+  }
+
+  /* O anel de foco troca de cor junto: o volt roxo sobre papel creme
+     não é o mesmo contraste que sobre grafite. */
+  [data-mundo='brutal'] :focus-visible {
+    outline: 2px solid var(--color-azul);
+    outline-offset: 2px;
+  }
+}
+
+/* ------------------------------------------------------------------
+   Mundo novo — repintura das peças compartilhadas.
+   ------------------------------------------------------------------
+   Isto mora em `utilities`, e não em `base`, por causa da cascata de
+   camadas: um utilitário do Tailwind (`bg-surface/95`) vence qualquer
+   regra de `base` por mais específica que ela seja, porque camada
+   pesa mais que especificidade. Na mesma camada, aí sim a
+   especificidade decide — e `[data-mundo]` + classe ganha da classe
+   sozinha.
+
+   Só entram aqui as peças que atravessam os dois mundos e não podem
+   receber classe direto: a barra fixa, que é irmã da rota e não filha
+   dela, e o `CartaThumb`, que é o mesmo componente nas telas que ainda
+   não migraram. As duas já tinham gancho reservado para isto.
+   ------------------------------------------------------------------ */
+@layer utilities {
+  [data-mundo='brutal'] .nav-app {
+    background-color: var(--color-cartela);
+    border-top: 2px solid var(--color-tinta);
+    backdrop-filter: none;
+  }
+
+  [data-mundo='brutal'] .nav-app a {
+    color: var(--color-apagado);
+    font-family: var(--font-titulo);
+    font-weight: 500;
+  }
+
+  [data-mundo='brutal'] .nav-app a[aria-current='page'] {
+    color: var(--color-azul-claro);
+    font-weight: 800;
+  }
+
+  /* O tracinho da aba ativa é `bg-volt` — roxo do playmat. */
+  [data-mundo='brutal'] .nav-app a[aria-current='page'] span[aria-hidden] {
+    background-color: var(--color-azul-claro);
+  }
+
+  /* A moldura do sleeve: fundo escuro, anel e sombra interna saem. A
+     borda preta vem por classe de quem usa o thumb, então `box-shadow:
+     none` não apaga nada que eu precise — o anel do Tailwind é sombra,
+     a borda não. */
+  [data-mundo='brutal'] .thumb-carta {
+    background-color: var(--color-papel);
+    box-shadow: none;
+  }
+
+  /* Fallback tipográfico de quem não tem imagem no catálogo — e são
+     muitas: as expansões recentes entram sem arte. Sobre papel creme o
+     texto claro do playmat some. */
+  [data-mundo='brutal'] .thumb-carta span {
+    color: var(--color-tinta);
+  }
+
+  [data-mundo='brutal'] .thumb-carta .set-code {
+    color: var(--color-apagado);
   }
 }
 

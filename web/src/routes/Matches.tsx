@@ -1,11 +1,18 @@
 import { useMemo } from 'react'
-import { Link } from 'react-router-dom'
 
+import {
+  BotaoBrutal,
+  Cartela,
+  IconeEstrela,
+  IconeTrocar,
+  ParDeCartas,
+  Selo,
+} from '@/components/brutal/Pecas'
 import { CelulaCarta, GradeDeCartas } from '@/components/carta/GradeDeCartas'
-import { LinhaDeTroca } from '@/components/carta/LinhaDeTroca'
 import { IconeTroca } from '@/components/ui/Icone'
 import { useCartasPorId, useProcuradas } from '@/hooks/useAnuncios'
 import { useMatches } from '@/hooks/useMatches'
+import { useMundo } from '@/hooks/useMundo'
 import type { CartaProcurada } from '@/lib/anuncios'
 import { cn } from '@/lib/cn'
 import {
@@ -18,7 +25,23 @@ import {
 } from '@/lib/matches'
 import { useUsuarioId } from '@/stores/auth'
 
+/**
+ * Feed de trocas — primeira tela do mundo neobrutalista.
+ *
+ * O Figma desenha esta tela (frame `pokeswap-home`) só no caminho feliz e só em
+ * 390px. As outras três situações — carregando, erro, vazio — e o layout de
+ * desktop não estão no arquivo, e são exatamente onde a pessoa passa a maior
+ * parte do tempo enquanto a base é pequena. Estão aqui na mesma linguagem:
+ * mesma borda, mesma sombra dura, mesma família de tipos.
+ *
+ * A moldura da marca (logo no topo) não mora nesta rota de propósito. No Figma
+ * ela aparece em todas as telas, o que quer dizer que é moldura do app, não da
+ * tela — e repeti-la em treze rotas é treze lugares para ela sair de sintonia.
+ * Ela entra no `LayoutApp`, junto com a barra de baixo.
+ */
 export default function Matches() {
+  useMundo('brutal')
+
   const meuId = useUsuarioId()
   const { data: matches, isPending, isError, refetch } = useMatches()
 
@@ -31,19 +54,22 @@ export default function Matches() {
   return (
     // Mesma moldura de Minhas cartas e do Onboarding: container largo para as
     // cartas respirarem, coluna estreita para o texto — linha longa cansa de ler.
-    <div className="mx-auto flex min-h-[100dvh] w-full max-w-[100rem] 2xl:max-w-[120rem] flex-col px-5">
-      <header className="w-full max-w-xl pt-10">
-        <p className="set-code text-xs tracking-wide text-muted">TROCATCG</p>
-        <h1 className="titulo-pagina mt-3 text-[28px] leading-[1.1] lg:text-[34px]">
+    <div className="mx-auto flex min-h-[100dvh] w-full max-w-[100rem] flex-col px-6 2xl:max-w-[120rem]">
+      {/* `safe-area-inset-top` porque isto é PWA instalado: em standalone não
+          existe barra do navegador empurrando o conteúdo, e num aparelho com
+          notch o título nasce debaixo dele. No navegador comum o inset é 0 e
+          sobra só o pt-10. */}
+      <header className="w-full max-w-xl pt-[calc(2.5rem+env(safe-area-inset-top))]">
+        <h1 className="font-titulo text-[22px] leading-[1.15] font-black text-tinta lg:text-[28px]">
           Trocas possíveis
         </h1>
-        <p className="mt-2 text-[15px] leading-relaxed text-muted lg:text-[16px]">
+        <p className="mt-1.5 font-corpo text-[14px] leading-relaxed text-apagado lg:text-[15px]">
           Cada uma é alguém que tem o que você procura — e quer o que você
           oferece.
         </p>
       </header>
 
-      <div className="mt-7 flex-1">
+      <div className="mt-6 flex-1">
         {isPending ? (
           <Esqueleto />
         ) : isError ? (
@@ -52,8 +78,17 @@ export default function Matches() {
           <Vazio />
         ) : (
           // Grade como nas outras telas: no desktop as trocas ficam lado a lado
-          // em vez de uma coluna estreita com metade da tela vazia.
-          <ul className="grid gap-3 lg:grid-cols-2 2xl:grid-cols-3">
+          // em vez de uma coluna estreita com metade da tela vazia. O gap de 24
+          // é o do arquivo; ele vale para os dois eixos.
+          //
+          // O `grid-cols-1` não é redundante. Sem ele a coluna implícita nasce
+          // `auto`, que dimensiona pelo max-content do item — e o nome da carta
+          // tem `truncate`, ou seja, `white-space: nowrap`: o max-content é o
+          // nome inteiro numa linha só. No celular isso empurrava a cartela para
+          // 418px num viewport de 375 e a página rolava na horizontal, com o
+          // selo e o botão cortados. `grid-cols-1` é `minmax(0, 1fr)`, e é o
+          // zero que deixa a coluna encolher e o `truncate` de dentro funcionar.
+          <ul className="grid grid-cols-1 gap-6 lg:grid-cols-2 2xl:grid-cols-3">
             {matches.map((match) => (
               <li key={match.id}>
                 <CartaoMatch match={match} meuId={meuId} cartas={cartas} />
@@ -82,49 +117,75 @@ function CartaoMatch({
   const reputacao = outro && reputacaoTexto(outro)
 
   return (
-    <Link
-      to={`/matches/${match.id}`}
-      className="cartela block rounded-[var(--radius-card)] border border-edge bg-surface p-4 transition-colors hover:border-[var(--color-faint)] lg:p-5"
-    >
-      <div className="flex items-baseline justify-between gap-3">
-        {/* O nome é o que identifica a troca numa lista — quem está do outro
-            lado dela. Em peso normal ele empatava com o @ e com a reputação, que
-            são qualificadores dele. O @ subiu um ponto junto: em mono, a 11px,
-            ele ficava pequeno demais ao lado de um nome de 15px. */}
-        <span className="min-w-0">
-          <span className="block truncate text-[15px] font-bold text-paper lg:text-[17px]">
-            {outro?.nome_exibicao ?? 'Alguém'}
+    // A cartela não é um link.
+    //
+    // Ela era, e isso escondia o alvo mais óbvio da tela: com a linha inteira
+    // abrindo a troca, não havia como tocar numa das cartas para ver a carta.
+    // Agora são três alvos declarados — cada carta abre `/carta/:id`, o botão
+    // abre a troca, e o resto da cartela não é clicável. Decisão do Eduardo,
+    // vendo rodar no celular.
+    <Cartela className="flex flex-col gap-4 p-4">
+        <div className="flex items-center gap-2.5">
+          {/* Sem avatar: o perfil não tem foto no produto. O lugar dela no
+              desenho fica com a inicial, que é dado que existe. */}
+          <span className="grid size-9 shrink-0 place-items-center rounded-full border-2 border-tinta bg-meu font-titulo text-[15px] font-black text-tinta">
+            {(outro?.nome_exibicao ?? outro?.username ?? '?')
+              .charAt(0)
+              .toUpperCase()}
           </span>
-          <span className="set-code block text-[12px] text-muted lg:text-[13px]">
-            @{outro?.username}
-            {reputacao && ` · ${reputacao}`}
-          </span>
-        </span>
-        <Selo status={match.status} jaAceitei={euAceitei(match, meuId)} />
-      </div>
 
-      <div className="mt-4">
-        <LinhaDeTroca
+          <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+            <span className="truncate font-titulo text-[15px] font-bold text-tinta">
+              @{outro?.username ?? 'alguém'}
+            </span>
+            {reputacao && (
+              <span className="flex items-center gap-1">
+                <IconeEstrela className="size-3 shrink-0 text-azul" />
+                <span className="truncate font-dado text-[12px] font-semibold text-apagado">
+                  {reputacao}
+                </span>
+              </span>
+            )}
+          </span>
+
+          <EstadoDaTroca
+            status={match.status}
+            jaAceitei={euAceitei(match, meuId)}
+          />
+        </div>
+
+        <ParDeCartas
           dou={dou && cartas?.get(dou.card_id)}
           recebo={recebo && cartas?.get(recebo.card_id)}
         />
-      </div>
 
-      {/* O prazo é rodapé enquanto sobra semana e vira aviso nos dois últimos
-          dias. É a mesma linha, com peso de cor diferente: a lista existe para
-          a pessoa decidir o que fazer hoje, e "expira amanhã" no mesmo cinza de
-          "expira em 6 dias" faz as duas notícias valerem o mesmo. */}
-      {prazo && (
-        <p
-          className={cn(
-            'mt-4 text-[12px] lg:text-[13px]',
-            prazoUrgente(match) ? 'font-medium text-want' : 'text-faint',
-          )}
-        >
-          {prazo}
-        </p>
-      )}
-    </Link>
+        <hr className="border-0 border-t-2 border-dashed border-tinta/25" />
+
+        <div className="flex items-center justify-between gap-3">
+          {/* O rodapé do arquivo mostra "MATCH ID / TRD-8821". O id real é um
+              uuid, e um uuid inteiro não cabe nem ajuda. O prazo ocupa esse
+              lugar: é a informação do rodapé que mais decide o que a pessoa faz
+              hoje, e ela já existia na tela antiga. */}
+          <span className="flex min-w-0 flex-col gap-0.5">
+            <span className="font-dado text-[10px] uppercase text-apagado">
+              {prazo ? 'Prazo' : 'Troca'}
+            </span>
+            <span
+              className={cn(
+                'truncate font-dado text-[12px] font-bold',
+                prazo && prazoUrgente(match) ? 'text-azul' : 'text-tinta',
+              )}
+            >
+              {prazo ?? `#${match.id.slice(0, 8).toUpperCase()}`}
+            </span>
+          </span>
+
+          <BotaoBrutal to={`/matches/${match.id}`}>
+            Trocar
+            <IconeTrocar className="size-3.5" />
+          </BotaoBrutal>
+        </div>
+      </Cartela>
   )
 }
 
@@ -132,73 +193,51 @@ function CartaoMatch({
  * PENDENTE quer dizer "alguém aceitou e falta alguém", e isso é coisa oposta
  * conforme quem aceitou: se fui eu, a bola está com a outra pessoa; se foi ela,
  * a bola está comigo — e aí é uma chamada para agir, não um aviso de espera.
- * O detalhe já fazia essa distinção; o feed dizia "esperando o outro" nos dois
- * casos, e mandava a pessoa esperar justamente quando faltava ela.
  *
- * A distinção estava só nas palavras, e as duas saíam no mesmo laranja de
- * Procuro: numa lista, a linha em que não há nada a fazer chamava tanta atenção
- * quanto a única que depende da pessoa. Agora "falta você" é a única com fundo —
- * é o selo que existe para ser perseguido, e a métrica-mãe é troca concluída.
- * "Esperando o outro" desce para o cinza de espera, junto com "nova".
+ * No arquivo do Figma todo selo é branco com borda preta. Manter os quatro
+ * iguais desfaria a distinção que esta tela já tinha: numa lista, a linha em que
+ * não há nada a fazer chamaria tanta atenção quanto a única que depende da
+ * pessoa. Só "falta você" ganha o azul — o mesmo da ação primária, que é o
+ * vocabulário do arquivo para "aqui se clica".
  */
-function Selo({
+function EstadoDaTroca({
   status,
   jaAceitei,
 }: {
   status: Match['status']
   jaAceitei: boolean
 }) {
-  // `tom` é o papel do selo — o que ele quer que a pessoa faça. `cor` é só como
-  // o mundo padrão o pinta; uma pele visual pinta pelo tom.
-  type Descricao = { texto: string; tom: string; cor: string }
-  const mapa: Partial<Record<Match['status'], Descricao>> = {
-    SUGERIDO: { texto: 'nova', tom: 'espera', cor: 'text-muted border-edge' },
+  const mapa: Partial<
+    Record<Match['status'], { texto: string; tom: 'neutro' | 'acao' }>
+  > = {
+    SUGERIDO: { texto: 'nova', tom: 'neutro' },
     PENDENTE: jaAceitei
-      ? {
-          texto: 'esperando o outro',
-          tom: 'espera',
-          cor: 'text-muted border-edge',
-        }
-      : {
-          texto: 'falta você',
-          tom: 'urgente',
-          cor: 'text-want border-[color-mix(in_oklab,var(--color-want)_45%,transparent)] bg-[color-mix(in_oklab,var(--color-want)_12%,transparent)] font-medium',
-        },
-    ACEITO: {
-      texto: 'combinada',
-      tom: 'ok',
-      cor: 'text-offer border-[color-mix(in_oklab,var(--color-offer)_40%,transparent)]',
-    },
+      ? { texto: 'esperando', tom: 'neutro' }
+      : { texto: 'falta você', tom: 'acao' },
+    ACEITO: { texto: 'combinada', tom: 'neutro' },
   }
   const selo = mapa[status]
   if (!selo) return null
 
-  return (
-    <span
-      data-tom={selo.tom}
-      className={cn(
-        'selo shrink-0 rounded-full border px-2.5 py-1 text-[11px] whitespace-nowrap lg:text-[12px]',
-        selo.cor,
-      )}
-    >
-      {selo.texto}
-    </span>
-  )
+  return <Selo tom={selo.tom}>{selo.texto}</Selo>
 }
 
 function Esqueleto() {
   return (
-    <ul className="flex flex-col gap-3" aria-hidden>
+    <ul
+      className="grid grid-cols-1 gap-6 lg:grid-cols-2 2xl:grid-cols-3"
+      aria-hidden
+    >
       {[0, 1].map((i) => (
-        <li
-          key={i}
-          className="cartela rounded-[var(--radius-card)] border border-edge bg-surface p-4"
-        >
-          <div className="h-3.5 w-1/3 animate-pulse rounded bg-surface-2" />
-          <div className="mt-4 flex items-center gap-3">
-            <div className="aspect-[2.5/3.5] w-14 flex-1 animate-pulse rounded-[10px] bg-surface-2" />
-            <div className="aspect-[2.5/3.5] w-14 flex-1 animate-pulse rounded-[10px] bg-surface-2" />
-          </div>
+        <li key={i}>
+          <Cartela className="flex flex-col gap-4 p-4">
+            <div className="h-4 w-1/3 animate-pulse rounded bg-meu" />
+            <div className="flex items-center gap-2">
+              <div className="aspect-[2.5/3.5] flex-1 animate-pulse rounded-[var(--radius-controle)] border-2 border-tinta bg-meu" />
+              <div className="size-8 shrink-0 rounded-full border-2 border-tinta bg-cartela" />
+              <div className="aspect-[2.5/3.5] flex-1 animate-pulse rounded-[var(--radius-controle)] border-2 border-tinta bg-papel" />
+            </div>
+          </Cartela>
         </li>
       ))}
     </ul>
@@ -229,20 +268,19 @@ function Vazio() {
   if (!procuradas?.length) {
     return (
       <div className="flex flex-col items-center py-14 text-center">
-        <div className="cartela grid size-12 place-items-center rounded-2xl border border-edge bg-surface text-muted">
+        <span className="grid size-14 place-items-center rounded-[var(--radius-controle)] border-2 border-tinta bg-cartela text-tinta shadow-[var(--shadow-duro)]">
           <IconeTroca className="size-6" />
-        </div>
-        <p className="mt-4 text-[15px] text-paper lg:text-[16px]">Nenhuma troca possível ainda.</p>
-        <p className="mt-1.5 max-w-xs text-[14px] leading-relaxed text-muted lg:text-[15px]">
+        </span>
+        <p className="mt-5 font-titulo text-[17px] font-bold text-tinta">
+          Nenhuma troca possível ainda.
+        </p>
+        <p className="mt-2 max-w-xs font-corpo text-[14px] leading-relaxed text-apagado">
           Uma troca aparece quando alguém tem o que você procura e quer o que
           você oferece. Quanto mais cartas nas suas listas, mais chances.
         </p>
-        <Link
-          to="/minhas-cartas"
-          className="mt-5 text-[14px] text-paper underline underline-offset-4"
-        >
+        <BotaoBrutal to="/minhas-cartas" className="mt-6">
           Ajustar minhas cartas
-        </Link>
+        </BotaoBrutal>
       </div>
     )
   }
@@ -250,19 +288,20 @@ function Vazio() {
   return (
     <div className="pb-6">
       <div className="w-full max-w-xl">
-        <p className="text-[15px] text-paper lg:text-[16px]">
+        <p className="font-titulo text-[17px] font-bold text-tinta">
           Nenhuma troca fechada ainda — mas tem gente de olho no que você
           oferece.
         </p>
-        <p className="mt-1.5 text-[14px] leading-relaxed text-muted lg:text-[15px]">
+        <p className="mt-2 font-corpo text-[14px] leading-relaxed text-apagado">
           Falta a outra metade: a troca só aparece quando você também quer
           alguma carta de quem procura a sua.
         </p>
       </div>
 
-      {/* Mesma grade e mesma célula das telas de Ofereço e Procuro — são cartas
-          suas, e ler diferente aqui faria parecer outra coisa. O destaque de
-          OFERTA é o mesmo que Minhas cartas usa para o que você oferece. */}
+      {/* `GradeDeCartas` e `CelulaCarta` ainda são do playmat: elas são as
+          mesmas peças das telas de Ofereço e Procuro, e repintá-las aqui
+          mudaria Minhas cartas junto, que ainda não migrou. Elas trocam de
+          mundo quando Minhas cartas trocar — é a mesma migração, não outra. */}
       <GradeDeCartas className="mt-5">
         {procuradas.map((p) => {
           const carta = cartas?.get(p.card_id)
@@ -275,12 +314,9 @@ function Vazio() {
         })}
       </GradeDeCartas>
 
-      <Link
-        to="/minhas-cartas"
-        className="botao botao-subtle mt-4 flex h-13 w-full max-w-xl items-center justify-center rounded-[var(--radius-control)] border border-edge bg-surface-2 text-[15px] text-paper transition-colors hover:border-[var(--color-faint)]"
-      >
+      <BotaoBrutal to="/minhas-cartas" className="mt-5">
         Adicionar cartas que eu procuro
-      </Link>
+      </BotaoBrutal>
     </div>
   )
 }
@@ -314,12 +350,11 @@ function QuemQuer({ procurada }: { procurada: CartaProcurada }) {
 function Recuperavel({ onTentar }: { onTentar: () => void }) {
   return (
     <div className="flex flex-col items-center py-14 text-center">
-      <p className="text-[15px] text-paper">Não deu para carregar as trocas.</p>
-      <button
-        onClick={onTentar}
-        className="botao botao-subtle mt-5 h-9 rounded-[var(--radius-control)] border border-edge bg-surface-2 px-4 text-[14px] text-paper hover:border-[var(--color-faint)]"
-      >
-        Tentar de novo
+      <p className="font-titulo text-[17px] font-bold text-tinta">
+        Não deu para carregar as trocas.
+      </p>
+      <button onClick={onTentar} className="group mt-5">
+        <BotaoBrutal>Tentar de novo</BotaoBrutal>
       </button>
     </div>
   )
