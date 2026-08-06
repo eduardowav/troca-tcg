@@ -381,6 +381,44 @@
     color: var(--color-apagado);
   }
 
+  /* As três cores semânticas do playmat. `offer` era verde-água e `want`
+     âmbar; no mundo novo cor é significado e essas duas eram afordância
+     de região, que as abas e os rótulos já resolvem. `want` vira azul
+     onde ainda sobrevive, porque ali ele sempre marcou chamada para
+     agir ("falta você"). `alert` continua sendo alerta. */
+  [data-mundo='brutal'] .text-offer {
+    color: var(--color-tinta);
+  }
+
+  [data-mundo='brutal'] .text-want {
+    color: var(--color-azul);
+  }
+
+  [data-mundo='brutal'] .text-alert {
+    color: var(--color-alerta);
+  }
+
+  /* Campos de formulário — o perfil é a única tela que ainda tem um
+     formulário de verdade. Mesmo desenho do campo de busca. */
+  [data-mundo='brutal'] .campo label {
+    font-family: var(--font-dado);
+    font-size: 11px;
+    text-transform: uppercase;
+    color: var(--color-apagado);
+  }
+
+  [data-mundo='brutal'] .campo input {
+    background-color: var(--color-cartela);
+    border: 2px solid var(--color-tinta);
+    border-radius: var(--radius-controle);
+    color: var(--color-tinta);
+    font-family: var(--font-corpo);
+  }
+
+  [data-mundo='brutal'] .campo input::placeholder {
+    color: var(--color-apagado);
+  }
+
   /* O detalhe da troca.
      ------------------------------------------------------------------
      A tela tem nove blocos — prazo, desequilíbrio, aceite, desfecho,

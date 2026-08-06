@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 
-import { LinhaDeTroca } from '@/components/carta/LinhaDeTroca'
+import { ParDeCartas } from '@/components/brutal/Pecas'
 import { useCartasPorId } from '@/hooks/useAnuncios'
 import { useHistorico } from '@/hooks/useMatches'
 import { cn } from '@/lib/cn'
@@ -43,8 +43,8 @@ export function MinhasTrocas() {
 
   return (
     <section className="mt-10">
-      <header className="flex items-baseline gap-2 border-b border-edge-soft pb-2">
-        <h2 className="text-[18px] font-medium text-paper">Minhas trocas</h2>
+      <header className="flex items-baseline gap-2 border-b-2 border-tinta pb-2">
+        <h2 className="font-titulo text-[18px] font-black text-tinta">Minhas trocas</h2>
         {trocas && trocas.length > 0 && (
           <span className="set-code text-[13px] text-muted">{trocas.length}</span>
         )}
@@ -57,7 +57,7 @@ export function MinhasTrocas() {
             <div
               key={i}
               aria-hidden
-              className="h-[132px] animate-pulse rounded-card bg-surface"
+              className="cartela h-[132px] animate-pulse rounded-card bg-surface"
             />
           ))}
         </div>
@@ -137,7 +137,10 @@ function Linha({
       <Link
         to={`/matches/${troca.id}`}
         className={cn(
-          'block rounded-card border border-edge bg-surface p-4',
+          // `cartela` é o gancho de pele: sem ele esta ficha continuava com o
+          // grafite do playmat, e no mundo novo virava texto preto sobre cartão
+          // escuro — ilegível, e só a varredura de contraste pegou.
+          'cartela block rounded-card border border-edge bg-surface p-4',
           'transition-colors hover:border-[var(--color-faint)]',
           'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-volt',
         )}
@@ -158,7 +161,7 @@ function Linha({
             do lado de quem ficou com ela. Nas que furaram ou expiraram, não —
             ali a carta não saiu da mão de ninguém. */}
         <div className="mt-3">
-          <LinhaDeTroca
+          <ParDeCartas
             dou={dou && cartas?.get(dou.card_id)}
             recebo={recebo && cartas?.get(recebo.card_id)}
             rotulos={desfecho.rotulos}
@@ -172,7 +175,7 @@ function Linha({
 
 function Vazio() {
   return (
-    <p className="mt-3 rounded-card border border-edge-soft px-4 py-6 text-center text-[14px] leading-relaxed text-muted">
+    <p className="cartela mt-3 rounded-card border border-edge-soft px-4 py-6 text-center text-[14px] leading-relaxed text-muted">
       Nenhuma troca terminou ainda. Quando você e a outra pessoa confirmarem que
       se encontraram, a troca aparece aqui — e entra na sua reputação.
     </p>

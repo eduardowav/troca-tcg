@@ -77,7 +77,7 @@ function Placar({
   cor?: string
 }) {
   return (
-    <div className="rounded-card border border-edge bg-surface p-3.5">
+    <div className="cartela rounded-card border border-edge bg-surface p-3.5">
       <dt className="text-[12px] text-muted">{rotulo}</dt>
       <dd className={`mt-1 text-[22px] font-bold tabular-nums ${cor}`}>
         {valor}

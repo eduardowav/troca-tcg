@@ -16,7 +16,7 @@ export const Campo = forwardRef<HTMLInputElement, CampoProps>(
     const idAuxiliar = `${id}-aux`
 
     return (
-      <div className="flex flex-col gap-1.5">
+      <div className="campo flex flex-col gap-1.5">
         <label htmlFor={id} className="text-[13px] font-medium text-muted">
           {rotulo}
         </label>

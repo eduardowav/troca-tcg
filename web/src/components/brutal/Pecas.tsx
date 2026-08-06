@@ -505,6 +505,11 @@ function LadoDaTroca({
   const classe = cn(
     'flex min-w-0 flex-1 flex-col gap-2 rounded-[var(--radius-controle)] border-2 border-tinta p-2',
     lado === 'meu' ? 'bg-meu' : 'bg-papel',
+    // Teto no compacto. Sem ele, numa coluna larga — o histórico do perfil —
+    // as duas cartas incham até ocupar a linha inteira e cada troca vira meia
+    // tela. No feed a célula já é estreita e o teto não muda nada; era por
+    // isso que o defeito não aparecia lá. A peça antiga tinha o mesmo limite.
+    !grande && 'max-w-32',
     carta && 'transition-shadow hover:shadow-[var(--shadow-duro-xs)]',
   )
 

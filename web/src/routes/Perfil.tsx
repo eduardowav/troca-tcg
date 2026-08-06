@@ -7,6 +7,7 @@ import { MinhasTrocas } from '@/components/perfil/MinhasTrocas'
 import { Reputacao } from '@/components/perfil/Reputacao'
 import { Button } from '@/components/ui/Button'
 import { Campo } from '@/components/ui/Campo'
+import { useMundo } from '@/hooks/useMundo'
 import { usePerfil } from '@/hooks/usePerfil'
 import { ApiError } from '@/lib/api'
 import {
@@ -36,22 +37,25 @@ const esquema = z.object({
 })
 
 export default function PerfilTela() {
+  useMundo('brutal')
+
   const { data: perfil, isPending } = usePerfil()
 
   if (isPending || !perfil) {
     return (
       <Moldura>
-        <div className="mt-8 h-40 animate-pulse rounded-card bg-surface" />
+        <div className="mt-8 h-40 animate-pulse rounded-[var(--radius-cartela)] border-2 border-tinta bg-cartela" />
       </Moldura>
     )
   }
 
   return (
     <Moldura>
-      <header className="pt-10">
-        <p className="set-code text-xs tracking-wide text-muted">TROCATCG</p>
-        <h1 className="mt-3 text-[28px] leading-[1.1]">Seu perfil</h1>
-        <p className="mt-2 text-[15px] leading-relaxed text-muted">
+      <header className="pt-5">
+        <h1 className="font-titulo text-[22px] leading-[1.15] font-black text-tinta lg:text-[28px]">
+          Seu perfil
+        </h1>
+        <p className="mt-1.5 font-corpo text-[14px] leading-relaxed text-apagado">
           É assim que a comunidade te vê. O telefone é a exceção: só quem fecha
           troca com você enxerga.
         </p>
@@ -63,10 +67,10 @@ export default function PerfilTela() {
       <MinhasTrocas />
       <Formulario perfil={perfil} />
 
-      <div className="mt-10 border-t border-edge-soft pt-6">
+      <div className="mt-10 border-t-2 border-dashed border-tinta/25 pt-6">
         <button
           onClick={sair}
-          className="text-[14px] text-muted underline underline-offset-4 hover:text-paper"
+          className="font-corpo text-[14px] font-medium text-azul underline underline-offset-2"
         >
           Sair da conta
         </button>
@@ -215,7 +219,7 @@ function ExcluirConta({ perfil }: { perfil: Perfil }) {
       <div className="mt-8 mb-4">
         <button
           onClick={() => setAberto(true)}
-          className="text-[13px] text-faint underline underline-offset-4 hover:text-alert"
+          className="font-corpo text-[13px] text-apagado underline underline-offset-2 hover:text-alerta"
         >
           Apagar minha conta
         </button>
@@ -226,23 +230,25 @@ function ExcluirConta({ perfil }: { perfil: Perfil }) {
   const confere = confirmacao.trim().toLowerCase() === perfil.username
 
   return (
-    <div className="mt-8 mb-4 rounded-card border border-[color-mix(in_oklab,var(--color-alert)_40%,transparent)] bg-[color-mix(in_oklab,var(--color-alert)_8%,transparent)] p-5">
-      <p className="text-[15px] font-medium text-alert">Apagar sua conta</p>
-      <p className="mt-2 text-[14px] leading-relaxed text-muted">
+    <div className="mt-8 mb-4 rounded-[var(--radius-cartela)] border-2 border-alerta bg-alerta-fraco p-5 shadow-[var(--shadow-duro)]">
+      <p className="font-titulo text-[16px] font-black text-alerta">
+        Apagar sua conta
+      </p>
+      <p className="mt-2 font-corpo text-[14px] leading-relaxed text-tinta">
         Some tudo: perfil, suas listas de Ofereço e Procuro, e as trocas em
         aberto. Quem já trocou com você mantém a reputação dele. Não dá para
         desfazer.
       </p>
 
-      <label className="mt-4 block text-[13px] text-muted">
-        Digite <span className="text-paper">{perfil.username}</span> para
+      <label className="mt-4 block font-dado text-[11px] uppercase text-apagado">
+        Digite <span className="text-tinta">{perfil.username}</span> para
         confirmar
         <input
           value={confirmacao}
           onChange={(e) => setConfirmacao(e.target.value)}
           autoCapitalize="none"
           spellCheck={false}
-          className="mt-1.5 h-11 w-full rounded-[var(--radius-control)] border border-edge bg-surface-2 px-3 text-[15px] text-paper"
+          className="mt-1.5 h-11 w-full rounded-[var(--radius-controle)] border-2 border-tinta bg-cartela px-3 font-corpo text-[15px] text-tinta"
         />
       </label>
 
@@ -254,7 +260,7 @@ function ExcluirConta({ perfil }: { perfil: Perfil }) {
           disabled={!confere}
           loading={excluir.isPending}
           onClick={() => excluir.mutate()}
-          className="text-alert hover:text-alert"
+          className="!bg-alerta !text-cartela"
         >
           Apagar definitivamente
         </Button>
@@ -277,7 +283,7 @@ function ExcluirConta({ perfil }: { perfil: Perfil }) {
 
 function Moldura({ children }: { children: React.ReactNode }) {
   return (
-    <div className="mx-auto flex min-h-[100dvh] w-full max-w-xl flex-col px-5">
+    <div className="mx-auto flex min-h-[100dvh] w-full max-w-xl flex-col px-6">
       {children}
     </div>
   )

@@ -1,6 +1,7 @@
 import { Link, useParams } from 'react-router-dom'
 
 import { Reputacao } from '@/components/perfil/Reputacao'
+import { useMarcaOculta, useMundo } from '@/hooks/useMundo'
 import { usePerfilPublico } from '@/hooks/usePerfilPublico'
 import { ApiError } from '@/lib/api'
 import { membroDesde, type PerfilPublico } from '@/lib/perfil'
@@ -21,6 +22,9 @@ import { useUsuarioId } from '@/stores/auth'
  * tela informa uma decisão que acontece em outro lugar.
  */
 export default function PerfilPublicoTela() {
+  useMundo('brutal')
+  useMarcaOculta()
+
   const { username } = useParams<{ username: string }>()
   const meuId = useUsuarioId()
   const { data: perfil, isPending, error } = usePerfilPublico(username)
@@ -29,8 +33,8 @@ export default function PerfilPublicoTela() {
     return (
       <Moldura>
         <Voltar />
-        <div className="mt-8 h-28 animate-pulse rounded-card bg-surface" />
-        <div className="mt-3 h-24 animate-pulse rounded-card bg-surface" />
+        <div className="mt-8 h-28 animate-pulse rounded-[var(--radius-cartela)] border-2 border-tinta bg-cartela" />
+        <div className="mt-3 h-24 animate-pulse rounded-[var(--radius-cartela)] border-2 border-tinta bg-cartela" />
       </Moldura>
     )
   }
@@ -73,9 +77,9 @@ export default function PerfilPublicoTela() {
       <ComoLer perfil={perfil} />
 
       {souEu && (
-        <p className="mt-8 border-t border-edge-soft pt-6 text-[13px] leading-relaxed text-muted">
+        <p className="mt-8 border-t-2 border-dashed border-tinta/25 pt-6 font-corpo text-[13px] leading-relaxed text-apagado">
           Este é o seu perfil, como a comunidade o vê.{' '}
-          <Link to="/perfil" className="text-paper underline underline-offset-4">
+          <Link to="/perfil" className="font-medium text-azul underline underline-offset-2">
             Editar
           </Link>
         </p>
@@ -90,7 +94,7 @@ function Voltar() {
   return (
     <button
       onClick={() => window.history.back()}
-      className="voltar mt-10 text-[13px] text-muted underline underline-offset-4 hover:text-paper"
+      className="voltar mt-5 grid size-9 shrink-0 place-items-center self-start rounded-full border-2 border-tinta bg-cartela font-titulo text-[16px] font-black text-tinta transition-shadow hover:shadow-[var(--shadow-duro-xs)]"
     >
       ← Voltar
     </button>
@@ -127,7 +131,7 @@ function Avatar({ perfil }: { perfil: PerfilPublico }) {
       <img
         src={perfil.avatar_url}
         alt=""
-        className="size-14 shrink-0 rounded-full border border-edge object-cover"
+        className="size-14 shrink-0 rounded-full border-2 border-tinta object-cover"
       />
     )
   }
@@ -136,7 +140,7 @@ function Avatar({ perfil }: { perfil: PerfilPublico }) {
   return (
     <div
       aria-hidden
-      className="flex size-14 shrink-0 items-center justify-center rounded-full border border-edge bg-surface text-[20px] font-bold text-muted"
+      className="flex size-14 shrink-0 items-center justify-center rounded-full border-2 border-tinta bg-meu font-titulo text-[20px] font-black text-tinta"
     >
       {perfil.nome_exibicao.trim().charAt(0).toUpperCase() || '?'}
     </div>
