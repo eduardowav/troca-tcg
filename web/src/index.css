@@ -319,6 +319,63 @@
     border-color: var(--color-tinta);
   }
 
+  /* A folha de edição do anúncio.
+
+     É a mesma peça da folha de adicionar, que serve telas ainda no
+     playmat — por isso vem por gancho e seletor de mundo, não por
+     classe no componente. Sem isto, tocar numa carta de Minhas cartas
+     abria uma folha escura por cima de uma tela clara: a costura mais
+     visível que sobrou da migração. */
+  [data-mundo='brutal'] .folha-veu {
+    background-color: rgb(0 0 0 / 0.45);
+    backdrop-filter: none;
+  }
+
+  [data-mundo='brutal'] .folha-inferior {
+    background-color: var(--color-papel);
+    border-top: 2px solid var(--color-tinta);
+    box-shadow: none;
+  }
+
+  /* O puxador e as divisórias, que no playmat eram `bg-edge`. */
+  [data-mundo='brutal'] .folha-inferior [aria-hidden],
+  [data-mundo='brutal'] .folha-inferior hr {
+    background-color: var(--color-tinta);
+    border-color: var(--color-tinta);
+  }
+
+  [data-mundo='brutal'] .folha-inferior h2,
+  [data-mundo='brutal'] .folha-inferior h3,
+  [data-mundo='brutal'] .folha-inferior p,
+  [data-mundo='brutal'] .folha-inferior span,
+  [data-mundo='brutal'] .folha-inferior label {
+    color: var(--color-tinta);
+    font-family: var(--font-corpo);
+  }
+
+  /* Os controles: escolha de condição, prioridade, acabamento e os
+     botões de quantidade. Todos herdam a mesma cartela — borda de 2px,
+     papel de fundo — e o selecionado vira azul cheio, que é o
+     vocabulário do arquivo para "este é o valor ativo". */
+  [data-mundo='brutal'] .folha-inferior button {
+    border: 2px solid var(--color-tinta);
+    border-radius: var(--radius-etiqueta);
+    background-color: var(--color-cartela);
+    color: var(--color-tinta);
+    font-family: var(--font-corpo);
+  }
+
+  [data-mundo='brutal'] .folha-inferior button[aria-checked='true'],
+  [data-mundo='brutal'] .folha-inferior button[aria-pressed='true'] {
+    background-color: var(--color-azul);
+    border-color: var(--color-tinta);
+    color: var(--color-azul-tinta);
+  }
+
+  [data-mundo='brutal'] .folha-inferior button[disabled] {
+    opacity: 0.45;
+  }
+
   /* A pokébola gira enquanto a tela não existe. É o único movimento
      contínuo do app — todo o resto é transição curta —, e ele se
      justifica porque é literalmente um indicador de carregamento:

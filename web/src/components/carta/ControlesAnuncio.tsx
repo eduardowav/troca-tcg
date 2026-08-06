@@ -65,7 +65,7 @@ export function FolhaInferior({
             exit={{ opacity: 0 }}
             transition={{ duration: 0.18 }}
             onClick={onFechar}
-            className="fixed inset-0 z-40 bg-ink-deep/75 backdrop-blur-[2px]"
+            className="folha-veu fixed inset-0 z-40 bg-ink-deep/75 backdrop-blur-[2px]"
           />
           <motion.div
             role="dialog"
@@ -76,6 +76,11 @@ export function FolhaInferior({
             exit={{ y: '100%' }}
             transition={{ type: 'spring', stiffness: 320, damping: 34 }}
             className={cn(
+              // `folha-inferior` não pinta nada: é o gancho por onde a pele
+              // alcança a folha e os controles dentro dela. A folha é a mesma
+              // em Minhas cartas (mundo novo) e na folha de adicionar (telas
+              // que ainda não migraram), então classe de mundo aqui vazaria.
+              'folha-inferior',
               'fixed inset-x-0 bottom-0 z-50 max-h-[85dvh] overflow-y-auto',
               'rounded-t-[20px] border-t border-edge bg-surface',
               'shadow-[var(--shadow-pop)]',
