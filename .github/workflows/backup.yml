@@ -13,6 +13,25 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      # O runner vem com client 16 e o servidor é 17.6. O pg_dump se recusa a
+      # ler servidor mais novo que ele ("server version mismatch") e aborta
+      # antes de escrever um byte — então o client tem de vir do PGDG.
+      - name: Cliente PostgreSQL 17
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+            -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \
+            | sudo tee /etc/apt/sources.list.d/pgdg.list > /dev/null
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends postgresql-client-17
+          pg_dump --version
+
+      # O nome do secret diz DIRECT, mas o valor é o do pooler (Supavisor,
+      # porta 5432 = session mode). No plano free o host direto
+      # `db.<ref>.supabase.co` só publica AAAA, e o runner do GitHub não tem
+      # IPv6: pela conexão direta isto morre em timeout. O pooler tem IPv4.
       - name: pg_dump
         env:
           DATABASE_URL_DIRECT: ${{ secrets.DATABASE_URL_DIRECT }}
@@ -22,6 +41,7 @@ jobs:
             exit 0
           fi
           pg_dump "$DATABASE_URL_DIRECT" --no-owner --no-acl -Fc -f backup.dump
+          ls -lh backup.dump
       - name: Upload do artifact
         if: ${{ hashFiles('backup.dump') != '' }}
         uses: actions/upload-artifact@v4
