@@ -5,6 +5,7 @@ import { z } from 'zod'
 
 import { Button } from '@/components/ui/Button'
 import { Campo } from '@/components/ui/Campo'
+import { useMundo } from '@/hooks/useMundo'
 import { ApiError } from '@/lib/api'
 import { criarPerfil, usernameDisponivel } from '@/lib/perfil'
 import { CampoTelefone } from '@/routes/Entrar'
@@ -38,6 +39,7 @@ const esquema = z.object({
  * externo). É a única porta de entrada que falta antes do onboarding.
  */
 export default function CompletarCadastro() {
+  useMundo('brutal')
   const [erros, setErros] = useState<Record<string, string>>({})
   const [enviando, setEnviando] = useState(false)
   const emailDaConta = useAuth((s) => s.session?.user.email)
@@ -159,7 +161,7 @@ export default function CompletarCadastro() {
         {erros.form && (
           <p
             role="alert"
-            className="rounded-[var(--radius-control)] border border-[color-mix(in_oklab,var(--color-alert)_40%,transparent)] bg-[color-mix(in_oklab,var(--color-alert)_12%,transparent)] px-3.5 py-3 text-[14px] text-alert"
+            className="rounded-[var(--radius-controle)] border border-[color-mix(in_oklab,var(--color-alert)_40%,transparent)] bg-[color-mix(in_oklab,var(--color-alert)_12%,transparent)] px-3.5 py-3 text-[14px] text-alert"
           >
             {erros.form}
           </p>

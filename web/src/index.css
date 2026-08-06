@@ -289,6 +289,31 @@
     box-shadow: none;
   }
 
+  /* A célula do playmat, que ainda serve o Onboarding.
+     ------------------------------------------------------------------
+     O Onboarding é a única tela que continua usando `CelulaCarta`,
+     `GradeDeCartas` e os botões de lista antigos. Migrá-la de verdade
+     é reescrever um fluxo de foco com bandeja, progresso e limiar de
+     dez cartas — trabalho que merece uma passada própria, não o fim de
+     uma varredura. Até lá, a repintura por gancho impede o pior: célula
+     grafite sobre papel creme, que é o que aconteceria sem isto. */
+  [data-mundo='brutal'] .celula {
+    border-width: 2px;
+    border-color: var(--color-tinta);
+    border-radius: var(--radius-controle);
+    background-color: var(--color-cartela);
+  }
+
+  [data-mundo='brutal'] .celula p,
+  [data-mundo='brutal'] .celula span {
+    color: var(--color-tinta);
+  }
+
+  [data-mundo='brutal'] .celula .set-code,
+  [data-mundo='brutal'] .celula .text-faint {
+    color: var(--color-apagado);
+  }
+
   /* O esqueleto enquanto a arte carrega. Era `bg-surface-2`, o grafite
      do playmat: num mundo de papel creme, cada carta piscava um
      retângulo cinza-escuro antes de aparecer — e numa troca são duas

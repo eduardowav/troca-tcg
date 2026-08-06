@@ -1,5 +1,7 @@
 import { Link } from 'react-router-dom'
 
+import { useMundo } from '@/hooks/useMundo'
+
 /**
  * Versão registrada em `term_acceptances` a cada aceite.
  *
@@ -21,6 +23,7 @@ const VERSAO = '2026-07-28'
 const CONTATO = 'eduardowav@icloud.com'
 
 export default function Termos() {
+  useMundo('brutal')
   return (
     <div className="mx-auto w-full max-w-xl px-5 py-12">
       <Link

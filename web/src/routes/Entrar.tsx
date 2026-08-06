@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { Campo } from '@/components/ui/Campo'
 import { Button } from '@/components/ui/Button'
 import { IconeEnvelope } from '@/components/ui/Icone'
+import { useMundo } from '@/hooks/useMundo'
 import { mensagemAuth } from '@/lib/authMensagens'
 import { cn } from '@/lib/cn'
 import { usernameDisponivel } from '@/lib/perfil'
@@ -48,6 +49,7 @@ const esquemaCriar = z.object({
 })
 
 export default function Entrar() {
+  useMundo('brutal')
   const [modo, setModo] = useState<Modo>('entrar')
   const [erros, setErros] = useState<Erros>({})
   const [enviando, setEnviando] = useState(false)
@@ -204,7 +206,7 @@ export default function Entrar() {
         {erros.form && (
           <p
             role="alert"
-            className="rounded-[var(--radius-control)] border border-[color-mix(in_oklab,var(--color-alert)_40%,transparent)] bg-[color-mix(in_oklab,var(--color-alert)_12%,transparent)] px-3.5 py-3 text-[14px] text-alert"
+            className="rounded-[var(--radius-controle)] border border-[color-mix(in_oklab,var(--color-alert)_40%,transparent)] bg-[color-mix(in_oklab,var(--color-alert)_12%,transparent)] px-3.5 py-3 text-[14px] text-alert"
           >
             {erros.form}
           </p>
@@ -231,7 +233,7 @@ function Alternador({
     <div
       role="tablist"
       aria-label="Entrar ou criar conta"
-      className="mt-7 grid grid-cols-2 gap-1 rounded-[var(--radius-control)] border border-edge bg-surface p-1"
+      className="mt-7 grid grid-cols-2 gap-1 rounded-[var(--radius-controle)] border-2 border-tinta bg-cartela p-1"
     >
       {(['entrar', 'criar'] as const).map((m) => {
         const ativo = modo === m
@@ -252,7 +254,7 @@ function Alternador({
               <motion.span
                 layoutId="aba-auth"
                 transition={{ type: 'spring', stiffness: 420, damping: 36 }}
-                className="absolute inset-0 rounded-[7px] bg-surface-2 shadow-[var(--shadow-card)]"
+                className="absolute inset-0 rounded-[7px] bg-meu shadow-[var(--shadow-card)]"
               />
             )}
             <span className="relative">
@@ -325,7 +327,7 @@ function AceiteTermos({ erro }: { erro?: string }) {
 function ConfirmeEmail({ email }: { email: string }) {
   return (
     <div className="mx-auto flex min-h-[100dvh] w-full max-w-sm flex-col justify-center px-5 py-12 text-center">
-      <div className="mx-auto grid size-14 place-items-center rounded-2xl border border-edge bg-surface text-muted">
+      <div className="mx-auto grid size-14 place-items-center rounded-2xl border-2 border-tinta bg-cartela text-muted">
         <IconeEnvelope className="size-7" />
       </div>
       <h1 className="mt-5 text-[24px] leading-[1.15]">Confirme seu e-mail</h1>

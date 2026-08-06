@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom'
 import { useAnuncios } from '@/hooks/useAnuncios'
 import { usePerfil } from '@/hooks/usePerfil'
 
+import { useMundo } from '@/hooks/useMundo'
+
 /**
  * Confirmação pós-onboarding.
  *
@@ -10,6 +12,7 @@ import { usePerfil } from '@/hooks/usePerfil'
  * pessoa vê que as listas foram salvas de verdade, no servidor.
  */
 export default function Pronto() {
+  useMundo('brutal')
   const { data: perfil } = usePerfil()
   // Mesma query de Minhas cartas: uma chave só, para editar lá refletir aqui.
   const { data: anuncios } = useAnuncios()
@@ -35,14 +38,14 @@ export default function Pronto() {
 
       <Link
         to="/matches"
-        className="mt-6 flex h-13 items-center justify-center rounded-[var(--radius-control)] bg-volt text-[15px] font-bold text-[var(--color-volt-ink)] shadow-[0_1px_0_rgba(255,255,255,0.18)_inset,0_6px_20px_-8px_var(--color-volt)] transition-colors hover:bg-volt-strong"
+        className="mt-6 flex h-13 items-center justify-center rounded-[var(--radius-controle)] bg-azul text-[15px] font-bold text-azul-tinta shadow-[0_1px_0_rgba(255,255,255,0.18)_inset,0_6px_20px_-8px_var(--color-volt)] transition-colors hover:bg-azul"
       >
         Ver trocas possíveis
       </Link>
 
       <Link
         to="/minhas-cartas"
-        className="mt-2 flex h-13 items-center justify-center rounded-[var(--radius-control)] border border-edge bg-surface-2 text-[15px] text-paper transition-colors hover:border-[var(--color-faint)]"
+        className="mt-2 flex h-13 items-center justify-center rounded-[var(--radius-controle)] border-2 border-tinta bg-meu text-[15px] text-paper transition-colors hover:border-[var(--color-faint)]"
       >
         Ver e editar minhas cartas
       </Link>
@@ -62,7 +65,7 @@ function Placar({
   cor: string
 }) {
   return (
-    <div className="rounded-card border border-edge bg-surface p-4">
+    <div className="rounded-[var(--radius-cartela)] border-2 border-tinta bg-cartela p-4">
       <dt className={`text-[13px] font-medium ${cor}`}>{rotulo}</dt>
       <dd className="mt-1 text-[26px] font-bold text-paper tabular-nums">
         {valor}

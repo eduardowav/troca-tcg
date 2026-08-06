@@ -16,6 +16,7 @@ import {
 import { Button } from '@/components/ui/Button'
 import { useCardSearch } from '@/hooks/useCardSearch'
 import { useDebounced } from '@/hooks/useDebounced'
+import { useMundo } from '@/hooks/useMundo'
 import { criarAnunciosEmLote } from '@/lib/anuncios'
 import { ApiError } from '@/lib/api'
 import { cn } from '@/lib/cn'
@@ -29,6 +30,7 @@ import {
 import { contar, type Selecao, useOnboarding } from '@/stores/onboarding'
 
 export default function Onboarding() {
+  useMundo('brutal')
   const [termo, setTermo] = useState('')
   const [filtros, setFiltros] = useState<FiltrosBusca>(SEM_FILTRO)
   const busca = useDebounced(termo, 250)
@@ -159,10 +161,10 @@ function BuscaCartas({
           placeholder="Busque: Pikachu, Umbreon, Pesquisa…"
           aria-label="Buscar carta pelo nome"
           className={cn(
-            'h-13 w-full rounded-[var(--radius-control)] pl-11 pr-4',
-            'bg-surface text-[16px] text-paper placeholder:text-muted',
-            'border border-edge shadow-[var(--shadow-card)]',
-            'transition-colors focus:border-volt focus:outline-none',
+            'h-13 w-full rounded-[var(--radius-controle)] pl-11 pr-4',
+            'bg-cartela text-[16px] text-paper placeholder:text-muted',
+            'border-2 border-tinta shadow-[var(--shadow-card)]',
+            'transition-colors focus:border-tinta focus:outline-none',
           )}
         />
       </div>
@@ -210,7 +212,7 @@ function Contagem({ mostrando, total }: { mostrando: number; total: number }) {
 function EstadoVazio({ temSelecoes }: { temSelecoes: boolean }) {
   return (
     <div className="flex flex-col items-center px-6 pt-10 text-center">
-      <div className="grid place-items-center rounded-2xl border border-edge bg-surface p-4">
+      <div className="grid place-items-center rounded-2xl border-2 border-tinta bg-cartela p-4">
         <IconeBusca className="size-6 text-muted" />
       </div>
       <p className="mt-4 text-[15px] text-muted">
@@ -252,14 +254,14 @@ function ListaSkeleton() {
       {Array.from({ length: 6 }).map((_, i) => (
         <li
           key={i}
-          className="flex flex-col gap-2 rounded-card border border-edge-soft p-2"
+          className="flex flex-col gap-2 rounded-[var(--radius-cartela)] border-2 border-tinta p-2"
         >
-          <div className="aspect-[2.5/3.5] w-full animate-pulse rounded-[10px] bg-surface-2" />
+          <div className="aspect-[2.5/3.5] w-full animate-pulse rounded-[10px] bg-meu" />
           <div className="space-y-1.5 px-0.5">
-            <div className="h-3.5 w-3/5 animate-pulse rounded bg-surface-2" />
-            <div className="h-2.5 w-4/5 animate-pulse rounded bg-surface-2" />
+            <div className="h-3.5 w-3/5 animate-pulse rounded bg-meu" />
+            <div className="h-2.5 w-4/5 animate-pulse rounded bg-meu" />
           </div>
-          <div className="h-9 animate-pulse rounded-[var(--radius-control)] bg-surface-2" />
+          <div className="h-9 animate-pulse rounded-[var(--radius-controle)] bg-meu" />
         </li>
       ))}
     </ul>
@@ -298,7 +300,7 @@ function BandejaSelecao({ total }: { total: number }) {
                   <button
                     onClick={() => remover(carta.id)}
                     aria-label={`Remover ${nomeCarta(carta)}`}
-                    className="absolute -top-1.5 -right-1.5 grid size-5 place-items-center rounded-full border border-edge bg-surface-2 text-muted hover:text-paper"
+                    className="absolute -top-1.5 -right-1.5 grid size-5 place-items-center rounded-full border-2 border-tinta bg-meu text-muted hover:text-paper"
                   >
                     <span className="text-xs leading-none">×</span>
                   </button>
