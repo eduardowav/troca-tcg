@@ -261,10 +261,73 @@ japonês.
 Enquanto esses secrets não existem, os workflows de keep-alive/backup/jobs pulam
 graciosamente (não falham).
 
+## Render
+
+Os dois serviços — API e PWA — vivem no `render.yaml` da raiz, aplicado como
+Blueprint. Infra como código: o que está no arquivo é o que existe.
+
+| Serviço | Tipo | Plano |
+|---|---|---|
+| `trocatcg-api` | web · runtime `python` | free |
+| `trocatcg-web` | web · runtime `static` | free |
+
+**O PWA saiu do Cloudflare Pages e veio para o Render.** Uma plataforma só, e o
+blueprint versionado no repo em vez de metade da configuração num painel sem
+histórico. O que se perde: a borda do Cloudflare em São Paulo (só pesa na
+primeira visita — depois o service worker serve tudo local) e a banda separada
+(no Render os dois serviços dividem os 100 GB/mês e os minutos de pipeline do
+workspace; como as imagens das cartas vêm da `assets.tcgdex.net`, sobra o
+bundle, e 100 GB não é limite prático). Voltar atrás é apagar o bloco `static`.
+
+### A região é o problema desta arquitetura
+
+O Render oferece `oregon`, `ohio`, `virginia`, `frankfurt` e `singapore` —
+**não há região na América do Sul**. O Postgres está em `sa-east-1`. Escolhemos
+`virginia` por ser a menos distante: ~120 ms de ida e volta contra ~180 de
+oregon.
+
+Isso importa mais do que parece porque o feed **não é uma consulta, são umas
+trinta**: `GET /v1/me/matches` chama `sincronizar_matches`, que grava, e o
+`listar_matches` busca participantes e itens um match por vez. A conta é
+`≈ 9 × parceiros + 5` idas ao banco. A ~120 ms cada, uma abertura de feed com
+três matches passa de 3 segundos, e cada uma segura uma das 15 conexões do pool
+(`pool_size=5` + `max_overflow=10`, os defaults do SQLAlchemy) durante todo esse
+tempo. O `_PARES` em si custa 2,3 ms medidos — o banco não é o gargalo, a
+distância é.
+
+Cortar o N+1 do `listar_matches` e não ressincronizar a cada GET derruba isso
+para ~5 consultas. Enquanto não for feito, é este número que limita quanta
+gente o free tier aguenta ao mesmo tempo, não a RAM.
+
+### Detalhes do blueprint que não são óbvios
+
+- **`--proxy-headers --forwarded-allow-ips="*"` no start command.** Sem eles, o
+  `request.client.host` é o IP do proxy do Render e o rate limit de 100/minuto
+  do slowapi vale para o app inteiro somado, não por pessoa.
+- **Build com `uv export | pip install`.** O runtime Python do Render vê
+  `pyproject.toml` e assume Poetry. Exportar o `uv.lock` para requirements evita
+  a heurística e mantém o lock como fonte única de versões.
+- **`PYTHON_VERSION=3.12.8`**, porque o padrão do Render é 3.11 e o projeto
+  exige >=3.12. É o primeiro lugar a olhar se o build falhar.
+- **`buildFilter` por serviço**, para commit de front não reconstruir a API —
+  os minutos de pipeline são compartilhados.
+- **`VITE_API_URL` literal, não `fromService`.** Site estático não fica na rede
+  privada do Render, e `property: host` devolveria o hostname interno, que o
+  navegador de quem usa o app não alcança.
+
 ## A configurar ainda (Fase 1)
 
-- [ ] Deploy da API no Render + secret `API_URL`
-- [ ] Deploy do PWA no Cloudflare Pages
-- [ ] `JOB_SECRET` e `DATABASE_URL_DIRECT` nos GitHub Secrets
+- [ ] **Empurrar o repo** — o `main` local está muito à frente do `origin`, e o
+      Render lê o `render.yaml` do GitHub, não do disco
+- [ ] Aplicar o Blueprint: https://dashboard.render.com/blueprint/new?repo=https://github.com/eduardowav/troca-tcg
+- [ ] Preencher no painel os `sync: false`: `DATABASE_URL` (pooler, porta 5432),
+      `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET`
+- [ ] Copiar o `JOB_SECRET` gerado pelo Render para os GitHub Secrets, junto com
+      `API_URL` e `DATABASE_URL_DIRECT`
+- [ ] Ícones `pwa-192.png` e `pwa-512.png` em `web/public/` — o manifesto já os
+      referencia e eles não existem, então o app **não é instalável**
+- [ ] Trocar `contato@trocatcg.com.br` (em `web/src/routes/Termos.tsx`) por uma
+      caixa de verdade: é o canal do controlador na política de privacidade
+- [ ] Autenticar o MCP do Render (`/mcp` > render) para inspecionar deploy e log
 - [ ] Habilitar `pg_cron` no painel se for usar agendamento no banco (hoje os jobs
       rodam por GitHub Actions)

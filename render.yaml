@@ -1,0 +1,141 @@
+# Infraestrutura do TrocaTCG no Render — a fonte da verdade do deploy.
+#
+# Dois serviços, um repositório: a API FastAPI e o PWA estático. O banco NÃO
+# está aqui de propósito — é o Supabase em sa-east-1, com 16 mil cartas dentro.
+# Declarar um Postgres neste arquivo criaria um segundo banco vazio.
+#
+# Aplicar: https://dashboard.render.com/blueprint/new?repo=https://github.com/eduardowav/troca-tcg
+# Ver docs/INFRA.md para o que precisa ser preenchido à mão depois.
+
+services:
+  # ------------------------------------------------------------------ API
+  - type: web
+    name: trocatcg-api
+    runtime: python
+    plan: free
+    # O Render não tem região na América do Sul (oregon, ohio, virginia,
+    # frankfurt, singapore). O Supabase está em São Paulo, então virginia é a
+    # menos ruim — ~120 ms de ida e volta contra ~180 de oregon. Como o feed
+    # ainda faz ~30 consultas por abertura, essa escolha vale segundos por tela.
+    region: virginia
+    rootDir: api
+    healthCheckPath: /v1/health
+    autoDeployTrigger: commit
+
+    # O projeto usa uv, que o runtime Python do Render não conhece — ele
+    # detecta `pyproject.toml` e assume Poetry, que não é o caso. Exportar o
+    # lock para requirements e instalar com pip resolve sem depender dessa
+    # heurística, e mantém o uv.lock como a única fonte de versões.
+    # `--no-emit-project` porque a API roda do fonte, não instalada como pacote.
+    buildCommand: >-
+      pip install uv &&
+      uv export --frozen --no-dev --no-emit-project --no-hashes -o requirements.txt &&
+      pip install -r requirements.txt
+
+    # `--proxy-headers` com `--forwarded-allow-ips` não é detalhe: sem eles o
+    # `request.client.host` é o IP do proxy do Render, e o rate limit de
+    # 100/minuto do slowapi passaria a valer para o app inteiro somado em vez
+    # de por pessoa. O curinga é seguro aqui porque o serviço só é alcançável
+    # através do proxy do Render.
+    startCommand: >-
+      python -m uvicorn app.main:app
+      --host 0.0.0.0 --port $PORT
+      --proxy-headers --forwarded-allow-ips="*"
+
+    # Monorepo: commit que só mexe no PWA não precisa reconstruir a API. Os
+    # minutos de pipeline são compartilhados entre os dois serviços no free.
+    buildFilter:
+      paths:
+        - api/**
+      ignoredPaths: []
+
+    envVars:
+      # O pyproject exige >=3.12 e o padrão do Render é 3.11. Se o build
+      # reclamar da versão exata, é esta linha que muda.
+      - key: PYTHON_VERSION
+        value: 3.12.8
+
+      # Pooler do Supabase (Supavisor), porta 5432 = session mode. A 6543 não
+      # suporta prepared statements, que o asyncpg usa por padrão. O host
+      # direto só tem AAAA (IPv6). Ver api/.env.example.
+      - key: DATABASE_URL
+        sync: false
+
+      - key: SUPABASE_URL
+        value: https://qbdtcpotehvbkozppmyu.supabase.co
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_JWT_SECRET
+        sync: false
+
+      # Gerado pelo Render. Copie o valor para o GitHub Secret JOB_SECRET —
+      # é ele que abre as rotas /internal/jobs/* para o cron do Actions.
+      - key: JOB_SECRET
+        generateValue: true
+
+      # Precisa bater com a constante VERSAO em web/src/routes/Termos.tsx: é
+      # este valor que vai para term_acceptances e prova qual texto a pessoa
+      # aceitou. O default do config.py é outro (2026-07-01) e registraria uma
+      # versão que não existe.
+      - key: TERMOS_VERSAO
+        value: '2026-07-28'
+
+      # A origem do PWA. Some o domínio próprio aqui quando ele existir.
+      - key: CORS_ORIGINS
+        value: https://trocatcg-web.onrender.com
+
+      - key: ENVIRONMENT
+        value: production
+
+  # ------------------------------------------------------------------ PWA
+  - type: web
+    runtime: static
+    name: trocatcg-web
+    rootDir: web
+    autoDeployTrigger: commit
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+
+    buildFilter:
+      paths:
+        - web/**
+      ignoredPaths: []
+
+    # SPA: o React Router resolve as rotas no navegador, então o CDN precisa
+    # devolver o index.html em vez de 404 para qualquer caminho — sem isto,
+    # recarregar a página em /matches quebra.
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+
+    headers:
+      - path: /*
+        name: X-Frame-Options
+        value: DENY
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: Referrer-Policy
+        value: strict-origin-when-cross-origin
+      # O Vite versiona o nome de cada asset por hash, então o arquivo em
+      # /assets nunca muda de conteúdo — cachear para sempre é seguro e é o
+      # que faz a segunda visita não baixar nada.
+      - path: /assets/*
+        name: Cache-Control
+        value: public, max-age=31536000, immutable
+
+    envVars:
+      # Chaves públicas por design (vão no bundle). A proteção é o RLS no
+      # banco, que está ativo. A service_role nunca entra aqui.
+      - key: VITE_SUPABASE_URL
+        value: https://qbdtcpotehvbkozppmyu.supabase.co
+      - key: VITE_SUPABASE_ANON_KEY
+        value: sb_publishable_fnmDKHi19WNJU3SrDp5WeQ_RsuTbo_W
+
+      # Literal, não `fromService`: site estático não fica na rede privada do
+      # Render, e a propriedade `host` devolveria o hostname interno — que o
+      # navegador de quem usa o app não alcança.
+      - key: VITE_API_URL
+        value: https://trocatcg-api.onrender.com/v1
