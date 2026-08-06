@@ -6,6 +6,8 @@ import { usePerfil } from '@/hooks/usePerfil'
 import CompletarCadastro from '@/routes/CompletarCadastro'
 import Buscar from '@/routes/Buscar'
 import CartaDetalhe from '@/routes/Carta'
+import Configuracoes from '@/routes/Configuracoes'
+import EditarPerfil from '@/routes/EditarPerfil'
 import { Mensagens, Notificacoes } from '@/routes/EmBreve'
 import Entrar from '@/routes/Entrar'
 import Home from '@/routes/Home'
@@ -43,6 +45,10 @@ export default function App() {
             <Route path="/mensagens" element={<Mensagens />} />
             <Route path="/notificacoes" element={<Notificacoes />} />
             <Route path="/perfil" element={<PerfilTela />} />
+            {/* Editar e configurar saem do perfil e viram tela própria: a
+                aba mostra quem você é; mexer é outra tarefa. */}
+            <Route path="/perfil/editar" element={<EditarPerfil />} />
+            <Route path="/configuracoes" element={<Configuracoes />} />
             {/* Depois de "/perfil" e com prefixo próprio: um "/:username" solto
                 na raiz engoliria toda rota nova que viesse depois dele. */}
             <Route path="/u/:username" element={<PerfilPublicoTela />} />
