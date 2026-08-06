@@ -1,6 +1,6 @@
 import { Link, useParams } from 'react-router-dom'
 
-import { Reputacao } from '@/components/perfil/Reputacao'
+import { FichaPerfil } from '@/components/perfil/FichaPerfil'
 import { useMarcaOculta, useMundo } from '@/hooks/useMundo'
 import { usePerfilPublico } from '@/hooks/usePerfilPublico'
 import { ApiError } from '@/lib/api'
@@ -73,7 +73,7 @@ export default function PerfilPublicoTela() {
         </p>
       )}
 
-      <Reputacao perfil={perfil} />
+      <FichaPerfil perfil={perfil} />
       <ComoLer perfil={perfil} />
 
       {souEu && (

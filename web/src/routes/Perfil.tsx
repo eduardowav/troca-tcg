@@ -4,10 +4,11 @@ import { toast } from 'sonner'
 import { z } from 'zod'
 
 import { MinhasTrocas } from '@/components/perfil/MinhasTrocas'
-import { Reputacao } from '@/components/perfil/Reputacao'
+import { FichaPerfil } from '@/components/perfil/FichaPerfil'
 import { Button } from '@/components/ui/Button'
 import { Campo } from '@/components/ui/Campo'
 import { useMundo } from '@/hooks/useMundo'
+import { useAnuncios } from '@/hooks/useAnuncios'
 import { usePerfil } from '@/hooks/usePerfil'
 import { ApiError } from '@/lib/api'
 import {
@@ -40,6 +41,7 @@ export default function PerfilTela() {
   useMundo('brutal')
 
   const { data: perfil, isPending } = usePerfil()
+  const { data: anuncios } = useAnuncios()
 
   if (isPending || !perfil) {
     return (
@@ -52,20 +54,37 @@ export default function PerfilTela() {
   return (
     <Moldura>
       <header className="pt-5">
-        <h1 className="font-titulo text-[22px] leading-[1.15] font-black text-tinta lg:text-[28px]">
-          Seu perfil
+        <h1 className="font-titulo text-[24px] leading-none font-black text-tinta">
+          Perfil
         </h1>
-        <p className="mt-1.5 font-corpo text-[14px] leading-relaxed text-apagado">
+      </header>
+
+      {/* A ficha do arquivo. "Editar Perfil" não abre outra tela: o formulário
+          já está logo abaixo, e o botão leva até ele. Uma rota a mais para três
+          campos seria caminho sem ganho. */}
+      <FichaPerfil
+        perfil={perfil}
+        cartas={anuncios?.length}
+        acao={
+          <a
+            href="#editar"
+            className="block rounded-[var(--radius-controle)] border-2 border-tinta bg-azul py-3 text-center font-titulo text-[15px] font-black text-azul-tinta shadow-[var(--shadow-duro-xs)]"
+          >
+            Editar Perfil
+          </a>
+        }
+      />
+
+      {/* Logo depois da ficha: é a lista que dá nome aos números de cima. */}
+      <MinhasTrocas />
+
+      <div id="editar" className="scroll-mt-6">
+        <p className="mt-10 font-corpo text-[14px] leading-relaxed text-apagado">
           É assim que a comunidade te vê. O telefone é a exceção: só quem fecha
           troca com você enxerga.
         </p>
-      </header>
-
-      <Reputacao perfil={perfil} />
-      {/* Logo depois dos contadores, e antes do formulário: é a lista que dá
-          nome aos números de cima. Editar o @ pode esperar. */}
-      <MinhasTrocas />
-      <Formulario perfil={perfil} />
+        <Formulario perfil={perfil} />
+      </div>
 
       <div className="mt-10 border-t-2 border-dashed border-tinta/25 pt-6">
         <button

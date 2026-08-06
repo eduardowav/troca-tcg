@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import { ParDeCartas } from '@/components/brutal/Pecas'
@@ -43,13 +43,9 @@ export function MinhasTrocas() {
 
   return (
     <section className="mt-10">
-      <header className="flex items-baseline gap-2 border-b-2 border-tinta pb-2">
-        <h2 className="font-titulo text-[18px] font-black text-tinta">Minhas trocas</h2>
-        {trocas && trocas.length > 0 && (
-          <span className="set-code text-[13px] text-muted">{trocas.length}</span>
-        )}
-        <span className="ml-auto text-[13px] text-faint">o que já terminou</span>
-      </header>
+      <h2 className="font-titulo text-[18px] font-black text-tinta">
+        Atividade recente
+      </h2>
 
       {isPending ? (
         <div className="mt-3 flex flex-col gap-2">
@@ -89,20 +85,34 @@ export function MinhasTrocas() {
  */
 const DESFECHOS: Record<
   Desfecho,
-  { rotulo: string; cor: string; rotulos: { dou: string; recebo: string } }
+  {
+    rotulo: string
+    /** O texto do selo, curto — é ele que dá a leitura de relance. */
+    badge: string
+    /** A pintura do selo. Azul só para a que deu certo. */
+    selo: string
+    cor: string
+    rotulos: { dou: string; recebo: string }
+  }
 > = {
   CONCLUIDO: {
-    rotulo: 'Concluída',
+    rotulo: 'Troca concluída',
+    badge: 'Troca',
+    selo: 'border-azul bg-meu text-azul',
     cor: 'text-offer',
     rotulos: { dou: 'Você deu', recebo: 'Você recebeu' },
   },
   FURADO: {
     rotulo: 'Não aconteceu',
+    badge: 'Furo',
+    selo: 'border-alerta bg-alerta-fraco text-alerta',
     cor: 'text-alert',
     rotulos: { dou: 'Você daria', recebo: 'Você receberia' },
   },
   EXPIRADO: {
-    rotulo: 'Expirou sem acontecer',
+    rotulo: 'Expirou',
+    badge: 'Prazo',
+    selo: 'border-tinta bg-papel text-apagado',
     cor: 'text-faint',
     rotulos: { dou: 'Você daria', recebo: 'Você receberia' },
   },
@@ -112,6 +122,8 @@ const DESFECHOS: Record<
   // de alerta — desmarcar avisando é o oposto de furar.
   CANCELADO: {
     rotulo: 'Desmarcada',
+    badge: 'Cancelada',
+    selo: 'border-tinta bg-papel text-apagado',
     cor: 'text-muted',
     rotulos: { dou: 'Você daria', recebo: 'Você receberia' },
   },
@@ -132,43 +144,67 @@ function Linha({
   const desfecho = DESFECHOS[troca.status]
   const quando = dataDoDesfecho(troca.desfecho_em)
 
+  const [aberta, setAberta] = useState(false)
+
   return (
     <li>
-      <Link
-        to={`/matches/${troca.id}`}
-        className={cn(
-          // `cartela` é o gancho de pele: sem ele esta ficha continuava com o
-          // grafite do playmat, e no mundo novo virava texto preto sobre cartão
-          // escuro — ilegível, e só a varredura de contraste pegou.
-          'cartela block rounded-card border border-edge bg-surface p-4',
-          'transition-colors hover:border-[var(--color-faint)]',
-          'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-volt',
-        )}
+      {/* A linha é o formato de "atividade recente" do arquivo: selo, uma frase
+          e a data. Ela não navega — expande. Abrir a troca inteira só para
+          conferir quais cartas eram custava sair do perfil e voltar, e a
+          resposta cabe aqui embaixo. O link para o detalhe continua existindo,
+          dentro do que abriu, porque é lá que o contato reaparece. */}
+      <button
+        type="button"
+        onClick={() => setAberta((v) => !v)}
+        aria-expanded={aberta}
+        className="flex w-full items-center gap-2.5 rounded-[var(--radius-imagem)] border-2 border-tinta bg-cartela p-3 text-left transition-shadow hover:shadow-[var(--shadow-duro-xs)]"
       >
-        <div className="flex items-baseline gap-2">
-          <p className="min-w-0 flex-1 truncate text-[15px] text-paper">
-            {outro?.nome_exibicao ?? 'Alguém'}
-          </p>
-          {quando && (
-            <span className="shrink-0 text-[12px] text-faint">{quando}</span>
+        <span
+          className={cn(
+            'shrink-0 rounded-[4px] border px-1.5 py-1 font-dado text-[10px] font-bold uppercase',
+            desfecho.selo,
           )}
-        </div>
-        <p className={cn('mt-0.5 text-[13px]', desfecho.cor)}>
-          {desfecho.rotulo}
-        </p>
+        >
+          {desfecho.badge}
+        </span>
 
-        {/* Mesma regra do detalhe: numa troca que aconteceu, cada carta aparece
-            do lado de quem ficou com ela. Nas que furaram ou expiraram, não —
-            ali a carta não saiu da mão de ninguém. */}
-        <div className="mt-3">
-          <ParDeCartas
-            dou={dou && cartas?.get(dou.card_id)}
-            recebo={recebo && cartas?.get(recebo.card_id)}
-            rotulos={desfecho.rotulos}
-            trocado={troca.status === 'CONCLUIDO'}
-          />
+        <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <span className="truncate font-corpo text-[13px] font-bold text-tinta">
+            {desfecho.rotulo} com {outro?.nome_exibicao ?? 'alguém'}
+          </span>
+          {quando && (
+            <span className="font-dado text-[10px] text-apagado">{quando}</span>
+          )}
+        </span>
+
+        <span aria-hidden className="shrink-0 font-dado text-[11px] text-apagado">
+          {aberta ? '▲' : '▼'}
+        </span>
+      </button>
+
+      {aberta && (
+        <div className="mt-2 rounded-[var(--radius-controle)] border-2 border-tinta bg-papel p-3">
+          {/* Mesma regra do detalhe: numa troca que aconteceu, cada carta
+              aparece do lado de quem ficou com ela. */}
+          {/* O par tem teto de largura, então numa coluna larga ele deixaria
+              metade do painel vazia à direita. Centralizado, o vão fica dos dois
+              lados e lê como margem em vez de sobra. */}
+          <div className="mx-auto max-w-xs">
+            <ParDeCartas
+              dou={dou && cartas?.get(dou.card_id)}
+              recebo={recebo && cartas?.get(recebo.card_id)}
+              rotulos={desfecho.rotulos}
+              trocado={troca.status === 'CONCLUIDO'}
+            />
+          </div>
+          <Link
+            to={`/matches/${troca.id}`}
+            className="mt-3 inline-block font-corpo text-[13px] font-medium text-azul underline underline-offset-2"
+          >
+            Abrir a troca
+          </Link>
         </div>
-      </Link>
+      )}
     </li>
   )
 }
