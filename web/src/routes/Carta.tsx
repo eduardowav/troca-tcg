@@ -1,13 +1,16 @@
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 
+import { SeloRaridade } from '@/components/brutal/Cartas'
+import { BotaoBrutal, Cartela } from '@/components/brutal/Pecas'
 import { CartaThumb } from '@/components/carta/CartaThumb'
 import { FolhaAdicionar } from '@/components/carta/FolhaAdicionar'
-import { Button } from '@/components/ui/Button'
 import { useAcabamentosDaCarta } from '@/hooks/useAcabamentos'
 import { useAnuncios, useCartasPorId, usePrecosPorId } from '@/hooks/useAnuncios'
 import { useCatalogo } from '@/hooks/useCatalogo'
+import { useMundo } from '@/hooks/useMundo'
 import { precoDoAcabamento } from '@/lib/acabamentos'
+import { cn } from '@/lib/cn'
 import {
   formatarPreco,
   type ListingKind,
@@ -22,8 +25,22 @@ import {
  * carta, e é aqui que se decide o que fazer com ela. Mostra a arte grande — que
  * é como o colecionador confere se é mesmo aquela versão — junto do que
  * distingue uma impressão da outra: número impresso, expansão, raridade e preço.
+ *
+ * Cópia do frame `pokeswap-card-detail` na pele, não na informação. Três coisas
+ * do arquivo não têm lastro aqui e ficaram de fora:
+ *
+ * - **ESTADO e IDIOMA** são propriedades do anúncio, não da carta. A mesma carta
+ *   tem condição diferente em cada lista de cada pessoa; fixá-las na página do
+ *   catálogo seria afirmar que existe uma.
+ * - **MINHAS ANOTAÇÕES** não existe no schema. Um campo de texto por carta é
+ *   tabela nova, não pintura.
+ * - **VALOR ESTIMADO (MÉDIA DO MERCADO)**, em número único, apaga a diferença
+ *   que esta tela existe para mostrar: a mesma carta sai por US$ 0,13 em normal
+ *   e US$ 0,22 em reverse. O bloco de preço continua uma linha por acabamento.
  */
 export default function CartaDetalhe() {
+  useMundo('brutal')
+
   const { id } = useParams<{ id: string }>()
   const ids = id ? [id] : []
   const { data: cartas, isPending } = useCartasPorId(ids)
@@ -51,7 +68,7 @@ export default function CartaDetalhe() {
   if (isPending) {
     return (
       <Moldura>
-        <div className="mx-auto aspect-[2.5/3.5] w-[22rem] max-w-full animate-pulse rounded-[14px] bg-surface" />
+        <div className="mx-auto aspect-[2.5/3.5] w-[20rem] max-w-full animate-pulse rounded-[var(--radius-controle)] border-2 border-tinta bg-cartela" />
       </Moldura>
     )
   }
@@ -59,13 +76,12 @@ export default function CartaDetalhe() {
   if (!carta) {
     return (
       <Moldura>
-        <p className="text-[15px] text-paper">Carta não encontrada.</p>
-        <Link
-          to="/buscar"
-          className="mt-4 inline-block text-[14px] text-paper underline underline-offset-4"
-        >
+        <p className="font-titulo text-[17px] font-bold text-tinta">
+          Carta não encontrada.
+        </p>
+        <BotaoBrutal to="/buscar" className="mt-5 self-start">
           Voltar para a busca
-        </Link>
+        </BotaoBrutal>
       </Moldura>
     )
   }
@@ -74,79 +90,107 @@ export default function CartaDetalhe() {
 
   return (
     <Moldura>
+      {/* O voltar do arquivo é um botão redondo com borda, não um link de texto.
+          Mesma peça do sino, e é o que dá alvo de toque de verdade no celular. */}
       <Link
         to="/buscar"
-        className="text-[13px] text-muted underline underline-offset-4 hover:text-paper"
+        aria-label="Voltar para a busca"
+        className="grid size-9 shrink-0 place-items-center self-start rounded-full border-2 border-tinta bg-cartela font-titulo text-[16px] font-black text-tinta transition-shadow hover:shadow-[var(--shadow-duro-xs)]"
       >
-        ← Buscar
+        ←
       </Link>
 
       {/* Empilhado no celular, lado a lado a partir de sm: a arte é o assunto,
           e no telefone ela merece a largura inteira antes dos dados. */}
-      <div className="mt-6 flex flex-col gap-8 sm:flex-row sm:items-start">
+      <div className="mt-5 flex flex-col gap-7 sm:flex-row sm:items-start">
         <CartaThumb
           carta={carta}
           alta
-          className="w-full max-w-[20rem] self-center sm:w-[22rem] sm:max-w-none sm:self-start lg:w-[26rem] xl:w-[30rem]"
+          className="w-full max-w-[20rem] self-center rounded-[var(--radius-controle)] border-2 border-tinta shadow-[var(--shadow-duro)] sm:w-[20rem] sm:max-w-none sm:self-start lg:w-[24rem]"
         />
 
         <div className="min-w-0 flex-1">
-          <h1 className="text-[32px] leading-[1.1] lg:text-[38px]">{nomeCarta(carta)}</h1>
-          <p className="set-code mt-2 text-[14px] text-muted lg:text-[15px]">
-            {numeroImpresso(carta, set?.total_oficial)}
-            {set && ` · ${set.sigla ?? set.code}`}
-          </p>
+          <h1 className="font-titulo text-[26px] leading-[1.1] font-black text-tinta lg:text-[32px]">
+            {nomeCarta(carta)}
+          </h1>
 
-          <dl className="mt-7 space-y-3.5 border-t border-edge-soft pt-5 text-[15px] lg:text-[17px]">
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <p className="font-dado text-[12px] font-medium text-apagado">
+              {numeroImpresso(carta, set?.total_oficial)}
+              {set && ` • ${set.sigla ?? set.code}`}
+            </p>
+            {carta.raridade && <SeloRaridade raridade={carta.raridade} />}
+          </div>
+
+          {/* A divisória tracejada é do arquivo — ela separa identidade de
+              dados sem pesar como uma borda cheia. */}
+          <hr className="mt-5 border-0 border-t-2 border-dashed border-tinta/25" />
+
+          <dl className="mt-5 flex flex-col gap-2.5">
             <Linha rotulo="Expansão" valor={set?.nome ?? carta.set_code} />
-            <Linha rotulo="Raridade" valor={carta.raridade} />
-
-            {/* A mesma carta sai por US$ 0,13 em normal e US$ 0,22 em reverse —
-                quase o dobro. Um preço só nesta página obrigava a pessoa a
-                adivinhar de qual impressão ele falava, e é justamente aqui, antes
-                de anunciar, que a diferença muda a decisão. */}
-            {porAcabamento.length > 0 ? (
-              porAcabamento.map(({ acabamento, escolha }) => (
-                <Linha
-                  key={acabamento.id}
-                  rotulo={acabamento.nome_pt}
-                  valor={formatarPreco(escolha?.preco)}
-                  dica="TCGplayer, em dólar"
-                />
-              ))
-            ) : (
-              <Linha
-                rotulo="Preço de referência"
-                valor={valorComum}
-                dica={valorComum ? 'TCGplayer, em dólar' : undefined}
-              />
-            )}
             {carta.nome_pt && carta.nome_en !== carta.nome_pt && (
               <Linha rotulo="Nome em inglês" valor={carta.nome_en} />
             )}
           </dl>
 
-          <div className="mt-7 flex flex-col gap-2">
-            <p className="text-[14px] text-muted lg:text-[15px]">Colocar esta carta em:</p>
+          {/* O preço ganha cartela própria, como o `VALOR ESTIMADO` do arquivo:
+              é o dado que decide se a troca é justa, e no corpo da lista ele
+              pesava igual a "expansão". A diferença é que aqui pode haver mais
+              de uma linha — uma por acabamento. */}
+          <Cartela className="mt-4 flex flex-col gap-2 p-3.5">
+            <p className="font-dado text-[10px] uppercase text-apagado">
+              Preço de referência · TCGplayer
+            </p>
+            {porAcabamento.length > 0 ? (
+              porAcabamento.map(({ acabamento, escolha }) => (
+                <p
+                  key={acabamento.id}
+                  className="flex items-baseline justify-between gap-3"
+                >
+                  <span className="font-corpo text-[14px] text-tinta">
+                    {acabamento.nome_pt}
+                  </span>
+                  <span className="font-titulo text-[18px] font-black text-azul">
+                    {formatarPreco(escolha?.preco)}
+                  </span>
+                </p>
+              ))
+            ) : valorComum ? (
+              <p className="font-titulo text-[22px] font-black text-azul">
+                {valorComum}
+              </p>
+            ) : (
+              <p className="font-corpo text-[14px] text-apagado">
+                Sem preço listado para esta carta.
+              </p>
+            )}
+          </Cartela>
+
+          {/* Ofereço em azul cheio e Procuro em cartela, seguindo o par de
+              ações do arquivo (`OFERECER PARA TROCA` cheio, `EDITAR CARTA`
+              vazado). As duas listas são pares no produto — a hierarquia aqui é
+              de gesto, não de importância: quem chega numa carta pelo feed ou
+              pela busca costuma estar decidindo se a oferece. */}
+          <div className="mt-6 flex flex-col gap-2">
+            <p className="font-corpo text-[14px] text-apagado">
+              Colocar esta carta em:
+            </p>
             <div className="grid grid-cols-2 gap-2">
-              <Button
-                variant="offer"
-                size="lg"
-                disabled={jaEm('OFERTA')}
+              <AcaoLista
+                ativa
+                usada={jaEm('OFERTA')}
                 onClick={() => setAAdicionar('OFERTA')}
-              >
-                {jaEm('OFERTA') ? 'Já ofereço' : 'Ofereço'}
-              </Button>
-              <Button
-                variant="want"
-                size="lg"
-                disabled={jaEm('PROCURA')}
+                rotulo="Ofereço"
+                rotuloUsado="Já ofereço"
+              />
+              <AcaoLista
+                usada={jaEm('PROCURA')}
                 onClick={() => setAAdicionar('PROCURA')}
-              >
-                {jaEm('PROCURA') ? 'Já procuro' : 'Procuro'}
-              </Button>
+                rotulo="Procuro"
+                rotuloUsado="Já procuro"
+              />
             </div>
-            <p className="text-[13px] leading-relaxed text-faint">
+            <p className="font-corpo text-[13px] leading-relaxed text-apagado">
               Você escolhe condição e quantidade no passo seguinte.
             </p>
           </div>
@@ -162,21 +206,50 @@ export default function CartaDetalhe() {
   )
 }
 
-function Linha({
+function AcaoLista({
+  ativa = false,
+  usada,
+  onClick,
   rotulo,
-  valor,
-  dica,
+  rotuloUsado,
 }: {
+  ativa?: boolean
+  usada: boolean
+  onClick: () => void
   rotulo: string
-  valor?: string | null
-  dica?: string
+  rotuloUsado: string
 }) {
   return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={usada}
+      className={cn(
+        'rounded-[var(--radius-controle)] border-2 border-tinta px-4 py-3',
+        'font-titulo text-[14px] font-extrabold uppercase transition-shadow',
+        ativa
+          ? 'bg-azul text-azul-tinta shadow-[var(--shadow-duro-sm)]'
+          : 'bg-cartela text-tinta',
+        // Já está na lista: perde a sombra e a saturação, mas não some. Quem
+        // chega aqui precisa saber que a carta já está lá, e um botão ausente
+        // não conta isso.
+        usada && 'cursor-default opacity-50 shadow-none',
+        !usada && 'hover:shadow-[var(--shadow-duro)]',
+      )}
+    >
+      {usada ? rotuloUsado : rotulo}
+    </button>
+  )
+}
+
+function Linha({ rotulo, valor }: { rotulo: string; valor?: string | null }) {
+  return (
     <div className="flex items-baseline justify-between gap-4">
-      <dt className="shrink-0 text-muted">{rotulo}</dt>
-      <dd className="min-w-0 text-right text-paper">
-        {valor ?? <span className="text-faint">não informado</span>}
-        {dica && <span className="block text-[12px] text-faint">{dica}</span>}
+      <dt className="shrink-0 font-dado text-[11px] uppercase text-apagado">
+        {rotulo}
+      </dt>
+      <dd className="min-w-0 text-right font-corpo text-[14px] text-tinta">
+        {valor ?? <span className="text-apagado">não informado</span>}
       </dd>
     </div>
   )
@@ -184,7 +257,7 @@ function Linha({
 
 function Moldura({ children }: { children: React.ReactNode }) {
   return (
-    <div className="mx-auto flex min-h-[100dvh] w-full max-w-4xl flex-col px-5 py-10 xl:max-w-5xl">
+    <div className="mx-auto flex min-h-[100dvh] w-full max-w-4xl flex-col px-6 pt-5 pb-10 xl:max-w-5xl">
       {children}
     </div>
   )
