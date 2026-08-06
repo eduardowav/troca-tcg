@@ -548,8 +548,14 @@ function LadoDaTroca({
             com a única decisão daquela tela, que é abrir a troca. Aqui são o
             que a pessoa confere antes de topar: é a reverse ou a normal? é a
             ilustração rara ou a comum? */}
+        {/* `max-w-full` no invólucro, não só no selo.
+            O `self-start` faz este span medir pelo conteúdo, e o
+            `max-w-full` de dentro do `SeloRaridade` passa a resolver contra
+            essa largura — que é o próprio texto. Resultado: "Ilustração Rara
+            Especial" atravessava a borda da carta no celular. O teto tem de
+            estar aqui, onde ainda se refere à coluna. */}
         {grande && carta?.raridade && (
-          <span className="mt-1 self-start">
+          <span className="mt-1 max-w-full min-w-0 self-start">
             <SeloRaridade raridade={carta.raridade} />
           </span>
         )}

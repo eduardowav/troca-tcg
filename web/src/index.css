@@ -99,6 +99,17 @@
   --color-alerta: #dc2626;
   --color-alerta-fraco: #fee2e2;
 
+  /* Âmbar — raridade de topo e avisos com hora marcada.
+     O fundo é o do arquivo (`rarity-tag` de ULTRA RARE). O texto **não**:
+     lá ele é #ffab00, que sobre esse fundo dá 1,74:1 e reprova no piso AA
+     de 4,5:1 que o próprio DESIGN.md fixa — num rótulo de 10px, que é o
+     pior tamanho para se ter contraste ruim. Escurecido 40% mantendo a
+     proporção entre canais: é o mesmo âmbar, agora em 4,52:1. Mesma
+     correção que o token `faint` do playmat já tinha recebido, pelo mesmo
+     motivo. */
+  --color-ambar: #996700;
+  --color-ambar-fraco: #fff4e5;
+
   /* Raios. Quatro degraus, do container à etiqueta. */
   --radius-cartela: 20px;
   --radius-controle: 12px;
@@ -369,7 +380,7 @@
      largura inteira, lá é etiqueta de 10px dentro da carta. Vermelho
      ficaria reservado ao destrutivo, e prazo apertado não é erro. */
   [data-mundo='brutal'] .cartela[data-tom='atencao'] {
-    background-color: #fff4e5;
+    background-color: var(--color-ambar-fraco);
     border-color: var(--color-tinta);
   }
 

@@ -76,7 +76,7 @@ export function SeloRaridade({ raridade }: { raridade: string }) {
       className={cn(
         'inline-block max-w-full truncate rounded-[var(--radius-etiqueta)] border-[1.5px] border-tinta px-2 py-0.5',
         'font-dado text-[10px] font-bold uppercase',
-        nivel === 'topo' && 'bg-[#fff4e5] text-[#ffab00]',
+        nivel === 'topo' && 'bg-ambar-fraco text-ambar',
         nivel === 'rara' && 'bg-meu text-azul',
         nivel === 'comum' && 'bg-cartela text-apagado',
       )}
