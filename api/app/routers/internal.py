@@ -1,7 +1,8 @@
 """Rotas internas, disparadas por cron (GitHub Actions) e protegidas por header.
 
-Ver seções 5, 10 e 18 da doc. Nesta fase só o sync de catálogo existe; os demais
-jobs (triangular, expire, notify-wanted) entram nas fases seguintes.
+Ver seções 5, 10 e 18 da doc. Existem o sync de catálogo e a expiração; os jobs
+`triangular` e `notify-wanted` entram nas Fases 5 e 6, e o cron já os chama —
+ver o teste que guarda essa lista em tests/test_internal.py.
 """
 
 import httpx
@@ -13,6 +14,7 @@ from app.core.config import settings
 from app.db.session import get_session
 from app.jobs.catalog.sync import sincronizar_sets
 from app.jobs.catalog.tcgdex import TCGdex
+from app.services import matching
 
 router = APIRouter(prefix="/internal/jobs", tags=["internal"])
 
@@ -37,3 +39,22 @@ async def sync_catalog(
         set_ids = payload.set_ids or [s.id for s in await fonte.listar_sets()]
         total = await sincronizar_sets(session, fonte, set_ids)
     return {"sets": len(set_ids), "cartas": total}
+
+
+@router.post("/expire", dependencies=[Depends(_verifica_secret)])
+async def expire(session: AsyncSession = Depends(get_session)) -> dict[str, int]:
+    """Fecha as trocas que passaram do prazo. Devolve quantas venceram.
+
+    O `sincronizar_matches` já varre os vencidos, mas só quando alguém abre o
+    app — e o match que mais precisa vencer é justamente o das duas pessoas que
+    sumiram. Sem esta passada diária, ele ficaria PENDENTE para sempre, ocupando
+    o par (só existe um match por dupla) e mantendo fora da métrica-mãe uma
+    troca que na prática não aconteceu.
+
+    O commit é daqui de propósito: `expirar_vencidos` roda no meio da transação
+    do sincronizar, que fecha depois de gravar os matches. Quem chama sozinho
+    fecha sozinho — sem isto o job rodaria todo dia sem expirar nada.
+    """
+    expirados = await matching.expirar_vencidos(session)
+    await session.commit()
+    return {"expirados": expirados}
