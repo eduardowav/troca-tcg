@@ -91,11 +91,21 @@ export function SeloRaridade({ raridade }: { raridade: string }) {
 export function CelulaBrutal({
   carta,
   preco,
+  precoCarregado = false,
   children,
 }: {
   carta: Carta
-  /** Preço de referência, quando a tela o carrega. Ausente não vira traço. */
+  /** Preço de referência da TCGplayer, quando existe para esta carta. */
   preco?: PrecoEscolhido
+  /**
+   * Se a consulta de preços já respondeu.
+   *
+   * Separa "esta carta não tem preço" de "o preço ainda está vindo" — sem isso,
+   * a célula escreveria "sem preço listado" no instante entre a carta aparecer e
+   * a consulta de preços chegar, e a frase piscaria antes do valor. Como a
+   * consulta de preços é outra query, esse instante existe de verdade.
+   */
+  precoCarregado?: boolean
   /** Ações da célula — mudam por tela. */
   children?: ReactNode
 }) {
@@ -127,13 +137,26 @@ export function CelulaBrutal({
 
         {carta.raridade && <SeloRaridade raridade={carta.raridade} />}
 
-        {valor && (
+        {/* Carta sem preço não fica em silêncio.
+            O catálogo tem carta que a TCGplayer não lista — as promo da SVP, por
+            exemplo. Antes a linha simplesmente não existia, e o vazio lia como
+            "o app não carregou" em vez de "não há cotação para esta". Dizer a
+            frase é mais honesto, e é a diferença entre uma falha aparente e um
+            fato do catálogo.
+
+            "listado" e não "sem preço": a carta tem valor, o que não existe é
+            referência pública dela. */}
+        {valor ? (
           <p className="truncate font-dado text-[11px] text-apagado">
             {valor}
-            {!preco?.exato && (
-              <span aria-hidden> ~</span>
-            )}
+            {!preco?.exato && <span aria-hidden> ~</span>}
           </p>
+        ) : (
+          precoCarregado && (
+            <p className="truncate font-dado text-[11px] text-apagado/70">
+              sem preço listado
+            </p>
+          )
         )}
       </div>
 

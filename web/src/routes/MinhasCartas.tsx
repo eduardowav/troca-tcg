@@ -139,6 +139,7 @@ export default function MinhasCartas() {
               anuncios={porLista.OFERTA}
               cartas={cartas}
               precos={precos}
+              precosCarregados={precos != null}
               acabamentos={acabamentos}
               carregando={isPending}
               remocao={remocao}
@@ -149,6 +150,7 @@ export default function MinhasCartas() {
               anuncios={porLista.PROCURA}
               cartas={cartas}
               precos={precos}
+              precosCarregados={precos != null}
               acabamentos={acabamentos}
               carregando={isPending}
               remocao={remocao}
@@ -218,6 +220,7 @@ function Coluna({
   anuncios,
   cartas,
   precos,
+  precosCarregados,
   acabamentos,
   carregando,
   remocao,
@@ -227,6 +230,8 @@ function Coluna({
   anuncios: Anuncio[]
   cartas?: Map<string, Carta>
   precos?: Map<string, PrecoTCGplayer[]>
+  /** Se a consulta de preços já respondeu — ver CelulaBrutal. */
+  precosCarregados: boolean
   acabamentos?: Map<string, Acabamento[]>
   carregando: boolean
   remocao: Remocao
@@ -268,6 +273,7 @@ function Coluna({
                 anuncio={anuncio}
                 carta={cartas?.get(anuncio.card_id)}
                 precos={precos?.get(anuncio.card_id)}
+                precosCarregados={precosCarregados}
                 acabamentos={acabamentos?.get(anuncio.card_id)}
                 remocao={remocao}
               />
@@ -338,12 +344,14 @@ function CartaDaLista({
   anuncio,
   carta,
   precos,
+  precosCarregados,
   acabamentos,
   remocao,
 }: {
   anuncio: Anuncio
   carta?: Carta
   precos?: PrecoTCGplayer[]
+  precosCarregados: boolean
   acabamentos?: Acabamento[]
   remocao: Remocao
 }) {
@@ -361,6 +369,7 @@ function CartaDaLista({
       // anunciou a reverse vê o valor da reverse. É a mesma carta com dois
       // preços, e mostrar o outro é o começo de uma troca desigual.
       preco={precoDoAcabamento(precos, acabamento)}
+      precoCarregado={precosCarregados}
     >
       {/* A faixa de ações é uma só: abrir o editor. Remover mora lá dentro, junto
           das outras alterações da carta — foi decisão do Eduardo (2026-08-03).
