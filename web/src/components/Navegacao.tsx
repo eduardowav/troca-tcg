@@ -73,21 +73,44 @@ function MarcaApp() {
         </span>
       </span>
 
-      {/* O sino leva para uma tela que assume não existir ainda.
-          O ponto de aviso é azul, não vermelho — é o que o arquivo desenha
-          (`alert-dot` tem `fill="#0038FF"`), e faz sentido: aqui ele conta
-          novidade, não erro. Fica sem `aria-hidden` porque, se um dia ele
-          passar a depender de contagem real, o rótulo do link é onde essa
-          informação precisa entrar. */}
-      <NavLink
-        to="/notificacoes"
-        aria-label="Notificações"
-        className="relative grid size-9 shrink-0 place-items-center rounded-full border-2 border-tinta bg-cartela text-tinta transition-shadow hover:shadow-[var(--shadow-duro-xs)]"
-      >
-        <IconeSino className="size-5" />
-        <span className="absolute -top-0.5 -right-0.5 size-2.5 rounded-full border-2 border-tinta bg-azul" />
-      </NavLink>
+      <SinoApp />
     </header>
+  )
+}
+
+/**
+ * O sino, com o ponto de aviso condicionado a existir aviso.
+ *
+ * Hoje `temAviso` nunca chega ligado: notificações são a Fase 6 e não há o que
+ * contar. Ponto aceso sem nada atrás é uma promessa que a tela não cumpre —
+ * a pessoa toca esperando novidade e encontra "ainda não mora aqui", que é
+ * exatamente o contrário do que o ponto disse.
+ *
+ * O ponto não foi apagado, foi condicionado: quando a Fase 6 existir, é passar
+ * a contagem para cá e ele volta com a mesma aparência do arquivo. Código vivo
+ * atrás de uma condição envelhece melhor do que markup comentado, que ninguém
+ * relê e que o linter não vigia.
+ *
+ * O tom é azul, não vermelho — é o que o `alert-dot` do Figma desenha
+ * (`fill="#0038FF"`): ali ele conta novidade, não erro.
+ */
+function SinoApp({ temAviso = false }: { temAviso?: boolean }) {
+  return (
+    <NavLink
+      to="/notificacoes"
+      // O rótulo carrega o aviso junto: quem navega por leitor de tela não vê
+      // o ponto, e "Notificações" sozinho esconderia que há algo novo.
+      aria-label={temAviso ? 'Notificações — há novidades' : 'Notificações'}
+      className="relative grid size-9 shrink-0 place-items-center rounded-full border-2 border-tinta bg-cartela text-tinta transition-shadow hover:shadow-[var(--shadow-duro-xs)]"
+    >
+      <IconeSino className="size-5" />
+      {temAviso && (
+        <span
+          aria-hidden
+          className="absolute -top-0.5 -right-0.5 size-2.5 rounded-full border-2 border-tinta bg-azul"
+        />
+      )}
+    </NavLink>
   )
 }
 
