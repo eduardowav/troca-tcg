@@ -435,21 +435,28 @@ export function ParDeCartas({
 }) {
   const grande = tamanho === 'grande'
 
-  const meu = (
+  // A cor segue a posse, não a posição.
+  //
+  // O azul-claro quer dizer "esta carta é minha". Enquanto a troca está de pé,
+  // a minha é a que eu vou entregar. Depois de concluída, ela deixou de ser —
+  // e quem passou a ser minha é a que eu recebi. Fixar a cor na carta que sai
+  // pintava de "meu" justamente a que não é mais, ao lado de um rótulo dizendo
+  // "Você deu". Achado testando uma troca concluída.
+  const cartaQueSai = (
     <LadoDaTroca
       carta={dou}
       etiqueta={rotulos.dou}
-      lado="meu"
+      lado={trocado ? 'dele' : 'meu'}
       grande={grande}
       acabamento={lados?.dou?.acabamento}
       preco={lados?.dou?.preco}
     />
   )
-  const dele = (
+  const cartaQueEntra = (
     <LadoDaTroca
       carta={recebo}
       etiqueta={rotulos.recebo}
-      lado="dele"
+      lado={trocado ? 'meu' : 'dele'}
       grande={grande}
       acabamento={lados?.recebo?.acabamento}
       preco={lados?.recebo?.preco}
@@ -462,7 +469,7 @@ export function ParDeCartas({
     // outro — e centralizar faria uma carta subir e a outra descer sem que nada
     // nelas justificasse o degrau.
     <div className={cn('flex gap-2', grande ? 'items-start' : 'items-center')}>
-      {trocado ? dele : meu}
+      {trocado ? cartaQueEntra : cartaQueSai}
       {/* A seta fica fora das duas molduras, sobre o vão: ela é a relação entre
           elas, não propriedade de nenhuma. No tamanho grande ela desce para o
           meio das artes, que é onde o eixo da troca realmente está. */}
@@ -474,7 +481,7 @@ export function ParDeCartas({
       >
         <IconeSetaDireita className="size-4 text-tinta" />
       </span>
-      {trocado ? meu : dele}
+      {trocado ? cartaQueSai : cartaQueEntra}
     </div>
   )
 }
