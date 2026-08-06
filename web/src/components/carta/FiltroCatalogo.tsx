@@ -26,7 +26,7 @@ export function FiltroCatalogo({
   // não aparecerem: some o pulo de layout que empurrava a lista para baixo.
   if (!catalogo) {
     return (
-      <div className={cn('flex flex-wrap items-center gap-2', className)}>
+      <div className={cn('filtro-catalogo flex flex-wrap items-center gap-2', className)}>
         <Seletor rotulo="Série" valor="" onValor={() => {}} ativo={false} carregando>
           <option value="">Todas as séries</option>
         </Seletor>
@@ -87,7 +87,7 @@ export function FiltroCatalogo({
   }
 
   return (
-    <div className={cn('flex flex-wrap items-center gap-2', className)}>
+    <div className={cn('filtro-catalogo flex flex-wrap items-center gap-2', className)}>
       <Seletor
         rotulo="Série"
         valor={filtros.serie ?? ''}

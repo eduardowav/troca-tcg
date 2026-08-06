@@ -308,6 +308,23 @@
     color: var(--color-apagado);
   }
 
+  /* O filtro de expansão e raridade da busca.
+     São `<select>` nativos de propósito (no celular abrem o seletor do
+     sistema), então a pele alcança só a casca — borda, fundo, tipo. A
+     lista aberta é do sistema operacional e continua sendo dele. */
+  [data-mundo='brutal'] .filtro-catalogo select,
+  [data-mundo='brutal'] .filtro-catalogo button {
+    background-color: var(--color-cartela);
+    border: 2px solid var(--color-tinta);
+    border-radius: var(--radius-controle);
+    color: var(--color-tinta);
+    font-family: var(--font-corpo);
+  }
+
+  [data-mundo='brutal'] .filtro-catalogo svg {
+    color: var(--color-apagado);
+  }
+
   /* A busca de Minhas cartas. O campo é o único controle de formulário
      que o mundo novo já alcança, e ele nasceu escuro: caixa preta sobre
      papel creme era a peça que mais destoava da tela.

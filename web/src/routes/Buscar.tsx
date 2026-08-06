@@ -1,16 +1,17 @@
 import { useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
-import { FiltroCatalogo } from '@/components/carta/FiltroCatalogo'
 import {
-  AcoesDeLista,
-  BotaoLista,
-  CelulaCarta,
-  GradeDeCartas,
-} from '@/components/carta/GradeDeCartas'
-import { Button } from '@/components/ui/Button'
-import { IconeBusca } from '@/components/ui/Icone'
+  AcoesBrutal,
+  BotaoListaBrutal,
+  CelulaBrutal,
+  GradeBrutal,
+} from '@/components/brutal/Cartas'
+import { BotaoBrutal } from '@/components/brutal/Pecas'
+import { FiltroCatalogo } from '@/components/carta/FiltroCatalogo'
 import { FolhaAdicionar } from '@/components/carta/FolhaAdicionar'
+import { IconeBusca } from '@/components/ui/Icone'
+import { useMundo } from '@/hooks/useMundo'
 import { useAnuncios, usePrecosPorId } from '@/hooks/useAnuncios'
 import { useCardSearch } from '@/hooks/useCardSearch'
 import { useDebounced } from '@/hooks/useDebounced'
@@ -31,6 +32,8 @@ import {
  * num dropdown sem virar aquele painel que tomava a tela do celular.
  */
 export default function Buscar() {
+  useMundo('brutal')
+
   const [params, setParams] = useSearchParams()
   const [termo, setTermo] = useState(params.get('q') ?? '')
   const [filtros, setFiltros] = useState<FiltrosBusca>(SEM_FILTRO)
@@ -70,10 +73,11 @@ export default function Buscar() {
   )
 
   return (
-    <div className="mx-auto flex min-h-[100dvh] w-full max-w-[100rem] 2xl:max-w-[120rem] flex-col px-5 pb-8">
-      <header className="w-full max-w-xl pt-10">
-        <p className="set-code text-xs tracking-wide text-muted">TROCATCG</p>
-        <h1 className="mt-3 text-[28px] leading-[1.1] lg:text-[34px]">Buscar cartas</h1>
+    <div className="mx-auto flex min-h-[100dvh] w-full max-w-[100rem] flex-col px-6 pb-8 2xl:max-w-[120rem]">
+      <header className="w-full max-w-xl pt-5">
+        <h1 className="font-titulo text-[22px] leading-[1.15] font-black text-tinta lg:text-[28px]">
+          Buscar cartas
+        </h1>
       </header>
 
       <div className="w-full">
@@ -82,7 +86,7 @@ export default function Buscar() {
             competiria com o que a pessoa veio ver. Largura do conteúdo, para
             alinhar com a grade que ela alimenta. */}
         <div className="relative mt-5">
-          <IconeBusca className="pointer-events-none absolute top-1/2 left-3 size-4.5 -translate-y-1/2 text-muted" />
+          <IconeBusca className="pointer-events-none absolute top-1/2 left-3 size-4.5 -translate-y-1/2 text-apagado" />
           <input
             autoFocus
             type="search"
@@ -97,7 +101,7 @@ export default function Buscar() {
             }}
             aria-label="Buscar carta pelo nome"
             placeholder="Busque: Regigigas, Umbreon, Pesquisa…"
-            className="h-12 w-full rounded-[var(--radius-control)] border border-edge bg-surface pr-3 pl-10 text-[16px] text-paper placeholder:text-muted focus:border-volt focus:outline-none lg:h-14 lg:text-[17px]"
+            className="h-12 w-full rounded-[var(--radius-controle)] border-2 border-tinta bg-cartela pr-3 pl-10 font-corpo text-[16px] text-tinta placeholder:text-apagado focus:outline-none lg:h-14 lg:text-[17px]"
           />
         </div>
 
@@ -108,10 +112,10 @@ export default function Buscar() {
         />
 
         {atalho && (
-          <p role="status" className="mt-2 text-[13px] text-muted">
+          <p role="status" className="mt-2 font-corpo text-[13px] text-apagado">
             Lendo como carta{' '}
-            <span className="set-code text-paper">{atalho.numero}</span> de{' '}
-            <span className="text-paper">{atalho.set.nome}</span>.
+            <span className="font-dado text-tinta">{atalho.numero}</span> de{' '}
+            <span className="font-medium text-tinta">{atalho.set.nome}</span>.
           </p>
         )}
       </div>
@@ -120,20 +124,20 @@ export default function Buscar() {
         {!ativa ? (
           <Convite />
         ) : carregando ? (
-          <p className="py-10 text-center text-[15px] text-muted">Buscando…</p>
+          <p className="py-10 text-center font-corpo text-[15px] text-apagado">Buscando…</p>
         ) : resultados?.length ? (
           <>
             {total > resultados.length && (
-              <p role="status" className="mb-2 text-[13px] text-muted">
+              <p role="status" className="mb-3 font-dado text-[12px] uppercase text-apagado">
                 Mostrando {resultados.length} de {total} cartas
               </p>
             )}
-            <GradeDeCartas>
+            <GradeBrutal>
               {resultados.map((carta) => {
                 const naOferta = porTipo.OFERTA.has(carta.id)
                 const naProcura = porTipo.PROCURA.has(carta.id)
                 return (
-                  <CelulaCarta
+                  <CelulaBrutal
                     key={carta.id}
                     carta={carta}
                     destaque={naOferta ? 'OFERTA' : naProcura ? 'PROCURA' : null}
@@ -141,42 +145,41 @@ export default function Buscar() {
                     // comum, que é o que a busca sempre mostrou. Quem escolhe
                     // acabamento é quem anuncia.
                     preco={precoDoAcabamento(precos?.get(carta.id), undefined)}
+                    precoCarregado={precos != null}
                     para={`/carta/${carta.id}`}
                   >
-                    <AcoesDeLista>
-                      <BotaoLista
+                    <AcoesBrutal>
+                      <BotaoListaBrutal
                         tipo="OFERTA"
                         ativo={naOferta}
                         disabled={naOferta}
-                        rotulo={naOferta ? 'Na lista' : undefined}
                         onClick={() => setAAdicionar({ carta, tipo: 'OFERTA' })}
                       />
-                      <BotaoLista
+                      <BotaoListaBrutal
                         tipo="PROCURA"
                         ativo={naProcura}
                         disabled={naProcura}
-                        rotulo={naProcura ? 'Na lista' : undefined}
                         onClick={() => setAAdicionar({ carta, tipo: 'PROCURA' })}
                       />
-                    </AcoesDeLista>
-                  </CelulaCarta>
+                    </AcoesBrutal>
+                  </CelulaBrutal>
                 )
               })}
-            </GradeDeCartas>
+            </GradeBrutal>
             {temMais && (
-              <Button
-                variant="subtle"
-                block
-                className="mt-3"
-                loading={carregandoMais}
+              <button
                 onClick={() => carregarMais()}
+                disabled={carregandoMais}
+                className="mt-4 w-full"
               >
-                Mostrar mais
-              </Button>
+                <BotaoBrutal className="w-full justify-center">
+                  {carregandoMais ? 'Carregando…' : 'Mostrar mais'}
+                </BotaoBrutal>
+              </button>
             )}
           </>
         ) : (
-          <p className="py-10 text-center text-[15px] text-muted">
+          <p className="py-10 text-center font-titulo text-[17px] font-bold text-tinta">
             Nenhuma carta com esse nome.
           </p>
         )}
@@ -194,10 +197,10 @@ export default function Buscar() {
 function Convite() {
   return (
     <div className="flex flex-col items-center py-14 text-center">
-      <div className="grid size-12 place-items-center rounded-2xl border border-edge bg-surface text-muted">
+      <span className="grid size-14 place-items-center rounded-[var(--radius-controle)] border-2 border-tinta bg-cartela text-tinta shadow-[var(--shadow-duro)]">
         <IconeBusca className="size-6" />
-      </div>
-      <p className="mt-4 max-w-xs text-[15px] leading-relaxed text-muted">
+      </span>
+      <p className="mt-5 max-w-xs font-corpo text-[14px] leading-relaxed text-apagado">
         Busque pelo nome, ou escolha uma expansão para navegar carta a carta.
       </p>
     </div>

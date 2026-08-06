@@ -12,11 +12,18 @@
  * perder informação sem querer.
  */
 import type { ReactNode } from 'react'
+import { Link } from 'react-router-dom'
 
 import { CartaThumb } from '@/components/carta/CartaThumb'
 import type { PrecoEscolhido } from '@/lib/acabamentos'
 import { cn } from '@/lib/cn'
-import { type Carta, codigoSet, formatarPreco, nomeCarta } from '@/lib/types'
+import {
+  type Carta,
+  codigoSet,
+  formatarPreco,
+  type ListingKind,
+  nomeCarta,
+} from '@/lib/types'
 
 /* ------------------------------------------------------------------ grade */
 
@@ -33,7 +40,12 @@ export function GradeBrutal({
         // `grid-cols-2` explícito pelo mesmo motivo do feed: sem coluna
         // declarada a implícita nasce `auto` e dimensiona pelo max-content,
         // e nome de carta com `truncate` é `nowrap` — a grade estoura a tela.
-        'grid grid-cols-2 gap-3 sm:grid-cols-3',
+        //
+        // Mais colunas a cada respiro de largura: no desktop a busca vira
+        // bancada de loja, com dezenas de artes à vista. Este é o padrão do
+        // catálogo; quem tem menos espaço — Minhas cartas, com duas listas
+        // dividindo a tela — passa a própria classe e sobrescreve.
+        'grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6',
         className,
       )}
     >
@@ -88,15 +100,73 @@ export function SeloRaridade({ raridade }: { raridade: string }) {
 
 /* ---------------------------------------------------------------- célula */
 
+/**
+ * Os dois botões de lista da busca — Ofereço e Procuro, lado a lado.
+ *
+ * O ativo vira azul cheio e o texto muda para "Na lista". Não some: quem varre
+ * o catálogo precisa ver que aquela carta já foi escolhida, e botão ausente
+ * conta isso pior do que botão apagado.
+ */
+export function AcoesBrutal({ children }: { children: ReactNode }) {
+  return <div className="grid grid-cols-2 gap-1.5">{children}</div>
+}
+
+export function BotaoListaBrutal({
+  tipo,
+  ativo,
+  onClick,
+  disabled,
+}: {
+  tipo: ListingKind
+  ativo: boolean
+  onClick: () => void
+  disabled?: boolean
+}) {
+  const nome = tipo === 'OFERTA' ? 'Ofereço' : 'Procuro'
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-pressed={ativo}
+      aria-label={`${ativo ? 'Já na lista' : 'Adicionar a'} ${nome}`}
+      className={cn(
+        'rounded-[var(--radius-etiqueta)] border-2 border-tinta px-1 py-1.5',
+        'font-titulo text-[11px] font-extrabold uppercase transition-shadow',
+        ativo
+          ? 'cursor-default bg-azul text-azul-tinta opacity-60'
+          : 'bg-cartela text-tinta hover:shadow-[var(--shadow-duro-xs)]',
+      )}
+    >
+      {ativo ? 'Na lista' : nome}
+    </button>
+  )
+}
+
+/* ---------------------------------------------------------------- célula */
+
 export function CelulaBrutal({
   carta,
   preco,
   precoCarregado = false,
+  destaque,
+  para,
   children,
 }: {
   carta: Carta
   /** Preço de referência da TCGplayer, quando existe para esta carta. */
   preco?: PrecoEscolhido
+  /**
+   * Em qual lista a carta já está, se estiver em alguma.
+   *
+   * Vira fundo azul-claro — o mesmo "isto é meu" do par de cartas —, e não uma
+   * cor por lista. Nesta grade o azul e o âmbar já significam raridade dentro
+   * da própria célula, e uma terceira cor de região disputaria a leitura. Qual
+   * das duas listas é fica com os botões embaixo, que já dizem.
+   */
+  destaque?: ListingKind | null
+  /** Destino ao tocar na arte. Só as telas de descoberta passam isto. */
+  para?: string
   /**
    * Se a consulta de preços já respondeu.
    *
@@ -116,11 +186,28 @@ export function CelulaBrutal({
     // grade para o rodapé ter onde encostar. O `stretch` do grid já estica o
     // `li`, mas só o item — declarar aqui é o que faz a coluna interna crescer
     // junto e o `mt-auto` lá embaixo ter espaço para empurrar.
-    <li className="flex h-full flex-col gap-2 rounded-[var(--radius-controle)] border-2 border-tinta bg-cartela p-2 shadow-[var(--shadow-duro-xs)]">
-      <CartaThumb
-        carta={carta}
-        className="rounded-[var(--radius-imagem)] border-2 border-tinta"
-      />
+    <li
+      className={cn(
+        'flex h-full flex-col gap-2 rounded-[var(--radius-controle)] border-2 border-tinta p-2 shadow-[var(--shadow-duro-xs)]',
+        destaque ? 'bg-meu' : 'bg-cartela',
+      )}
+    >
+      {/* A arte leva à página da carta nas telas de descoberta. Em Minhas
+          cartas o toque já abre o editor, e dois destinos no mesmo gesto seria
+          pior que nenhum — por isso `para` é opcional. */}
+      {para ? (
+        <Link to={para} className="block">
+          <CartaThumb
+            carta={carta}
+            className="rounded-[var(--radius-imagem)] border-2 border-tinta"
+          />
+        </Link>
+      ) : (
+        <CartaThumb
+          carta={carta}
+          className="rounded-[var(--radius-imagem)] border-2 border-tinta"
+        />
+      )}
 
       <div className="flex min-w-0 flex-col gap-1">
         {/* Duas linhas para o nome, como no feed e pelo mesmo motivo: a célula
