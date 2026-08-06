@@ -25,10 +25,24 @@ export function Reputacao({ perfil }: { perfil: PerfilPublico }) {
         desistencias > 0 ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-3',
       )}
     >
+      {/* Nota de 0 a 5, não a porcentagem que o banco devolve.
+          A `reputacao()` do Postgres continua sendo a fonte — a nota é a mesma
+          razão noutra escala —, mas quem lê num perfil compara com nota de
+          marketplace, não com percentual de acerto. A dica embaixo carrega a
+          contagem, que é o que impede 5,0 com uma troca de parecer 5,0 com
+          duzentas. */}
       <Placar
-        rotulo="Reputação"
-        valor={perfil.reputacao != null ? `${perfil.reputacao}%` : '—'}
-        dica={total === 0 ? 'sem trocas ainda' : `${total} troca(s)`}
+        rotulo="Nota"
+        valor={
+          perfil.reputacao != null
+            ? `★ ${((perfil.reputacao / 100) * 5).toFixed(1).replace('.', ',')}`
+            : '★ —'
+        }
+        dica={
+          total === 0
+            ? 'sem trocas ainda'
+            : `${total} ${total === 1 ? 'troca' : 'trocas'}`
+        }
       />
       <Placar
         rotulo="Concluídas"

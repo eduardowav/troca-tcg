@@ -23,28 +23,65 @@ export interface ParticipanteMatch {
 }
 
 /**
- * Como a reputação de um estranho é dita em uma linha.
+ * A nota de 0 a 5, do jeito que o Figma desenha (`★ 4.9`).
  *
- * Nunca em porcentagem: "100% de trocas ok" com uma troca só é a mesma etiqueta
- * de quem tem quarenta, e "0%" condena quem levou um furo na estreia. Contagem
- * carrega o próprio denominador — "1 troca ok" já se anuncia como amostra
- * pequena, sem precisar de aviso.
+ * Sai da mesma conta que a função `reputacao()` do banco — concluídas sobre o
+ * total de trocas que tiveram desfecho —, só que numa escala de cinco em vez de
+ * cem. Desistência fica fora do denominador de propósito: quem avisou que não ia
+ * dar fez o oposto de furar, e somá-la puniria justamente o comportamento que a
+ * gente quer.
+ *
+ * `null` quando ainda não há desfecho nenhum. Nota zero e "sem trocas" são
+ * coisas opostas, e uma escala que não distingue as duas condena quem chegou
+ * agora.
+ */
+export function notaDeReputacao(p: ParticipanteMatch): number | null {
+  const { trocas_concluidas: ok, trocas_furadas: furos } = p
+  if (typeof ok !== 'number' || typeof furos !== 'number') return null
+  const total = ok + furos
+  if (total === 0) return null
+  return Math.round((ok / total) * 5 * 10) / 10
+}
+
+/** Quantas trocas já tiveram desfecho — o denominador da nota. */
+export function trocasComDesfecho(p: ParticipanteMatch): number {
+  const { trocas_concluidas: ok, trocas_furadas: furos } = p
+  if (typeof ok !== 'number' || typeof furos !== 'number') return 0
+  return ok + furos
+}
+
+/**
+ * Como a reputação de um estranho é dita em uma linha: `4,6 (28 trocas)`.
+ *
+ * A contagem entre parênteses não é enfeite, é o que impede a nota de mentir.
+ * A versão anterior desta linha dizia "25 de 28 trocas ok" justamente porque a
+ * contagem carregava o próprio denominador — uma nota resumida perde isso, e
+ * quem fez uma troca certa viraria 5,0, igual a quem fez duzentas. Mantendo a
+ * contagem ao lado, a amostra continua se anunciando.
+ *
+ * Quem ainda não tem desfecho não recebe nota: "novo por aqui" é informação
+ * melhor do que um número que não existe.
  */
 export function reputacaoTexto(p: ParticipanteMatch): string | null {
-  const { trocas_concluidas: ok, trocas_furadas: furos } = p
   // Contadores ausentes é cliente e API fora de passo — acontece de verdade num
   // PWA que se atualiza sozinho. Sem número, não se diz nada: "undefined de NaN"
   // ao lado do nome de um estranho é pior que a linha sem reputação alguma.
-  if (typeof ok !== 'number' || typeof furos !== 'number') return null
+  if (
+    typeof p.trocas_concluidas !== 'number' ||
+    typeof p.trocas_furadas !== 'number'
+  ) {
+    return null
+  }
+
+  const nota = notaDeReputacao(p)
+  const total = trocasComDesfecho(p)
 
   const base =
-    ok + furos === 0
+    nota == null
       ? 'novo por aqui'
-      : furos === 0
-        ? ok === 1
-          ? '1 troca ok'
-          : `${ok} trocas ok`
-        : `${ok} de ${ok + furos} ${ok + furos === 1 ? 'troca' : 'trocas'} ok`
+      : // Vírgula, não ponto: é a separação decimal de quem lê em português, e
+        // a linha inteira do app está em pt-BR.
+        `${nota.toFixed(1).replace('.', ',')} (${total} ${total === 1 ? 'troca' : 'trocas'})`
 
   // Desistência entra à parte, nunca somada às furadas: quem avisou que não ia
   // dar fez o oposto de furar. Some quando é zero, que é o caso de quase todo
