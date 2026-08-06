@@ -6,6 +6,7 @@ import { usePerfil } from '@/hooks/usePerfil'
 import CompletarCadastro from '@/routes/CompletarCadastro'
 import Buscar from '@/routes/Buscar'
 import CartaDetalhe from '@/routes/Carta'
+import { Mensagens, Notificacoes } from '@/routes/EmBreve'
 import Entrar from '@/routes/Entrar'
 import Home from '@/routes/Home'
 import MatchDetalhe from '@/routes/Match'
@@ -37,6 +38,10 @@ export default function App() {
             <Route path="/carta/:id" element={<CartaDetalhe />} />
             <Route path="/matches" element={<Matches />} />
             <Route path="/matches/:id" element={<MatchDetalhe />} />
+            {/* Existem no Figma e ainda não no produto. A tela é honesta
+                sobre isso e diz por onde a coisa acontece hoje. */}
+            <Route path="/mensagens" element={<Mensagens />} />
+            <Route path="/notificacoes" element={<Notificacoes />} />
             <Route path="/perfil" element={<PerfilTela />} />
             {/* Depois de "/perfil" e com prefixo próprio: um "/:username" solto
                 na raiz engoliria toda rota nova que viesse depois dele. */}

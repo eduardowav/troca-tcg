@@ -104,6 +104,102 @@ export function IconeTrocar({ className }: { className?: string }) {
   )
 }
 
+export function IconeSino({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      fill="none"
+      aria-hidden
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path
+        d="M8.55563 17.5007C8.70192 17.754 8.91231 17.9644 9.16568 18.1107C9.41904 18.257 9.70644 18.334 9.99899 18.334C10.2915 18.334 10.5789 18.257 10.8323 18.1107C11.0857 17.9644 11.2961 17.754 11.4424 17.5007M2.71773 12.7719C2.60886 12.8913 2.53702 13.0397 2.51094 13.1991C2.48485 13.3585 2.50566 13.522 2.57081 13.6698C2.63597 13.8176 2.74268 13.9433 2.87795 14.0316C3.01322 14.1199 3.17122 14.1669 3.33274 14.1671H16.6664C16.8279 14.1671 16.9859 14.1202 17.1212 14.0321C17.2566 13.944 17.3634 13.8185 17.4288 13.6708C17.4941 13.5231 17.5151 13.3596 17.4892 13.2001C17.4634 13.0407 17.3917 12.8922 17.283 12.7728C16.1747 11.6302 14.9996 10.4159 14.9996 6.66642C14.9996 5.34023 14.4729 4.06835 13.5352 3.13059C12.5975 2.19283 11.3257 1.666 9.99955 1.666C8.67344 1.666 7.40164 2.19283 6.46394 3.13059C5.52624 4.06835 4.99944 5.34023 4.99944 6.66642C4.99944 10.4159 3.82359 11.6302 2.71773 12.7719Z"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
+}
+
+export function IconeMensagem({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 22 22"
+      fill="none"
+      aria-hidden
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path
+        d="M19.6304 16.8798C19.9742 16.5359 20.1674 16.0696 20.1674 15.5834V4.58334C20.1674 4.09711 19.9742 3.63079 19.6304 3.28697C19.2865 2.94316 18.8202 2.75 18.3339 2.75H3.66608C3.17981 2.75 2.71346 2.94316 2.36961 3.28697C2.02577 3.63079 1.8326 4.09711 1.8326 4.58334V19.5122C1.83262 19.641 1.8708 19.7668 1.94232 19.8738C2.01384 19.9808 2.11549 20.0642 2.23441 20.1135C2.35334 20.1627 2.4842 20.1756 2.61044 20.1505C2.73669 20.1254 2.85266 20.0634 2.94369 19.9724L4.96235 17.9539C5.30611 17.6101 5.77239 17.4168 6.25862 17.4167H18.3339C18.8202 17.4167 19.2865 17.2236 19.6304 16.8798Z"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
+}
+
+/* --------------------------------------------------------------- pokébola */
+
+/**
+ * Indicador de carregamento das telas que ainda não existem.
+ *
+ * Não veio do Figma — o arquivo não desenha estado de carregamento. Foi
+ * construída no vocabulário dele: borda preta grossa, cor chapada, sem
+ * gradiente e sem brilho. O vermelho é o do `log-out-button`, o único do
+ * arquivo, e é o mesmo tom que a pokébola pede.
+ *
+ * O giro fica no CSS (`.pokebola-gira`) e não numa classe do Tailwind porque
+ * precisa de `@keyframes` e da regra de `prefers-reduced-motion` junto — as
+ * duas coisas moram no mesmo lugar ou alguém muda uma e esquece a outra.
+ */
+export function Pokebola({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 100 100"
+      aria-hidden
+      className={cn('pokebola-gira', className)}
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <defs>
+        <clipPath id="pokebola-corpo">
+          <circle cx="50" cy="50" r="44" />
+        </clipPath>
+      </defs>
+      <g clipPath="url(#pokebola-corpo)">
+        <rect x="0" y="0" width="100" height="50" fill="var(--color-alerta)" />
+        <rect x="0" y="50" width="100" height="50" fill="var(--color-cartela)" />
+        <rect
+          x="0"
+          y="43"
+          width="100"
+          height="14"
+          fill="var(--color-tinta)"
+        />
+      </g>
+      <circle
+        cx="50"
+        cy="50"
+        r="44"
+        fill="none"
+        stroke="var(--color-tinta)"
+        strokeWidth="7"
+      />
+      <circle
+        cx="50"
+        cy="50"
+        r="14"
+        fill="var(--color-cartela)"
+        stroke="var(--color-tinta)"
+        strokeWidth="7"
+      />
+    </svg>
+  )
+}
+
 /* ----------------------------------------------------------------- cartela */
 
 /**

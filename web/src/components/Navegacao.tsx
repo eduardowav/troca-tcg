@@ -1,6 +1,10 @@
 import { NavLink, Outlet } from 'react-router-dom'
 
-import { IconeRaio } from '@/components/brutal/Pecas'
+import {
+  IconeMensagem,
+  IconeRaio,
+  IconeSino,
+} from '@/components/brutal/Pecas'
 import { IconeCartas, IconePerfil, IconeTroca } from '@/components/ui/Icone'
 import { cn } from '@/lib/cn'
 
@@ -15,6 +19,11 @@ import { cn } from '@/lib/cn'
 const ABAS = [
   { para: '/matches', rotulo: 'Trocas', Icone: IconeTroca },
   { para: '/minhas-cartas', rotulo: 'Minhas cartas', Icone: IconeCartas },
+  // Mensagens ainda não existem: a aba leva para uma tela que diz isso e
+  // aponta o caminho de hoje (WhatsApp depois do aceite). Está aqui, e não
+  // escondida até o chat ficar pronto, porque a ausência da aba faz a pessoa
+  // procurar a função achando que ela está em algum canto.
+  { para: '/mensagens', rotulo: 'Mensagens', Icone: IconeMensagem },
   { para: '/perfil', rotulo: 'Perfil', Icone: IconePerfil },
 ]
 
@@ -54,13 +63,30 @@ export function LayoutApp() {
  */
 function MarcaApp() {
   return (
-    <header className="marca-app mx-auto w-full max-w-[100rem] items-center gap-2 px-6 pt-[calc(1rem+env(safe-area-inset-top))] 2xl:max-w-[120rem]">
-      <span className="grid size-7 shrink-0 place-items-center rounded-[var(--radius-etiqueta)] border-2 border-tinta bg-azul text-azul-tinta">
-        <IconeRaio className="size-4" />
+    <header className="marca-app mx-auto w-full max-w-[100rem] items-center justify-between px-6 pt-[calc(1rem+env(safe-area-inset-top))] 2xl:max-w-[120rem]">
+      <span className="flex items-center gap-2">
+        <span className="grid size-7 shrink-0 place-items-center rounded-[var(--radius-etiqueta)] border-2 border-tinta bg-azul text-azul-tinta">
+          <IconeRaio className="size-4" />
+        </span>
+        <span className="font-titulo text-[24px] leading-none font-black text-tinta">
+          TrocaTCG
+        </span>
       </span>
-      <span className="font-titulo text-[24px] leading-none font-black text-tinta">
-        TrocaTCG
-      </span>
+
+      {/* O sino leva para uma tela que assume não existir ainda.
+          O ponto de aviso é azul, não vermelho — é o que o arquivo desenha
+          (`alert-dot` tem `fill="#0038FF"`), e faz sentido: aqui ele conta
+          novidade, não erro. Fica sem `aria-hidden` porque, se um dia ele
+          passar a depender de contagem real, o rótulo do link é onde essa
+          informação precisa entrar. */}
+      <NavLink
+        to="/notificacoes"
+        aria-label="Notificações"
+        className="relative grid size-9 shrink-0 place-items-center rounded-full border-2 border-tinta bg-cartela text-tinta transition-shadow hover:shadow-[var(--shadow-duro-xs)]"
+      >
+        <IconeSino className="size-5" />
+        <span className="absolute -top-0.5 -right-0.5 size-2.5 rounded-full border-2 border-tinta bg-azul" />
+      </NavLink>
     </header>
   )
 }

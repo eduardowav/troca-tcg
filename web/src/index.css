@@ -94,6 +94,11 @@
   --color-azul-claro: #6082ff; /* aba ativa da navegação */
   --color-azul-tinta: #ffffff; /* texto sobre azul */
 
+  /* Alerta. Do frame de ajustes (`log-out-button`), única peça do arquivo
+     que tem vermelho. O fraco é o fundo dela; o forte, a borda e o texto. */
+  --color-alerta: #dc2626;
+  --color-alerta-fraco: #fee2e2;
+
   /* Raios. Quatro degraus, do container à etiqueta. */
   --radius-cartela: 20px;
   --radius-controle: 12px;
@@ -275,6 +280,32 @@
 
   [data-mundo='brutal'] .thumb-carta .set-code {
     color: var(--color-apagado);
+  }
+
+  /* A pokébola gira enquanto a tela não existe. É o único movimento
+     contínuo do app — todo o resto é transição curta —, e ele se
+     justifica porque é literalmente um indicador de carregamento:
+     está dizendo "isto ainda está sendo feito", não enfeitando.
+
+     Uma volta a cada 1,4s, linear. Mais rápido vira nervoso; com
+     easing parece que trava a cada volta. */
+  @keyframes pokebola-gira {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .pokebola-gira {
+    animation: pokebola-gira 1.4s linear infinite;
+  }
+
+  /* O piso de qualidade do projeto manda desligar animação para quem
+     pediu menos movimento. A pokébola parada continua dizendo o que
+     precisa dizer — quem carrega o recado é a frase, não o giro. */
+  @media (prefers-reduced-motion: reduce) {
+    .pokebola-gira {
+      animation: none;
+    }
   }
 }
 
