@@ -102,7 +102,11 @@ export function CelulaBrutal({
   const valor = formatarPreco(preco?.preco)
 
   return (
-    <li className="flex flex-col gap-2 rounded-[var(--radius-controle)] border-2 border-tinta bg-cartela p-2 shadow-[var(--shadow-duro-xs)]">
+    // `h-full` porque a célula precisa ocupar a altura inteira da linha da
+    // grade para o rodapé ter onde encostar. O `stretch` do grid já estica o
+    // `li`, mas só o item — declarar aqui é o que faz a coluna interna crescer
+    // junto e o `mt-auto` lá embaixo ter espaço para empurrar.
+    <li className="flex h-full flex-col gap-2 rounded-[var(--radius-controle)] border-2 border-tinta bg-cartela p-2 shadow-[var(--shadow-duro-xs)]">
       <CartaThumb
         carta={carta}
         className="rounded-[var(--radius-imagem)] border-2 border-tinta"
@@ -133,7 +137,17 @@ export function CelulaBrutal({
         )}
       </div>
 
-      {children}
+      {/* As ações ficam presas no rodapé da célula, não logo depois do texto.
+          Preço e raridade são opcionais — o catálogo tem carta sem preço (as
+          promo da SVP, por exemplo, não têm linha na TCGplayer) e carta sem
+          raridade —, e sem isto cada célula punha o botão numa altura diferente
+          conforme o que faltava. Numa grade lado a lado, dois botões
+          desalinhados por 17px leem como defeito.
+
+          `mt-auto` e não altura fixa no bloco de texto: nome de carta ocupa uma
+          ou duas linhas, e fixar altura para acomodar o pior caso deixaria um
+          vão em todas as outras. */}
+      {children && <div className="mt-auto pt-1">{children}</div>}
     </li>
   )
 }
