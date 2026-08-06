@@ -289,6 +289,14 @@
     box-shadow: none;
   }
 
+  /* O esqueleto enquanto a arte carrega. Era `bg-surface-2`, o grafite
+     do playmat: num mundo de papel creme, cada carta piscava um
+     retângulo cinza-escuro antes de aparecer — e numa troca são duas
+     ao mesmo tempo, no meio da tela. */
+  [data-mundo='brutal'] .thumb-carta .animate-pulse {
+    background-color: var(--color-meu);
+  }
+
   /* Fallback tipográfico de quem não tem imagem no catálogo — e são
      muitas: as expansões recentes entram sem arte. Sobre papel creme o
      texto claro do playmat some. */
