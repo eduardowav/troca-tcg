@@ -18,8 +18,16 @@ Dados **não-secretos** da infra do TrocaTCG. Segredos nunca entram aqui — fic
 `sb_publishable_fnmDKHi19WNJU3SrDp5WeQ_RsuTbo_W`
 
 **Segredos (pegar no painel, nunca commitar):**
-- `SUPABASE_SERVICE_ROLE_KEY` e `SUPABASE_JWT_SECRET` → *Project Settings > API*
 - Senha do banco / connection string → *Project Settings > Database*
+
+**A API precisa de um segredo só: a `DATABASE_URL`.** O `SUPABASE_JWT_SECRET`
+nunca foi preenchido e o app sempre funcionou, porque o JWKS deste projeto
+publica **apenas ES256** — os tokens são assimétricos e o `auth.py` os valida
+pela chave pública, que é buscada da `SUPABASE_URL`. O segredo compartilhado só
+existe no ramo HS256, que este projeto não usa. Já o
+`SUPABASE_SERVICE_ROLE_KEY` está declarado no `config.py` e **não é lido por
+nenhuma linha do app**: é a chave que fura o RLS, e ela ficou de fora do Render
+por isso mesmo. Se for mesmo morta, o lugar certo é sair do `config.py`.
 
 Schema aplicado: as migrações de `db/schema/` (00–13). RLS ativo em todas as
 tabelas; catálogo com leitura pública, `match_events` trancado para a API, e os
@@ -320,8 +328,8 @@ gente o free tier aguenta ao mesmo tempo, não a RAM.
 - [ ] **Empurrar o repo** — o `main` local está muito à frente do `origin`, e o
       Render lê o `render.yaml` do GitHub, não do disco
 - [ ] Aplicar o Blueprint: https://dashboard.render.com/blueprint/new?repo=https://github.com/eduardowav/troca-tcg
-- [ ] Preencher no painel os `sync: false`: `DATABASE_URL` (pooler, porta 5432),
-      `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET`
+- [ ] Preencher no painel o único `sync: false`: `DATABASE_URL` (pooler, porta
+      5432) — já está pronta em `api/.env`
 - [ ] Copiar o `JOB_SECRET` gerado pelo Render para os GitHub Secrets, junto com
       `API_URL` e `DATABASE_URL_DIRECT`
 - [ ] Ícones `pwa-192.png` e `pwa-512.png` em `web/public/` — o manifesto já os

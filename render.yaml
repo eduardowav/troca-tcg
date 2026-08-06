@@ -61,12 +61,18 @@ services:
       - key: DATABASE_URL
         sync: false
 
+      # A URL basta: é dela que sai o JWKS que valida a sessão de quem entra.
+      #
+      # `SUPABASE_SERVICE_ROLE_KEY` e `SUPABASE_JWT_SECRET` NÃO estão aqui de
+      # propósito. A primeira está declarada no config.py e não é lida por
+      # linha nenhuma do app — é uma chave que fura o RLS, e não pô-la no
+      # ambiente é melhor do que pô-la. A segunda só serve ao ramo HS256 do
+      # auth.py, e o JWKS deste projeto publica apenas ES256: os tokens são
+      # assimétricos, validados por chave pública. Se um dia o Supabase voltar
+      # a emitir HS256, o erro é explícito ("Servidor sem SUPABASE_JWT_SECRET")
+      # e a variável entra pelo painel em trinta segundos.
       - key: SUPABASE_URL
         value: https://qbdtcpotehvbkozppmyu.supabase.co
-      - key: SUPABASE_SERVICE_ROLE_KEY
-        sync: false
-      - key: SUPABASE_JWT_SECRET
-        sync: false
 
       # Gerado pelo Render. Copie o valor para o GitHub Secret JOB_SECRET —
       # é ele que abre as rotas /internal/jobs/* para o cron do Actions.
