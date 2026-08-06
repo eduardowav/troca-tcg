@@ -30,6 +30,10 @@ export function GradeDeCartas({
   return (
     <ul
       className={cn(
+        // `grade-cartas` não pinta nada: é por onde uma pele visual alcança a
+        // grade e as células sem que este componente conheça a pele. Mesmo
+        // papel do `thumb-carta` no CartaThumb e do `nav-app` na barra.
+        'grade-cartas',
         'grid gap-2.5',
         // Duas colunas no celular e mais uma a cada respiro de largura: no
         // desktop a tela vira bancada de loja, com dezenas de artes à vista.

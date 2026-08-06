@@ -92,7 +92,9 @@ export function BuscaRapida({ className }: { className?: string }) {
   const mostrarLista = aberto && ativa
 
   return (
-    <div ref={caixa} className={cn('relative', className)}>
+    // `busca-rapida` não pinta nada: é o gancho por onde a pele alcança o
+    // campo e o painel de sugestões. Mesmo papel do `thumb-carta`.
+    <div ref={caixa} className={cn('busca-rapida relative', className)}>
       <div className="relative">
         <IconeBusca className="pointer-events-none absolute top-1/2 left-3 size-4.5 -translate-y-1/2 text-muted" />
         <input

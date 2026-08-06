@@ -282,6 +282,43 @@
     color: var(--color-apagado);
   }
 
+  /* A busca de Minhas cartas. O campo é o único controle de formulário
+     que o mundo novo já alcança, e ele nasceu escuro: caixa preta sobre
+     papel creme era a peça que mais destoava da tela.
+
+     O painel de sugestões vem junto — ele abre por cima da grade, e um
+     painel escuro sobre cartelas brancas seria o mesmo problema, só que
+     mais tarde e mais difícil de notar. */
+  [data-mundo='brutal'] .busca-rapida input {
+    background-color: var(--color-cartela);
+    border: 2px solid var(--color-tinta);
+    border-radius: var(--radius-controle);
+    color: var(--color-tinta);
+    font-family: var(--font-corpo);
+  }
+
+  [data-mundo='brutal'] .busca-rapida input::placeholder {
+    color: var(--color-apagado);
+  }
+
+  [data-mundo='brutal'] .busca-rapida svg {
+    color: var(--color-apagado);
+  }
+
+  /* O painel: qualquer filho posicionado que não seja o campo. */
+  [data-mundo='brutal'] .busca-rapida > div:not(:first-child) {
+    background-color: var(--color-cartela);
+    border: 2px solid var(--color-tinta);
+    border-radius: var(--radius-controle);
+  }
+
+  [data-mundo='brutal'] .busca-rapida button,
+  [data-mundo='brutal'] .busca-rapida p,
+  [data-mundo='brutal'] .busca-rapida li {
+    color: var(--color-tinta);
+    border-color: var(--color-tinta);
+  }
+
   /* A pokébola gira enquanto a tela não existe. É o único movimento
      contínuo do app — todo o resto é transição curta —, e ele se
      justifica porque é literalmente um indicador de carregamento:

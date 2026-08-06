@@ -2,15 +2,17 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 
+import { CelulaBrutal, GradeBrutal } from '@/components/brutal/Cartas'
+import { BotaoBrutal } from '@/components/brutal/Pecas'
 import { BuscaRapida } from '@/components/carta/BuscaRapida'
 import {
   Escolha,
   FolhaInferior,
   Quantidade,
 } from '@/components/carta/ControlesAnuncio'
-import { CelulaCarta, GradeDeCartas } from '@/components/carta/GradeDeCartas'
 import { Button } from '@/components/ui/Button'
 import { IconeBusca, IconeCartas } from '@/components/ui/Icone'
+import { useMundo } from '@/hooks/useMundo'
 import { type Acabamento, NORMAL, precoDoAcabamento } from '@/lib/acabamentos'
 import {
   type Anuncio,
@@ -41,6 +43,12 @@ import {
 } from '@/hooks/useAnuncios'
 
 export default function MinhasCartas() {
+  useMundo('brutal')
+
+  // Ofereço abre primeiro: é a lista que o app precisa que exista para um match
+  // acontecer, e a que costuma estar mais vazia (média 4, contra 7 de Procuro).
+  const [aba, setAba] = useState<ListingKind>('OFERTA')
+
   const { data: anuncios, isPending, isError, refetch } = useAnuncios()
   // A remoção mora aqui, e não na célula, por um motivo que só aparece testando:
   // ela é otimista, então a célula desmonta assim que o cache é atualizado — e o
@@ -63,13 +71,14 @@ export default function MinhasCartas() {
   )
 
   return (
-    <div className="mx-auto flex min-h-[100dvh] w-full max-w-[100rem] 2xl:max-w-[120rem] flex-col px-5">
-      <header className="w-full max-w-xl pt-10">
-        <p className="set-code text-xs tracking-wide text-muted">TROCATCG</p>
-        <h1 className="mt-3 text-[28px] leading-[1.1] lg:text-[34px]">Minhas cartas</h1>
-        <p className="mt-2 text-[15px] leading-relaxed text-muted lg:text-[16px]">
-          O que você oferece e o que procura, lado a lado. Toque numa carta para
-          ajustar quantidade, condição, acabamento e prioridade.
+    <div className="mx-auto flex min-h-[100dvh] w-full max-w-[100rem] flex-col px-6 2xl:max-w-[120rem]">
+      <header className="w-full max-w-xl pt-5">
+        <h1 className="font-titulo text-[22px] leading-[1.15] font-black text-tinta lg:text-[28px]">
+          Minhas cartas
+        </h1>
+        <p className="mt-1.5 font-corpo text-[14px] leading-relaxed text-apagado lg:text-[15px]">
+          O que você oferece e o que procura. Toque numa carta para ajustar
+          quantidade, condição, acabamento e prioridade.
         </p>
       </header>
 
@@ -83,28 +92,50 @@ export default function MinhasCartas() {
         <BuscaRapida className="flex-1" />
         <Link
           to="/buscar"
-          className="shrink-0 rounded-[var(--radius-control)] px-2 py-2 text-[14px] text-muted transition-colors hover:text-paper"
+          className="shrink-0 rounded-[var(--radius-etiqueta)] px-2 py-2 font-corpo text-[14px] font-medium text-azul underline underline-offset-2"
         >
           Explorar
         </Link>
       </div>
 
-      <div className="mt-6 w-full flex-1 pb-6">
+      {/* Abas no celular, lado a lado no desktop.
+
+          A versão anterior empilhava as duas listas no celular, e o comentário
+          que estava aqui defendia isso: "a aba esconde metade da conversa atrás
+          de um clique". A objeção é boa — e continua valendo onde as duas cabem
+          juntas, que é o desktop, onde nada mudou.
+
+          No celular elas nunca couberam: com média de 4 cartas em Ofereço e 7
+          em Procuro, chegar na segunda lista custava rolar a primeira inteira, e
+          as duas nunca estavam na tela ao mesmo tempo de qualquer forma. A
+          "conversa" já estava partida — a aba só assume isso e devolve a
+          largura toda para a grade. Decisão do Eduardo, com os números na mesa. */}
+      <div className="mt-5 flex gap-2 lg:hidden">
+        {(['OFERTA', 'PROCURA'] as const).map((t) => (
+          <Aba
+            key={t}
+            ativa={aba === t}
+            onClick={() => setAba(t)}
+            rotulo={t === 'OFERTA' ? 'Ofereço' : 'Procuro'}
+            quantas={porLista[t].length}
+          />
+        ))}
+      </div>
+
+      <div className="mt-5 w-full flex-1 pb-6">
         {isError ? (
           <div className="max-w-xl">
             <Recuperavel onTentar={() => refetch()} />
           </div>
         ) : (
-          // As duas listas na mesma tela, uma em cada lado. A troca é uma
-          // relação entre elas — o que eu dou e o que eu quero — e a aba
-          // escondia metade da conversa atrás de um clique.
-          //
-          // Empilha abaixo de `lg` porque duas grades lado a lado num celular
-          // dariam uma carta de largura cada: aí a comparação que motiva o
-          // lado a lado deixa de existir e sobra só carta pequena.
           <div className="grid gap-x-8 gap-y-10 lg:grid-cols-2 lg:gap-x-0">
             <Coluna
               tipo="OFERTA"
+              // A lista inativa sai do fluxo no celular e volta no desktop.
+              // `hidden` e não desmontar: a grade guarda posição de rolagem e
+              // as imagens já carregadas, e alternar aba não deve custar
+              // recarregar arte que já está no navegador.
+              className={cn(aba !== 'OFERTA' && 'hidden lg:block')}
               anuncios={porLista.OFERTA}
               cartas={cartas}
               precos={precos}
@@ -114,6 +145,7 @@ export default function MinhasCartas() {
             />
             <Coluna
               tipo="PROCURA"
+              className={cn(aba !== 'PROCURA' && 'hidden lg:block')}
               anuncios={porLista.PROCURA}
               cartas={cartas}
               precos={precos}
@@ -128,10 +160,61 @@ export default function MinhasCartas() {
   )
 }
 
+/**
+ * Uma aba do seletor de lista.
+ *
+ * A ativa é azul cheia com sombra dura; a inativa é papel com a mesma borda. O
+ * contraste entre as duas é o que diz qual lista está na tela — não há cor por
+ * lista no mundo novo, e não podia haver: nesta grade o azul já é `RARE` e o
+ * âmbar já é `ULTRA RARE`, dentro da própria célula. Com uma lista por vez, a
+ * aba resolve sozinha o que a cor resolveria, e sem disputar leitura com a
+ * raridade.
+ *
+ * A contagem fica em mono ao lado do rótulo: é dado, e é ela que responde
+ * "vale a pena trocar de aba?" antes do toque.
+ */
+function Aba({
+  ativa,
+  onClick,
+  rotulo,
+  quantas,
+}: {
+  ativa: boolean
+  onClick: () => void
+  rotulo: string
+  quantas: number
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={ativa}
+      className={cn(
+        'flex flex-1 items-center justify-center gap-2 rounded-[var(--radius-controle)] border-2 border-tinta px-3 py-2.5',
+        'font-titulo text-[14px] font-extrabold uppercase transition-shadow',
+        ativa
+          ? 'bg-azul text-azul-tinta shadow-[var(--shadow-duro-sm)]'
+          : 'bg-papel text-tinta',
+      )}
+    >
+      {rotulo}
+      <span
+        className={cn(
+          'font-dado text-[12px] font-bold',
+          ativa ? 'text-azul-tinta/80' : 'text-apagado',
+        )}
+      >
+        {quantas}
+      </span>
+    </button>
+  )
+}
+
 /* ---------- Uma lista ---------- */
 
 function Coluna({
   tipo,
+  className,
   anuncios,
   cartas,
   precos,
@@ -140,6 +223,7 @@ function Coluna({
   remocao,
 }: {
   tipo: ListingKind
+  className?: string
   anuncios: Anuncio[]
   cartas?: Map<string, Carta>
   precos?: Map<string, PrecoTCGplayer[]>
@@ -152,32 +236,24 @@ function Coluna({
   return (
     <section
       aria-label={oferta ? 'Ofereço' : 'Procuro'}
-      className={cn(
-        // A divisa precisa ser visível: sem ela, a última carta de uma lista e
-        // a primeira da outra encostam e a tela vira uma grade só. O fio some
-        // no empilhado, onde a separação já vem do cabeçalho de cada seção.
-        !oferta && 'lg:border-l lg:border-edge-soft lg:pl-8',
-        oferta && 'lg:pr-8',
-      )}
+      className={cn(!oferta && 'lg:pl-8', oferta && 'lg:pr-8', className)}
     >
-      <header className="flex items-baseline gap-2 border-b border-edge-soft pb-2">
-        <h2
-          className={cn(
-            'text-[16px] font-medium lg:text-[18px]',
-            oferta ? 'text-offer' : 'text-want',
-          )}
-        >
+      {/* O cabeçalho só existe no desktop. No celular a aba já diz qual lista
+          está na tela, e repetir o nome logo abaixo dela seria dizer duas vezes
+          a mesma coisa no espaço mais caro do aparelho. */}
+      <header className="hidden items-baseline gap-2 border-b-2 border-tinta pb-2 lg:flex">
+        <h2 className="font-titulo text-[18px] font-black text-tinta">
           {oferta ? 'Ofereço' : 'Procuro'}
         </h2>
-        <span className="set-code text-[13px] text-muted">
+        <span className="font-dado text-[13px] font-bold text-apagado">
           {anuncios.length}
         </span>
-        <span className="ml-auto text-[13px] text-faint">
+        <span className="ml-auto font-corpo text-[13px] text-apagado">
           {oferta ? 'o que eu dou' : 'o que eu quero'}
         </span>
       </header>
 
-      <div className="mt-3">
+      <div className="lg:mt-3">
         {carregando ? (
           <Esqueleto />
         ) : anuncios.length === 0 ? (
@@ -185,7 +261,7 @@ function Coluna({
         ) : (
           // Menos colunas que a grade da busca: aqui cada lista tem metade da
           // tela, e herdar as seis colunas do catálogo espremeria a arte.
-          <GradeDeCartas className="lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+          <GradeBrutal className="lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
             {anuncios.map((anuncio) => (
               <CartaDaLista
                 key={anuncio.id}
@@ -196,7 +272,7 @@ function Coluna({
                 remocao={remocao}
               />
             ))}
-          </GradeDeCartas>
+          </GradeBrutal>
         )}
       </div>
     </section>
@@ -279,9 +355,8 @@ function CartaDaLista({
   if (!carta) return <CelulaEsqueleto />
 
   return (
-    <CelulaCarta
+    <CelulaBrutal
       carta={carta}
-      destaque={anuncio.tipo}
       // O preço segue o acabamento anunciado, não a impressão comum: quem
       // anunciou a reverse vê o valor da reverse. É a mesma carta com dois
       // preços, e mostrar o outro é o começo de uma troca desigual.
@@ -298,9 +373,9 @@ function CartaDaLista({
         aria-haspopup="dialog"
         className={cn(
           'flex h-9 w-full min-w-0 items-center justify-between gap-2 px-2.5',
-          'rounded-[var(--radius-control)] border border-edge bg-surface-2',
-          'text-[14px] text-muted transition-colors hover:text-paper lg:text-[15px]',
-          'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-volt',
+          'rounded-[var(--radius-etiqueta)] border-2 border-tinta bg-papel',
+          'font-dado text-[11px] font-medium text-tinta transition-shadow',
+          'hover:shadow-[var(--shadow-duro-xs)]',
         )}
       >
         <span className="truncate">{resumo(anuncio, acabamento)}</span>
@@ -315,7 +390,7 @@ function CartaDaLista({
         acabamentos={opcoesDeAcabamento(acabamentos, acabamento)}
         remocao={remocao}
       />
-    </CelulaCarta>
+    </CelulaBrutal>
   )
 }
 
@@ -545,37 +620,44 @@ function resumo(a: Anuncio, acabamento?: Acabamento): string {
 
 function Esqueleto() {
   return (
-    <GradeDeCartas className="lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+    <GradeBrutal className="lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
       {[0, 1, 2, 3].map((i) => (
-        <CelulaEsqueleto key={i} />
+        <li
+          key={i}
+          aria-hidden
+          className="flex flex-col gap-2 rounded-[var(--radius-controle)] border-2 border-tinta bg-cartela p-2"
+        >
+          <div className="aspect-[2.5/3.5] animate-pulse rounded-[var(--radius-imagem)] border-2 border-tinta bg-papel" />
+          <div className="h-3.5 w-2/3 animate-pulse rounded bg-meu" />
+        </li>
       ))}
-    </GradeDeCartas>
+    </GradeBrutal>
   )
 }
 
 function Vazio({ tipo }: { tipo: ListingKind }) {
   const oferta = tipo === 'OFERTA'
   return (
-    <div className="flex flex-col items-center px-4 py-10 text-center">
-      <div className="grid size-12 place-items-center rounded-2xl border border-edge bg-surface text-muted">
+    <div className="flex flex-col items-center px-4 py-12 text-center">
+      <span className="grid size-14 place-items-center rounded-[var(--radius-controle)] border-2 border-tinta bg-cartela text-tinta shadow-[var(--shadow-duro)]">
         {oferta ? (
           <IconeCartas className="size-6" />
         ) : (
           <IconeBusca className="size-6" />
         )}
-      </div>
-      <p className="mt-4 text-[15px] text-paper">
+      </span>
+      <p className="mt-5 font-titulo text-[17px] font-bold text-tinta">
         {oferta
           ? 'Você ainda não oferece nenhuma carta.'
           : 'Você ainda não procura nenhuma carta.'}
       </p>
-      <p className="mt-1.5 max-w-xs text-[14px] leading-relaxed text-muted">
+      <p className="mt-2 max-w-xs font-corpo text-[14px] leading-relaxed text-apagado">
         {oferta
           ? 'As cartas repetidas que você topa trocar entram aqui.'
           : 'As cartas que faltam para você entram aqui — é o que o app usa para achar match.'}
       </p>
-      <p className="mt-5 text-[13px] text-faint">
-        Use “Adicionar carta” acima para começar.
+      <p className="mt-5 font-dado text-[11px] uppercase text-apagado">
+        Use a busca acima para começar
       </p>
     </div>
   )
@@ -584,13 +666,15 @@ function Vazio({ tipo }: { tipo: ListingKind }) {
 function Recuperavel({ onTentar }: { onTentar: () => void }) {
   return (
     <div className="flex flex-col items-center py-14 text-center">
-      <p className="text-[15px] text-paper">Não deu para carregar suas cartas.</p>
-      <p className="mt-1.5 text-[14px] text-muted">
+      <p className="font-titulo text-[17px] font-bold text-tinta">
+        Não deu para carregar suas cartas.
+      </p>
+      <p className="mt-2 font-corpo text-[14px] text-apagado">
         Pode ser a conexão. Tente de novo.
       </p>
-      <Button variant="subtle" size="sm" className="mt-5" onClick={onTentar}>
-        Tentar de novo
-      </Button>
+      <button onClick={onTentar} className="mt-5">
+        <BotaoBrutal>Tentar de novo</BotaoBrutal>
+      </button>
     </div>
   )
 }
