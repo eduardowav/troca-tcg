@@ -8,6 +8,8 @@ from fastapi.testclient import TestClient
 from app.core.auth import usuario_atual
 from app.db.session import get_session
 from app.main import app
+from app.routers import listings as rotas_listings
+from app.routers import matches as rotas_matches
 from app.schemas.listing import CartaProcurada, QuemProcura
 from app.schemas.match import MatchOut, ParticipanteCompleto, ParticipanteResumo
 from app.services import matching
@@ -110,6 +112,74 @@ def test_responder_exige_autenticacao():
     client = TestClient(app)
     resp = client.post(f"/v1/me/matches/{uuid4()}/responder", json={"aceitou": True})
     assert resp.status_code in (401, 403)
+
+
+# ------------------------------------------- onde o motor roda (e onde não)
+
+
+def _codigo(fn) -> str:
+    """A fonte sem as linhas de comentário.
+
+    Os comentários destas rotas explicam justamente por que o
+    `sincronizar_matches` não está lá — procurar o nome na fonte crua acharia a
+    explicação e o teste passaria a afirmar o contrário do que quer.
+    """
+    linhas = inspect.getsource(fn).splitlines()
+    return "\n".join(x for x in linhas if not x.strip().startswith("#"))
+
+
+def test_feed_nao_ressincroniza():
+    """Ler o feed não pode disparar escrita.
+
+    Era a operação mais cara do app: um GET na tela mais visitada gastava
+    `9 × parceiros + 5` idas ao banco, com o Postgres a ~120 ms de distância.
+    Ler não muda match — só escrita muda.
+    """
+    fonte = _codigo(rotas_matches.listar)
+    assert "sincronizar_matches" not in fonte
+    assert "listar_matches" in fonte
+
+
+def test_historico_tambem_nao_ressincroniza():
+    fonte = _codigo(rotas_matches.historico)
+    assert "sincronizar_matches" not in fonte
+
+
+def test_toda_escrita_de_anuncio_ressincroniza():
+    """O contrapeso do teste acima: se a leitura não recalcula, a escrita tem de
+    recalcular — em todas as rotas, senão o match nasce e ninguém vê."""
+    for rota in (
+        rotas_listings.criar,
+        rotas_listings.criar_bulk,
+        rotas_listings.atualizar,
+        rotas_listings.remover,
+    ):
+        assert "sincronizar_matches" in _codigo(rota), rota.__name__
+
+
+def test_feed_le_participantes_e_itens_em_lote():
+    """Uma consulta para todos os matches, não duas por match.
+
+    Com o banco a um oceano de distância, `2K+1` idas viram segundos de tela
+    parada. O `.get(` no lugar do `await` é a assinatura de que o lote foi lido
+    antes do laço.
+    """
+    fonte = inspect.getsource(matching.listar_matches)
+    assert "_participantes_por_match" in fonte
+    assert "_itens_por_match" in fonte
+    assert "await _participantes" not in fonte.split("return")[-1]
+
+
+def test_ids_do_lote_nunca_entram_no_texto_do_sql():
+    """Os ids viram parâmetros; só os nomes gerados aqui entram na consulta."""
+    lista, params = matching._lista_de_ids(["abc", "def"], "m")
+    assert lista == "cast(:m0 as uuid), cast(:m1 as uuid)"
+    assert params == {"m0": "abc", "m1": "def"}
+
+
+def test_lote_vazio_nao_consulta():
+    """Sem matches não há `in ()` — que seria erro de sintaxe no Postgres."""
+    assert matching._lista_de_ids([], "m") == ("", {})
 
 
 def test_demanda_nomeia_quem_procura():

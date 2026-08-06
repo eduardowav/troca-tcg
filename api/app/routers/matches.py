@@ -29,9 +29,10 @@ async def listar(
     user_id: UUID = Depends(usuario_atual),
     session: AsyncSession = Depends(get_session),
 ) -> list[MatchOut]:
-    # Matching roda sob demanda: abrir o feed já traz o que surgiu desde a
-    # última visita, sem depender de job agendado.
-    await matching.sincronizar_matches(session, user_id)
+    # Sem `sincronizar_matches` aqui: quem recalcula é a escrita do anúncio, em
+    # /me/listings. Ler o feed não muda match nenhum — se ninguém mexeu numa
+    # lista, o resultado seria o mesmo — e ressincronizar a cada abertura fazia
+    # da tela mais visitada do app a operação mais cara dele.
     return await matching.listar_matches(session, user_id)
 
 

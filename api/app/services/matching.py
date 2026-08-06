@@ -1,9 +1,17 @@
 """Motor de matching direto (A↔B) — a Fase 3 do roadmap.
 
-Roda sob demanda: sempre que o usuário mexe nas listas ou abre o feed,
-recalculamos os matches dele. Para uma comunidade local isso é barato e dá o
-retorno imediato que um job periódico não daria — quem acabou de cadastrar a
-carta já vê com quem trocar.
+Roda **na escrita**: sempre que o usuário mexe nas listas — cadastra, edita ou
+remove um anúncio — recalculamos os matches dele. Para uma comunidade local isso
+é barato e dá o retorno imediato que um job periódico não daria: quem acabou de
+cadastrar a carta já vê com quem trocar.
+
+Antes rodava também a cada abertura do feed, e era a coisa mais cara do app: uma
+leitura disparava uma escrita completa, `9 × parceiros + 5` idas ao banco, com o
+Postgres a ~120 ms de distância (o Render não tem região na América do Sul). Ler
+não precisa recalcular porque **só escrita muda match**: se ninguém mexeu em
+anúncio nenhum desde a última vez, o resultado seria idêntico. E quando é o
+*outro* que mexe, é a escrita dele que grava o par — `_gravar_match` insere os
+dois participantes, não só quem disparou.
 
 Duas decisões de produto embutidas aqui:
 
@@ -133,7 +141,8 @@ async def sincronizar_matches(session: AsyncSession, user_id: UUID) -> int:
     """
     # Varre os vencidos antes de recalcular: sem isso, um match ACEITO que
     # passou do prazo continuaria bloqueando o hash_grupo do par e a dupla nunca
-    # receberia uma sugestão nova.
+    # receberia uma sugestão nova. O job diário `/internal/jobs/expire` cobre
+    # quem não voltou; esta chamada cobre o instante.
     await expirar_vencidos(session)
 
     pares = (await session.execute(_PARES, {"eu": str(user_id)})).mappings().all()
@@ -208,46 +217,42 @@ async def _gravar_match(session: AsyncSession, eu: UUID, par: dict) -> None:
     )
 
     # Participantes em ordem estável, para "posicao" não variar entre execuções.
-    for posicao, uid in enumerate(sorted([str(eu), str(parceiro)])):
-        await session.execute(
-            text("""
-                insert into match_participants (match_id, user_id, posicao)
-                values (:m, :u, :p)
-                on conflict (match_id, user_id) do nothing
-            """),
-            {"m": match_id, "u": uid, "p": posicao},
-        )
+    # As duas linhas vão num INSERT só: a ida ao banco é o custo dominante aqui,
+    # não o trabalho que o Postgres faz depois que a consulta chega.
+    primeiro, segundo = sorted([str(eu), str(parceiro)])
+    await session.execute(
+        text("""
+            insert into match_participants (match_id, user_id, posicao)
+            values (:m, :u0, 0), (:m, :u1, 1)
+            on conflict (match_id, user_id) do nothing
+        """),
+        {"m": match_id, "u0": primeiro, "u1": segundo},
+    )
 
     # Itens são recalculados: a melhor combinação pode ter mudado.
     await session.execute(
         text("delete from match_items where match_id = :m"), {"m": match_id}
     )
-    itens = [
-        (par["card_dou"], str(eu), str(parceiro), par["cond_dou"], par["finish_dou"]),
-        (
-            par["card_recebo"],
-            str(parceiro),
-            str(eu),
-            par["cond_recebo"],
-            par["finish_recebo"],
-        ),
-    ]
-    for card_id, de, para, condicao, finish_id in itens:
-        await session.execute(
-            text("""
-                insert into match_items
-                  (match_id, card_id, de_user_id, para_user_id, condicao, finish_id)
-                values (:m, :c, :de, :para, :cond, :fin)
-            """),
-            {
-                "m": match_id,
-                "c": str(card_id),
-                "de": de,
-                "para": para,
-                "cond": condicao,
-                "fin": finish_id,
-            },
-        )
+    # As duas cartas da troca, também num INSERT só, pelo mesmo motivo.
+    await session.execute(
+        text("""
+            insert into match_items
+              (match_id, card_id, de_user_id, para_user_id, condicao, finish_id)
+            values (:m, :c_dou,    :eu,     :parceiro, :cond_dou,    :fin_dou),
+                   (:m, :c_recebo, :parceiro, :eu,     :cond_recebo, :fin_recebo)
+        """),
+        {
+            "m": match_id,
+            "eu": str(eu),
+            "parceiro": str(parceiro),
+            "c_dou": str(par["card_dou"]),
+            "cond_dou": par["cond_dou"],
+            "fin_dou": par["finish_dou"],
+            "c_recebo": str(par["card_recebo"]),
+            "cond_recebo": par["cond_recebo"],
+            "fin_recebo": par["finish_recebo"],
+        },
+    )
 
 
 async def listar_matches(session: AsyncSession, user_id: UUID) -> list[MatchOut]:
@@ -272,6 +277,10 @@ async def listar_matches(session: AsyncSession, user_id: UUID) -> list[MatchOut]
         .all()
     )
 
+    ids = [linha["id"] for linha in linhas]
+    participantes = await _participantes_por_match(session, ids, completo=False)
+    itens = await _itens_por_match(session, ids)
+
     return [
         MatchOut(
             id=linha["id"],
@@ -280,8 +289,8 @@ async def listar_matches(session: AsyncSession, user_id: UUID) -> list[MatchOut]
             score=float(linha["score"]),
             expira_em=linha["expira_em"],
             prorrogacoes=linha["prorrogacoes"],
-            participantes=await _participantes(session, linha["id"], completo=False),
-            itens=await _itens(session, linha["id"]),
+            participantes=participantes.get(linha["id"], []),
+            itens=itens.get(linha["id"], []),
         )
         for linha in linhas
     ]
@@ -440,9 +449,30 @@ async def mais_cartas_do_parceiro(
     return [CartaDoParceiro(**dict(linha)) for linha in linhas]
 
 
-async def _participantes(
-    session: AsyncSession, match_id: str, *, completo: bool
-) -> list:
+def _lista_de_ids(ids: list[str], prefixo: str) -> tuple[str, dict[str, str]]:
+    """Monta `:m0, :m1, ...` para um `in (...)`, com os ids como parâmetros.
+
+    Os ids nunca entram no texto do SQL — só os *nomes* dos parâmetros entram,
+    e eles são gerados aqui, não vêm de fora. É o que permite buscar os
+    participantes de trinta matches numa consulta em vez de trinta.
+
+    O `cast(... as uuid)` é explícito de propósito. Comparar uma coluna `uuid`
+    com parâmetro textual funciona quando o Postgres consegue inferir o tipo,
+    mas essa inferência é a única peça deste caminho que eu não conseguiria
+    provar sem subir a aplicação inteira — e o caminho é o do feed. Declarar o
+    tipo custa nada e mantém o índice em uso, ao contrário de `match_id::text`.
+    """
+    params = {f"{prefixo}{i}": valor for i, valor in enumerate(ids)}
+    return ", ".join(f"cast(:{nome} as uuid)" for nome in params), params
+
+
+async def _participantes_por_match(
+    session: AsyncSession, match_ids: list[str], *, completo: bool
+) -> dict[str, list]:
+    """Os participantes de vários matches de uma vez, agrupados por match."""
+    if not match_ids:
+        return {}
+
     colunas = (
         "p.id::text as user_id, p.username, p.nome_exibicao, "
         "p.trocas_concluidas, p.trocas_furadas, p.trocas_desistidas, "
@@ -451,15 +481,17 @@ async def _participantes(
     if completo:
         colunas += ", p.contato_visivel"
 
+    lista, params = _lista_de_ids(match_ids, "m")
     linhas = (
         (
             await session.execute(
                 text(f"""
-            select {colunas}
+            select mp.match_id::text as match_id, {colunas}
             from match_participants mp join profiles p on p.id = mp.user_id
-            where mp.match_id = :m order by mp.posicao
+            where mp.match_id in ({lista})
+            order by mp.match_id, mp.posicao
         """),
-                {"m": match_id},
+                params,
             )
         )
         .mappings()
@@ -467,20 +499,22 @@ async def _participantes(
     )
 
     modelo = ParticipanteCompleto if completo else ParticipanteResumo
-    return [
-        modelo(
-            user_id=r["user_id"],
-            username=r["username"],
-            nome_exibicao=r["nome_exibicao"],
-            trocas_concluidas=r["trocas_concluidas"],
-            trocas_furadas=r["trocas_furadas"],
-            trocas_desistidas=r["trocas_desistidas"],
-            aceitou=r["aceitou"],
-            confirmou_conclusao=r["confirmou_conclusao"],
-            **({"contato_visivel": r["contato_visivel"]} if completo else {}),
+    por_match: dict[str, list] = {}
+    for r in linhas:
+        por_match.setdefault(r["match_id"], []).append(
+            modelo(
+                user_id=r["user_id"],
+                username=r["username"],
+                nome_exibicao=r["nome_exibicao"],
+                trocas_concluidas=r["trocas_concluidas"],
+                trocas_furadas=r["trocas_furadas"],
+                trocas_desistidas=r["trocas_desistidas"],
+                aceitou=r["aceitou"],
+                confirmou_conclusao=r["confirmou_conclusao"],
+                **({"contato_visivel": r["contato_visivel"]} if completo else {}),
+            )
         )
-        for r in linhas
-    ]
+    return por_match
 
 
 # O histórico: o que já terminou.
@@ -544,6 +578,10 @@ async def listar_historico(
         .all()
     )
 
+    ids = [linha["id"] for linha in linhas]
+    participantes = await _participantes_por_match(session, ids, completo=False)
+    itens = await _itens_por_match(session, ids)
+
     return [
         MatchNoHistorico(
             id=linha["id"],
@@ -554,29 +592,42 @@ async def listar_historico(
             prorrogacoes=linha["prorrogacoes"],
             desistiu_por=linha["desistiu_por"],
             desfecho_em=linha["desfecho_em"],
-            participantes=await _participantes(session, linha["id"], completo=False),
-            itens=await _itens(session, linha["id"]),
+            participantes=participantes.get(linha["id"], []),
+            itens=itens.get(linha["id"], []),
         )
         for linha in linhas
     ]
 
 
-async def _itens(session: AsyncSession, match_id: str) -> list[ItemMatch]:
+async def _itens_por_match(
+    session: AsyncSession, match_ids: list[str]
+) -> dict[str, list[ItemMatch]]:
+    """As cartas de vários matches de uma vez, agrupadas por match."""
+    if not match_ids:
+        return {}
+
+    lista, params = _lista_de_ids(match_ids, "m")
     linhas = (
         (
             await session.execute(
-                text("""
-            select card_id::text, de_user_id::text, para_user_id::text,
+                text(f"""
+            select match_id::text as match_id,
+                   card_id::text, de_user_id::text, para_user_id::text,
                    condicao::text, finish_id
-            from match_items where match_id = :m
+            from match_items where match_id in ({lista})
         """),
-                {"m": match_id},
+                params,
             )
         )
         .mappings()
         .all()
     )
-    return [ItemMatch(**dict(r)) for r in linhas]
+
+    por_match: dict[str, list[ItemMatch]] = {}
+    for r in linhas:
+        dados = dict(r)
+        por_match.setdefault(dados.pop("match_id"), []).append(ItemMatch(**dados))
+    return por_match
 
 
 async def responder(
@@ -885,6 +936,10 @@ async def obter_match(session: AsyncSession, user_id: UUID, match_id: UUID) -> M
     # contato depois do fato não protege ninguém e só atrapalha quem precisa
     # retomar o assunto.
     completo = linha["status"] in ("ACEITO", "CONCLUIDO")
+    ids = [linha["id"]]
+    participantes = await _participantes_por_match(session, ids, completo=completo)
+    itens = await _itens_por_match(session, ids)
+
     return MatchOut(
         id=linha["id"],
         tipo=linha["tipo"],
@@ -893,6 +948,6 @@ async def obter_match(session: AsyncSession, user_id: UUID, match_id: UUID) -> M
         expira_em=linha["expira_em"],
         prorrogacoes=linha["prorrogacoes"],
         desistiu_por=linha["desistiu_por"],
-        participantes=await _participantes(session, linha["id"], completo=completo),
-        itens=await _itens(session, linha["id"]),
+        participantes=participantes.get(linha["id"], []),
+        itens=itens.get(linha["id"], []),
     )

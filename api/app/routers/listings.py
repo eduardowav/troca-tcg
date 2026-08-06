@@ -1,4 +1,14 @@
-"""Rotas dos anúncios do usuário (/me/listings)."""
+"""Rotas dos anúncios do usuário (/me/listings).
+
+**Toda rota que escreve recalcula os matches de quem escreveu.** É aqui que o
+motor roda, não na abertura do feed: mexer numa lista é o único evento que pode
+criar, mudar ou desfazer uma troca possível, e é o momento em que a pessoa está
+esperando o app reagir ao que ela acabou de fazer. Ler o feed não muda nada.
+
+O custo fica na escrita, que é rara e já é uma ação deliberada, em vez de na
+leitura, que é constante. Como `_gravar_match` grava os dois participantes, o
+match aparece para o parceiro sem que ele precise fazer coisa alguma.
+"""
 
 from uuid import UUID
 
@@ -34,7 +44,9 @@ async def criar(
     user_id: UUID = Depends(usuario_atual),
     session: AsyncSession = Depends(get_session),
 ) -> AnuncioOut:
-    return await listings.criar_anuncio(session, user_id, item)
+    anuncio = await listings.criar_anuncio(session, user_id, item)
+    await matching.sincronizar_matches(session, user_id)
+    return anuncio
 
 
 @router.get("/procuradas", response_model=list[CartaProcurada])
@@ -58,6 +70,9 @@ async def criar_bulk(
     session: AsyncSession = Depends(get_session),
 ) -> dict[str, int]:
     n = await listings.criar_bulk(session, user_id, corpo.itens)
+    # Uma sincronização para o lote inteiro, não uma por carta: é o caminho do
+    # onboarding, onde chegam dezenas de cartas de uma vez.
+    await matching.sincronizar_matches(session, user_id)
     return {"cadastradas": n}
 
 
@@ -68,7 +83,11 @@ async def atualizar(
     user_id: UUID = Depends(usuario_atual),
     session: AsyncSession = Depends(get_session),
 ) -> AnuncioOut:
-    return await listings.atualizar_anuncio(session, user_id, anuncio_id, dados)
+    # Editar conta: mudar condição, acabamento ou prioridade muda com quem a
+    # carta casa e quanto vale o score.
+    anuncio = await listings.atualizar_anuncio(session, user_id, anuncio_id, dados)
+    await matching.sincronizar_matches(session, user_id)
+    return anuncio
 
 
 @router.delete("/{anuncio_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -77,4 +96,7 @@ async def remover(
     user_id: UUID = Depends(usuario_atual),
     session: AsyncSession = Depends(get_session),
 ) -> None:
+    # Remover conta ainda mais: a sugestão que dependia desta carta precisa
+    # sumir do feed do parceiro, e é o `sincronizar_matches` que a apaga.
     await listings.remover_anuncio(session, user_id, anuncio_id)
+    await matching.sincronizar_matches(session, user_id)
