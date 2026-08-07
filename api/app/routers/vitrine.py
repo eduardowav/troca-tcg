@@ -30,14 +30,33 @@ async def feed(
     # `set` é palavra reservada em Python; o nome público continua sendo o do
     # contrato (seção 22.7), o interno é o que o interpretador aceita.
     set_code: str | None = Query(default=None, alias="set", max_length=20),
+    serie: str | None = Query(default=None, max_length=20),
     raridade: str | None = Query(default=None, max_length=40),
+    # O `pattern` repete as chaves de `vitrine.ORDENS` para o erro vir como 422
+    # de validação, com o campo apontado, em vez de virar erro de regra lá
+    # dentro. O serviço continua conferindo — ele também é chamado sem passar
+    # pela rota, nos testes.
+    ordem: str = Query(
+        default=vitrine.ORDEM_PADRAO,
+        pattern="^(novidade|nome|preco_menor|preco_maior|donos)$",
+    ),
+    #: "Só o que fecha comigo": as cartas da vitrine que estão no meu Procuro.
+    so_procuro: bool = Query(default=False),
     page: int = Query(default=1, ge=1),
     user_id: UUID = Depends(usuario_atual),
     session: AsyncSession = Depends(get_session),
 ) -> list[CartaNaVitrine]:
-    """O que a base tem para oferecer, do mais novo para o mais velho."""
+    """O que a base tem para oferecer, na ordem que a pessoa pedir."""
     return await vitrine.feed(
-        session, user_id, q=q, set_code=set_code, raridade=raridade, pagina=page
+        session,
+        user_id,
+        q=q,
+        set_code=set_code,
+        serie=serie,
+        raridade=raridade,
+        ordem=ordem,
+        so_procuro=so_procuro,
+        pagina=page,
     )
 
 

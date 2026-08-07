@@ -28,9 +28,17 @@ class CartaNaVitrine(BaseModel):
 
     card_id: str
     donos: int
-    #: O anúncio mais recente desta carta. É o que ordena o feed: a vitrine
-    #: responde "o que apareceu de novo", não "o que é mais raro".
+    #: O anúncio mais recente desta carta. É o que ordena o feed por padrão: a
+    #: vitrine responde "o que apareceu de novo", não "o que é mais raro".
     mais_recente: datetime
+    #: A oferta mais barata desta carta, em dólar, no acabamento que cada dono
+    #: anunciou — e não o preço da impressão comum. Uma reverse não vale o que a
+    #: normal vale, e é o que está na prateleira que importa aqui.
+    #:
+    #: Nulo quando a TCGplayer não cota a carta. São 1.681 do catálogo, e a tela
+    #: diz "sem preço listado" em vez de fingir zero: a carta tem valor, o que
+    #: não existe é referência pública dela.
+    preco: float | None = None
 
 
 class OfertaNaVitrine(BaseModel):

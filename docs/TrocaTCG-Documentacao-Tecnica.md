@@ -2371,7 +2371,7 @@ fecha; o outro lado vê o `listing_id` virar null e a proposta cair.
 
 | Método | Rota | Descrição |
 |---|---|---|
-| `GET` | `/vitrine` | Feed de OFERTA da base. Query: `q`, `set`, `raridade`, `page`. Exclui o próprio usuário e quem está bloqueado |
+| `GET` | `/vitrine` | Feed de OFERTA da base. Query: `q`, `set`, `serie`, `raridade`, `ordem`, `so_procuro`, `page`. Exclui o próprio usuário e quem está bloqueado |
 | `GET` | `/vitrine/carta/{card_id}` | Quem tem esta carta, com acabamento e condição |
 | `GET` | `/vitrine/acervo/{username}` | O OFERTA de uma pessoa. Alcançado a partir de uma carta, nunca de uma busca por gente |
 | `GET` | `/me/propostas` | Query: `caixa=recebidas\|enviadas\|minha_vez\|historico` |
@@ -2434,6 +2434,24 @@ o mesmo Charizard são uma linha com `donos = 5`, e quem são as cinco é a
 pergunta seguinte (`/vitrine/carta/{card_id}`). Sem isso a carta mais comum da
 cidade ocuparia a primeira página inteira. A página tem 24 cartas, o mesmo
 tamanho da busca de catálogo — as duas telas são a mesma grade.
+
+**Ordens** (`ordem=`): `novidade` (padrão), `nome`, `preco_menor`, `preco_maior`
+e `donos`. A lista é fechada dos dois lados — o valor entra no `order by` por
+f-string, que é a única forma de ordenar por coluna variável, e o que impede
+injeção é a chave ser procurada no dicionário `ORDENS` antes.
+
+**Preço é o do acabamento anunciado**, não o da impressão comum: uma reverse não
+vale o que a normal vale, e o que está na prateleira é o anúncio. Cada linha
+resolve o próprio preço pela ordem de preferência de `finishes.tipos_tcgplayer`,
+com `coalesce(mercado, baixo)` — a mesma escolha que o cliente já faz em
+`formatarPreco`. Agregado por carta, vira duas pontas: `preco` é a oferta mais
+barata (o que interessa a quem ordena por menor) e a ordenação por maior usa a
+mais cara. Carta sem cotação vai para o fim nas duas, porque abrir a lista com o
+que não tem preço é abrir com o que não responde à pergunta.
+
+**`so_procuro=true`** recorta pelas cartas que estão no meu PROCURA. É a vitrine
+virando matching manual, e é o filtro mais útil para quem já declarou o que quer
+e ainda não deu match: o que aparece são as trocas que faltam só de um lado.
 
 As listas de vitrine e de acervo saem com `listing_id` junto, e não só com
 `card_id`: é ele que a proposta consome. Cartas saem por id, como no resto da

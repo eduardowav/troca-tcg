@@ -37,7 +37,7 @@ def test_padrao_de_busca_escapa_curinga_digitado():
 def test_busca_normaliza_no_banco_e_nao_em_python():
     """Duas definições de "sem acento" só divergem em produção: a do Postgres é a
     que gerou as colunas `busca_pt`/`busca_en`, então é ela que vale."""
-    assert "public.normaliza_busca(:padrao)" in vitrine._FEED.text
+    assert "public.normaliza_busca(:padrao)" in vitrine._FEED
     assert "unaccent" not in inspect.getsource(vitrine.padrao_de_busca)
 
 
@@ -53,34 +53,108 @@ def test_termo_de_uma_letra_nao_filtra():
 def test_feed_e_por_carta_e_nao_por_anuncio():
     """Cinco pessoas com o mesmo Charizard são uma linha, não cinco — senão a
     carta mais comum da cidade ocuparia a página inteira."""
-    sql = vitrine._FEED.text
+    sql = vitrine._FEED
     assert "count(distinct l.user_id) as donos" in sql
     assert "group by l.card_id" in sql
 
 
-def test_feed_ordena_por_novidade():
+def test_feed_ordena_por_novidade_quando_ninguem_pede_outra_coisa():
     """A vitrine responde "o que apareceu de novo", que é a pergunta que o
-    índice idx_listings_vitrine (criado_em desc) foi criado para atender."""
-    assert "order by mais_recente desc" in vitrine._FEED.text
+    índice idx_listings_vitrine (criado_em desc) foi criado para atender. As
+    outras ordens existem para quem já sabe o que procura — o padrão é para
+    quem não sabe."""
+    assert vitrine.ORDEM_PADRAO == "novidade"
+    assert vitrine.ORDENS["novidade"].startswith("mais_recente desc")
 
 
 def test_feed_exclui_voce_e_quem_esta_bloqueado():
-    sql = vitrine._FEED.text
+    sql = vitrine._FEED
     assert "l.user_id <> cast(:eu as uuid)" in sql
     assert "p.bloqueado = false" in sql
 
 
 def test_feed_so_traz_oferta_ativa():
-    assert "l.ativo and l.tipo = 'OFERTA'" in vitrine._FEED.text
+    assert "l.ativo and l.tipo = 'OFERTA'" in vitrine._FEED
 
 
 def test_filtros_opcionais_nao_viram_consultas_diferentes():
     """Um SQL só, com o ramo constante descartado pelo plano — e o cast explícito
     porque `$1 is null` sozinho não deixa o Postgres inferir o tipo."""
-    sql = vitrine._FEED.text
+    sql = vitrine._FEED
     assert "cast(:padrao as text) is null" in sql
     assert "cast(:set_code as text) is null" in sql
+    assert "cast(:serie as text) is null" in sql
     assert "cast(:raridade as text) is null" in sql
+
+
+# ------------------------------------------------------------------ ordens
+
+
+def test_ordem_e_lista_fechada():
+    """A ordem entra em SQL por f-string — é a única forma de ordenar por coluna
+    variável — e o que impede injeção é a chave ser procurada no dicionário
+    antes. Mesmo desenho das caixas de proposta."""
+    assert set(vitrine.ORDENS) == {
+        "novidade",
+        "nome",
+        "preco_menor",
+        "preco_maior",
+        "donos",
+    }
+    assert vitrine.ORDEM_PADRAO in vitrine.ORDENS
+    fonte = inspect.getsource(vitrine.feed)
+    assert "if ordem not in ORDENS" in fonte
+    assert "ORDENS[ordem]" in fonte
+
+
+def test_ordem_desconhecida_e_recusada_na_borda():
+    """O `pattern` da rota barra antes do serviço, com 422 e campo apontado."""
+    esquema = app.openapi()["paths"]["/v1/vitrine"]["get"]["parameters"]
+    padrao = next(p for p in esquema if p["name"] == "ordem")["schema"]["pattern"]
+    for chave in vitrine.ORDENS:
+        assert chave in padrao
+
+
+def test_preco_vem_do_acabamento_anunciado():
+    """Uma reverse não vale o que a normal vale: o preço que ordena a vitrine é
+    o do acabamento **daquele anúncio**, não o da impressão comum."""
+    sql = vitrine._FEED
+    assert "join finishes f on f.id = l.finish_id" in sql
+    assert "cp.tipo_tcgplayer = any(f.tipos_tcgplayer)" in sql
+    # A mesma preferência de balde que o cliente usa em `precoDoAcabamento`.
+    assert "array_position(f.tipos_tcgplayer, cp.tipo_tcgplayer)" in sql
+    # E a mesma escolha de campo que `formatarPreco` faz no cliente.
+    assert "coalesce(cp.mercado, cp.baixo)" in sql
+
+
+def test_preco_agrega_as_duas_pontas():
+    """`min` para quem ordena por menor preço, `max` para quem ordena por maior:
+    a carta com oferta de US$ 5 e de US$ 50 é barata numa lista e cara na outra.
+    Uma média esconderia as duas."""
+    assert "min(preco.valor) as preco" in vitrine._FEED
+    assert "max(preco.valor) as preco_maior" in vitrine._FEED
+    assert vitrine.ORDENS["preco_menor"].startswith("preco asc")
+    assert vitrine.ORDENS["preco_maior"].startswith("preco_maior desc")
+
+
+def test_carta_sem_cotacao_vai_para_o_fim():
+    """Carta sem preço existe (as promo que a TCGplayer não lista). Abrir a
+    lista com elas seria abrir com o que não responde à pergunta."""
+    assert "nulls last" in vitrine.ORDENS["preco_menor"]
+    assert "nulls last" in vitrine.ORDENS["preco_maior"]
+
+
+def test_ordem_por_nome_usa_a_coluna_normalizada():
+    """A–Z de quem lê em português: sem acento e sem caixa, como a busca."""
+    assert "min(coalesce(c.busca_pt, c.busca_en)) as nome_ordem" in vitrine._FEED
+    assert vitrine.ORDENS["nome"].startswith("nome_ordem asc")
+
+
+def test_so_procuro_recorta_pelo_meu_procuro():
+    """O filtro que transforma a vitrine em matching manual."""
+    sql = vitrine._FEED
+    assert "not cast(:so_procuro as boolean)" in sql
+    assert "meu.tipo = 'PROCURA' and meu.card_id = l.card_id" in sql
 
 
 # ------------------------------------------------------------------ acervo

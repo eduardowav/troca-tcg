@@ -64,13 +64,37 @@ def padrao_de_busca(termo: str) -> str:
 # veio, não da soma de todos. O `cast(... as text)` não é enfeite: `$1 is null`
 # sozinho não dá ao Postgres contexto para inferir o tipo do parâmetro, e o
 # asyncpg devolve "could not determine data type" em vez de rodar a consulta.
-_FEED = text("""
+#
+# O preço vem por anúncio, não por carta, e essa é a única forma honesta de
+# ordenar: uma reverse não vale o que a normal vale, e é o acabamento **do
+# anúncio** que está à venda na prateleira. O `lateral` resolve isso por linha —
+# para o acabamento daquele anúncio, a primeira linha de `card_prices` na ordem
+# de preferência que `finishes.tipos_tcgplayer` declara. `coalesce(mercado,
+# baixo)` é a mesma escolha que o cliente já faz em `formatarPreco`.
+#
+# Agregado por carta vira duas pontas: `preco` é a oferta mais barata daquela
+# carta (o que interessa a quem ordena por menor preço) e `preco_maior` é a mais
+# cara (o que interessa a quem ordena por maior). Uma média esconderia as duas.
+_FEED = """
     select l.card_id::text as card_id,
            count(distinct l.user_id) as donos,
-           max(l.criado_em) as mais_recente
+           max(l.criado_em) as mais_recente,
+           min(preco.valor) as preco,
+           max(preco.valor) as preco_maior,
+           min(coalesce(c.busca_pt, c.busca_en)) as nome_ordem
     from listings l
     join profiles p on p.id = l.user_id
     join cards c on c.id = l.card_id
+    join sets s on s.code = c.set_code
+    left join lateral (
+      select coalesce(cp.mercado, cp.baixo) as valor
+      from card_prices cp
+      join finishes f on f.id = l.finish_id
+      where cp.card_id = l.card_id
+        and cp.tipo_tcgplayer = any(f.tipos_tcgplayer)
+      order by array_position(f.tipos_tcgplayer, cp.tipo_tcgplayer)
+      limit 1
+    ) preco on true
     where l.ativo and l.tipo = 'OFERTA'
       and p.bloqueado = false
       and l.user_id <> cast(:eu as uuid)
@@ -80,11 +104,44 @@ _FEED = text("""
         or c.busca_en like '%' || public.normaliza_busca(:padrao) || '%'
       )
       and (cast(:set_code as text) is null or c.set_code = :set_code)
+      and (cast(:serie as text) is null or s.serie_code = :serie)
       and (cast(:raridade as text) is null or c.raridade = :raridade)
+      -- "Só o que fecha comigo": a carta está no meu Procuro. É o filtro que
+      -- transforma a vitrine em matching manual — e é o mais útil de todos para
+      -- quem já declarou o que quer mas ainda não deu match, porque significa
+      -- que falta só a outra metade.
+      and (
+        not cast(:so_procuro as boolean)
+        or exists (
+          select 1 from listings meu
+          where meu.user_id = cast(:eu as uuid) and meu.ativo
+            and meu.tipo = 'PROCURA' and meu.card_id = l.card_id
+        )
+      )
     group by l.card_id
-    order by mais_recente desc, card_id
+    order by {ordem}
     limit :limite offset :deslocamento
-""")
+"""
+
+#: As ordens que a tela oferece, e o `order by` de cada uma.
+#:
+#: Dicionário fechado, e não texto vindo da requisição: o valor entra em SQL por
+#: f-string — a única forma de ordenar por coluna variável — e o que impede
+#: injeção é a chave ser procurada aqui antes. O mesmo desenho das caixas de
+#: proposta.
+#:
+#: `nulls last` nas duas de preço porque carta sem cotação existe (as promo que a
+#: TCGplayer não lista): mandá-las para o fim é melhor do que abrir a lista com
+#: as que não têm preço nenhum, dos dois lados da ordenação.
+ORDENS: dict[str, str] = {
+    "novidade": "mais_recente desc, card_id",
+    "nome": "nome_ordem asc, card_id",
+    "preco_menor": "preco asc nulls last, card_id",
+    "preco_maior": "preco_maior desc nulls last, card_id",
+    "donos": "donos desc, mais_recente desc, card_id",
+}
+
+ORDEM_PADRAO = "novidade"
 
 
 async def feed(
@@ -93,10 +150,17 @@ async def feed(
     *,
     q: str | None = None,
     set_code: str | None = None,
+    serie: str | None = None,
     raridade: str | None = None,
+    ordem: str = ORDEM_PADRAO,
+    so_procuro: bool = False,
     pagina: int = 1,
 ) -> list[CartaNaVitrine]:
-    """O que a base tem para oferecer, das cartas mais novas para as mais velhas.
+    """O que a base tem para oferecer, na ordem que a pessoa pedir.
+
+    O padrão é novidade — a vitrine responde "o que apareceu de novo", e é para
+    isso que o índice `idx_listings_vitrine` existe. As outras ordens são de
+    quem já sabe o que procura: nome para achar, preço para comparar.
 
     O próprio usuário fica de fora: ninguém troca consigo mesmo, e ver as
     próprias cartas no feed da vitrine só faria a base parecer maior do que é —
@@ -105,18 +169,28 @@ async def feed(
     Perfil bloqueado também fica de fora, como no matcher (`_PARES`) e na
     demanda: quem foi bloqueado não é sugerido nem alcançado.
     """
+    if ordem not in ORDENS:
+        raise RegraNegocio(
+            "ORDEM_INVALIDA",
+            "Não conheço essa ordenação.",
+            campo="ordem",
+            status_code=422,
+        )
+
     # Termo de uma letra só casa com meio catálogo e não é busca, é ruído — a
     # mesma trava de `buscar_cartas` (`length(t) >= 2`).
     padrao = padrao_de_busca(q) if q else ""
     linhas = (
         (
             await session.execute(
-                _FEED,
+                text(_FEED.format(ordem=ORDENS[ordem])),
                 {
                     "eu": str(user_id),
                     "padrao": padrao if len(padrao) >= 2 else None,
                     "set_code": set_code or None,
+                    "serie": serie or None,
                     "raridade": raridade or None,
+                    "so_procuro": so_procuro,
                     "limite": TAMANHO_PAGINA,
                     "deslocamento": max(pagina - 1, 0) * TAMANHO_PAGINA,
                 },
@@ -125,7 +199,15 @@ async def feed(
         .mappings()
         .all()
     )
-    return [CartaNaVitrine(**dict(linha)) for linha in linhas]
+    return [
+        CartaNaVitrine(
+            card_id=linha["card_id"],
+            donos=linha["donos"],
+            mais_recente=linha["mais_recente"],
+            preco=linha["preco"],
+        )
+        for linha in linhas
+    ]
 
 
 # Quem tem esta carta. A ordem é de produto: quem já concluiu troca aparece
