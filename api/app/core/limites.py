@@ -14,6 +14,13 @@ class Limites:
     triangular: bool
     alerta_carta: bool
     historico_dias: int
+    #: Propostas abertas por pessoa nas últimas 24h (seção 22.5). Mora aqui, e
+    #: não numa constraint, porque constraint não distingue FREE de PRO. Não é o
+    #: antiabuso principal da vitrine — esse é o índice único "uma negociação
+    #: aberta por dupla" —, e sim o teto de quem dispararia proposta para a base
+    #: inteira. O número é generoso de propósito: uma pessoa que abre dez
+    #: negociações num dia está usando o app, não abusando dele.
+    propostas_por_dia: int
 
 
 PLANOS: dict[str, Limites] = {
@@ -23,6 +30,7 @@ PLANOS: dict[str, Limites] = {
         triangular=False,
         alerta_carta=False,
         historico_dias=30,
+        propostas_por_dia=10,
     ),
     "PRO": Limites(
         max_anuncios=10_000,
@@ -30,6 +38,7 @@ PLANOS: dict[str, Limites] = {
         triangular=True,
         alerta_carta=True,
         historico_dias=3650,
+        propostas_por_dia=100,
     ),
 }
 

@@ -408,9 +408,16 @@ async def mais_cartas_do_parceiro(
 ) -> list[CartaDoParceiro]:
     """O resto do acervo de quem cruzou com você nesta troca.
 
-    Recortado pelo match de propósito: o produto é um quadro de trocas, não um
-    diretório de pessoas. Ver o acervo de alguém é consequência de já ter dado
-    match com ela, não uma busca livre por usuário.
+    Recortado pelo match de propósito. A regra que isto protege é "não há
+    diretório de pessoas": não existe busca por usuário, lista de membros nem
+    mensagem — chega-se a alguém por uma carta, nunca por gente.
+
+    Este recorte já não é o único caminho para o acervo de alguém. A vitrine
+    (seção 22 da doc, `db/schema/23_propostas.sql`) abre o mesmo dado a partir de
+    uma carta, sem exigir match, porque uma proposta precisa nascer antes de
+    existir troca. Continua valendo que o acervo é público desde o 09_rls
+    ("le anuncios ativos") e que contato não é — este caminho aqui segue sendo o
+    de dentro de uma troca já formada.
 
     Não exige aceite. A pergunta "vale a viagem?" é anterior ao aceite — uma
     carta só pode não valer o encontro, três valem —, e esconder isso até o

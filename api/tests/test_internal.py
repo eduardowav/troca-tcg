@@ -97,7 +97,17 @@ def test_sync_catalog_tambem_e_protegido():
 def test_expire_devolve_quantas_venceram(sessao):
     resp = _expirar(settings.JOB_SECRET)
     assert resp.status_code == 200
-    assert resp.json() == {"expirados": 2}
+    # A dublê entrega as linhas uma vez só: as duas trocas vencidas vão para o
+    # `expirar_vencidos`, e a varredura de propostas que roda logo depois volta
+    # vazia. É o suficiente para provar que as duas acontecem no mesmo job.
+    assert resp.json() == {"expirados": 2, "propostas": 0}
+
+
+def test_expire_varre_proposta_vencida_tambem(sessao):
+    """72h de proposta vencem antes dos 7 dias do match, e proposta pendurada
+    trava a dupla inteira — só existe uma negociação aberta por par."""
+    _expirar(settings.JOB_SECRET)
+    assert any("propostas set status = 'EXPIRADA'" in sql for sql in sessao.sqls)
 
 
 def test_expire_registra_um_evento_por_troca(sessao):

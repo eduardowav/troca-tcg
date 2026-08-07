@@ -15,10 +15,15 @@ import MatchDetalhe from '@/routes/Match'
 import Matches from '@/routes/Matches'
 import MinhasCartas from '@/routes/MinhasCartas'
 import Onboarding from '@/routes/Onboarding'
+import Acervo from '@/routes/Acervo'
 import PerfilTela from '@/routes/Perfil'
 import PerfilPublicoTela from '@/routes/PerfilPublico'
 import Pronto from '@/routes/Pronto'
+import PropostaDetalhe from '@/routes/Proposta'
+import Propostas from '@/routes/Propostas'
 import Termos from '@/routes/Termos'
+import Vitrine from '@/routes/Vitrine'
+import VitrineCarta from '@/routes/VitrineCarta'
 
 export default function App() {
   return (
@@ -40,6 +45,14 @@ export default function App() {
             <Route path="/carta/:id" element={<CartaDetalhe />} />
             <Route path="/matches" element={<Matches />} />
             <Route path="/matches/:id" element={<MatchDetalhe />} />
+            {/* A vitrine e as propostas: o caminho de quem ainda não tem match.
+                Cada passo parte de algo concreto — carta, depois quem a tem,
+                depois o acervo dessa pessoa. Não há rota que liste gente. */}
+            <Route path="/vitrine" element={<Vitrine />} />
+            <Route path="/vitrine/carta/:cardId" element={<VitrineCarta />} />
+            <Route path="/vitrine/acervo/:username" element={<Acervo />} />
+            <Route path="/propostas" element={<Propostas />} />
+            <Route path="/propostas/:id" element={<PropostaDetalhe />} />
             {/* Existem no Figma e ainda não no produto. A tela é honesta
                 sobre isso e diz por onde a coisa acontece hoje. */}
             <Route path="/mensagens" element={<Mensagens />} />

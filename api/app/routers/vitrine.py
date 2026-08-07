@@ -1,0 +1,66 @@
+"""Rotas da vitrine (/vitrine) — o acervo da base, alcançado por carta.
+
+Todas exigem login, pelo mesmo motivo de `/u/{username}` (routers/users): a
+policy do banco responde "isto pode ser lido", a rota responde "por quem". Aberta
+ao público, a vitrine entregaria o acervo inteiro da comunidade a um raspador
+que só precisa iterar páginas. Quem está logado deixa rastro, e para quem tem
+conta o custo é zero.
+
+O `user_id` aqui é filtro, não só porteiro: o próprio usuário sai do feed e da
+lista de quem tem a carta, e o `reciproco` do acervo é calculado contra o
+Procuro de quem está olhando.
+"""
+
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, Query
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.auth import usuario_atual
+from app.db.session import get_session
+from app.schemas.vitrine import CartaDoAcervo, CartaNaVitrine, OfertaNaVitrine
+from app.services import vitrine
+
+router = APIRouter(prefix="/vitrine", tags=["vitrine"])
+
+
+@router.get("", response_model=list[CartaNaVitrine])
+async def feed(
+    q: str | None = Query(default=None, max_length=60),
+    # `set` é palavra reservada em Python; o nome público continua sendo o do
+    # contrato (seção 22.7), o interno é o que o interpretador aceita.
+    set_code: str | None = Query(default=None, alias="set", max_length=20),
+    raridade: str | None = Query(default=None, max_length=40),
+    page: int = Query(default=1, ge=1),
+    user_id: UUID = Depends(usuario_atual),
+    session: AsyncSession = Depends(get_session),
+) -> list[CartaNaVitrine]:
+    """O que a base tem para oferecer, do mais novo para o mais velho."""
+    return await vitrine.feed(
+        session, user_id, q=q, set_code=set_code, raridade=raridade, pagina=page
+    )
+
+
+@router.get("/carta/{card_id}", response_model=list[OfertaNaVitrine])
+async def quem_tem(
+    card_id: UUID,
+    user_id: UUID = Depends(usuario_atual),
+    session: AsyncSession = Depends(get_session),
+) -> list[OfertaNaVitrine]:
+    """Quem tem esta carta, em que condição e com que acabamento."""
+    return await vitrine.quem_tem_a_carta(session, user_id, card_id)
+
+
+@router.get("/acervo/{username}", response_model=list[CartaDoAcervo])
+async def acervo(
+    username: str,
+    user_id: UUID = Depends(usuario_atual),
+    session: AsyncSession = Depends(get_session),
+) -> list[CartaDoAcervo]:
+    """O OFERTA de uma pessoa — o passo que transforma uma carta numa proposta.
+
+    Chega-se aqui a partir de uma carta, nunca de uma busca por gente: continua
+    não existindo diretório de pessoas (seção 22.2). É também a lista que a
+    contraproposta lê para escolher a substituição.
+    """
+    return await vitrine.acervo_de(session, user_id, username)

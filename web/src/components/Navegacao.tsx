@@ -4,10 +4,12 @@ import {
   IconeCartasBrutal,
   IconeMensagem,
   IconePessoa,
-  IconeRaio,
   IconeSino,
   IconeTrocas,
+  IconeVitrine,
+  MarcaTrocaTCG,
 } from '@/components/brutal/Pecas'
+import { useMinhaVez } from '@/hooks/usePropostas'
 import { cn } from '@/lib/cn'
 
 /**
@@ -24,6 +26,11 @@ import { cn } from '@/lib/cn'
 // outros — caixa de 22, traço de 2, ponta redonda.
 const ABAS = [
   { para: '/matches', rotulo: 'Trocas', Icone: IconeTrocas },
+  // Ao lado de Trocas, e não escondida dentro dela (decisão do Eduardo,
+  // 2026-08-07): a vitrine é porta de entrada de quem tem o feed vazio, e
+  // enterrá-la numa tela vazia esconderia justamente de quem mais precisa.
+  // Leva ao feed; as propostas ficam na metade irmã, com o seletor de cima.
+  { para: '/vitrine', rotulo: 'Vitrine', Icone: IconeVitrine, badge: true },
   { para: '/minhas-cartas', rotulo: 'Minhas cartas', Icone: IconeCartasBrutal },
   // Mensagens ainda não existem: a aba leva para uma tela que diz isso e
   // aponta o caminho de hoje (WhatsApp depois do aceite). Está aqui, e não
@@ -70,10 +77,12 @@ export function LayoutApp() {
 function MarcaApp() {
   return (
     <header className="marca-app mx-auto w-full max-w-[100rem] items-center justify-between px-6 pt-[calc(1rem+env(safe-area-inset-top))] 2xl:max-w-[120rem]">
+      {/* O lockup: marca à esquerda, palavra à direita, alinhadas pela altura
+          do x. A marca já tem borda e cor próprias — envolvê-la num quadrado,
+          como o raio antigo exigia, criaria uma segunda moldura em volta de uma
+          coisa que já é moldurada. */}
       <span className="flex items-center gap-2">
-        <span className="grid size-7 shrink-0 place-items-center rounded-[var(--radius-etiqueta)] border-2 border-tinta bg-azul text-azul-tinta">
-          <IconeRaio className="size-4" />
-        </span>
+        <MarcaTrocaTCG className="h-7 w-auto shrink-0" />
         <span className="font-titulo text-[24px] leading-none font-black text-tinta">
           TrocaTCG
         </span>
@@ -121,20 +130,34 @@ function SinoApp({ temAviso = false }: { temAviso?: boolean }) {
 }
 
 function Navegacao() {
+  // O que espera resposta minha. Fica na aba da vitrine porque é lá que as
+  // propostas moram — e é a única contagem do app que representa uma tarefa da
+  // pessoa, não uma novidade genérica.
+  const minhaVez = useMinhaVez()
+
   return (
     <nav
       aria-label="Navegação principal"
       className="nav-app fixed inset-x-0 bottom-0 z-40 border-t border-edge bg-surface/95 backdrop-blur-sm"
     >
       <ul className="mx-auto flex w-full max-w-xl pb-[env(safe-area-inset-bottom)]">
-        {ABAS.map(({ para, rotulo, Icone }) => (
-          <li key={para} className="flex-1">
+        {ABAS.map(({ para, rotulo, Icone, badge }) => (
+          <li key={para} className="min-w-0 flex-1">
             <NavLink
               to={para}
+              // A contagem entra no rótulo acessível: quem navega por leitor de
+              // tela não vê o número desenhado sobre o ícone.
+              aria-label={
+                badge && minhaVez
+                  ? `${rotulo} — ${minhaVez} esperando resposta sua`
+                  : undefined
+              }
               className={({ isActive }) =>
                 cn(
-                  'flex h-16 flex-col items-center justify-center gap-1',
-                  'text-[11px] transition-colors',
+                  'flex h-16 flex-col items-center justify-center gap-1 px-1',
+                  // 10px e não 11: com cinco abas, "Minhas cartas" a 11px não
+                  // cabe num celular de 375 e quebra a linha da barra inteira.
+                  'text-[10px] transition-colors',
                   isActive ? 'text-paper' : 'text-muted hover:text-paper',
                 )
               }
@@ -149,8 +172,16 @@ function Navegacao() {
                         className="absolute -top-2.5 left-1/2 h-0.5 w-6 -translate-x-1/2 rounded-full bg-volt"
                       />
                     )}
+                    {badge && minhaVez > 0 && (
+                      <span
+                        aria-hidden
+                        className="absolute -top-1.5 -right-2.5 grid min-w-4 place-items-center rounded-full border-2 border-tinta bg-azul px-1 font-dado text-[9px] font-bold text-azul-tinta"
+                      >
+                        {minhaVez}
+                      </span>
+                    )}
                   </span>
-                  {rotulo}
+                  <span className="w-full truncate text-center">{rotulo}</span>
                 </>
               )}
             </NavLink>

@@ -4,6 +4,7 @@ import {
   IconeCartasBrutal,
   IconeRaio,
   IconeTrocas,
+  MarcaTrocaTCG,
 } from '@/components/brutal/Pecas'
 import { useAuth } from '@/stores/auth'
 
@@ -49,9 +50,7 @@ export default function Home() {
     <div className="mx-auto w-full max-w-xl px-6 pb-20">
       <header className="pt-10">
         <span className="inline-flex items-center gap-2">
-          <span className="grid size-7 shrink-0 place-items-center rounded-[var(--radius-etiqueta)] border-2 border-tinta bg-azul text-azul-tinta">
-            <IconeRaio className="size-4" />
-          </span>
+          <MarcaTrocaTCG className="h-7 w-auto shrink-0" />
           <span className="font-titulo text-[24px] leading-none font-black text-tinta">
             TrocaTCG
           </span>

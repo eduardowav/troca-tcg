@@ -72,6 +72,34 @@ export function IconeRaio({ className }: { className?: string }) {
   )
 }
 
+/**
+ * A marca do app: três cartas em leque com as setas da troca na da frente.
+ *
+ * Substitui o raio dentro do quadrado azul, que era herança do playmat e não
+ * dizia nada sobre o produto — raio é velocidade, e o app não é sobre isso. As
+ * cartas empilhadas e as duas setas dizem as duas coisas que ele é: cartas, e
+ * cartas que trocam de mão.
+ *
+ * É uma `<img>` de `public/marca.svg`, e não um SVG copiado para cá. Marca
+ * duplicada é marca que sai de sintonia: aquele arquivo é a fonte de que saem o
+ * favicon e os ícones do PWA (`scripts/gerar-icones.mjs`), então trocar a marca
+ * vira substituir um arquivo, não caçar cópias pelo projeto.
+ *
+ * A versão sem fundo, e não o `favicon.svg`: o favicon traz a marca sobre um
+ * quadrado de papel porque precisa se sustentar sozinho numa aba ou numa gaveta
+ * de apps. Aqui ela já está sobre o papel do app, e o quadrado seria uma
+ * moldura em volta de nada.
+ *
+ * `alt` vazio e `aria-hidden` porque o letreiro "TrocaTCG" vem ao lado em texto:
+ * anunciar as duas coisas faria o leitor de tela dizer o nome do app duas vezes.
+ *
+ * A arte é mais larga que alta (577×458). Quem usa passa **altura** e deixa a
+ * largura em `auto` — `size-*`, que fixa as duas, achataria o leque.
+ */
+export function MarcaTrocaTCG({ className }: { className?: string }) {
+  return <img src="/marca.svg" alt="" aria-hidden className={className} />
+}
+
 export function IconeSetaDireita({ className }: { className?: string }) {
   return (
     <svg
@@ -109,7 +137,6 @@ export function IconeTrocar({ className }: { className?: string }) {
     </svg>
   )
 }
-
 
 /**
  * Engrenagem — o botão de configurações do frame de perfil.
@@ -278,6 +305,46 @@ export function IconeCartasBrutal({ className }: { className?: string }) {
         rx="1.6"
         stroke="currentColor"
         strokeWidth="2"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
+/**
+ * Vitrine — o toldo da loja sobre o balcão.
+ *
+ * Também não veio do arquivo: a vitrine é tela nova e o Figma não a desenha.
+ * Está na mesma língua dos outros — caixa de 22, traço de 2, ponta redonda —, e
+ * o conceito é o do balcão, que é literalmente o fluxo que a tela reproduz:
+ * olhar o que a loja tem exposto e apontar.
+ *
+ * Toldo e corpo em duas peças, sem cruzamento de traço: a 22px um X de linhas
+ * grossas vira borrão.
+ */
+export function IconeVitrine({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 22 22"
+      fill="none"
+      aria-hidden
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      {/* O toldo, com a ondulação das três faixas. */}
+      <path
+        d="M3 8.2 4.3 4.2C4.5 3.5 5.1 3 5.8 3h10.4c.7 0 1.3.5 1.5 1.2L19 8.2M3 8.2h16M3 8.2c0 1.2 1 2.2 2.2 2.2S7.4 9.4 7.4 8.2m0 0c0 1.2 1 2.2 2.2 2.2s2.2-1 2.2-2.2m0 0c0 1.2 1 2.2 2.2 2.2s2.2-1 2.2-2.2"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      {/* O corpo da loja, aberto embaixo do toldo. */}
+      <path
+        d="M4.6 10.8V19h12.8v-8.2"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
         strokeLinejoin="round"
       />
     </svg>
@@ -627,6 +694,207 @@ function LadoDaTroca({
   // Cada carta abre a própria página. Sem carta carregada não há para onde ir,
   // e aí a moldura continua sendo uma caixa — link para lugar nenhum é pior do
   // que ausência de link.
+  return carta ? (
+    <Link to={`/carta/${carta.id}`} className={classe}>
+      {conteudo}
+    </Link>
+  ) : (
+    <div className={classe}>{conteudo}</div>
+  )
+}
+
+/* ------------------------------------------------------------- par de lotes */
+
+/** Uma carta dentro de um lado da proposta. */
+export interface CartaDoLote {
+  chave: string
+  carta: Carta | undefined
+  condicao?: string
+  acabamento?: Acabamento
+  /** O anúncio ainda está no ar. Falso pinta a carta de caducada. */
+  disponivel?: boolean
+}
+
+/**
+ * O par de cartas quando cada lado pode ter mais de uma — a proposta.
+ *
+ * Mesma peça do feed de trocas, esticada: duas colunas frente a frente, a seta
+ * no vão entre elas, azul-claro do lado de quem olha e papel do lado de lá. A
+ * `ParDeCartas` não serve aqui porque ela é 1×1 por desenho (uma troca sugerida
+ * é sempre uma carta por uma), e proposta é multi-item desde o schema: se B quer
+ * duas cartas de A, elas vão na mesma proposta.
+ *
+ * Empilhar as cartas dentro de cada coluna, em vez de fazer uma grade solta com
+ * rótulos de texto, é o que mantém a leitura da troca de pé: o eixo é
+ * horizontal — o que sai da minha mão de um lado, o que entra do outro — e é a
+ * seta no meio que diz isso sem nenhuma palavra.
+ */
+export function ParDeLotes({
+  dou,
+  recebo,
+  rotulos = { dou: 'Sua', recebo: 'Dela' },
+  tamanho = 'compacto',
+  limite,
+}: {
+  dou: CartaDoLote[]
+  recebo: CartaDoLote[]
+  rotulos?: { dou: string; recebo: string }
+  tamanho?: 'compacto' | 'grande'
+  /** Quantas cartas cada coluna mostra antes de resumir o resto em "+N". */
+  limite?: number
+}) {
+  const grande = tamanho === 'grande'
+
+  return (
+    <div className="flex items-start gap-2">
+      <LadoDoLote
+        itens={dou}
+        etiqueta={rotulos.dou}
+        lado="meu"
+        grande={grande}
+        limite={limite}
+      />
+      {/* A seta desce até a altura da primeira arte — o eixo da troca está nas
+          cartas, não na etiqueta que as nomeia. */}
+      <span
+        className={cn(
+          'grid size-8 shrink-0 place-items-center rounded-[16px] border-2 border-tinta bg-cartela shadow-[var(--shadow-duro-xs)]',
+          grande ? 'mt-20' : 'mt-12',
+        )}
+      >
+        <IconeSetaDireita className="size-4 text-tinta" />
+      </span>
+      <LadoDoLote
+        itens={recebo}
+        etiqueta={rotulos.recebo}
+        lado="dele"
+        grande={grande}
+        limite={limite}
+      />
+    </div>
+  )
+}
+
+function LadoDoLote({
+  itens,
+  etiqueta,
+  lado,
+  grande,
+  limite,
+}: {
+  itens: CartaDoLote[]
+  etiqueta: string
+  lado: 'meu' | 'dele'
+  grande: boolean
+  limite?: number
+}) {
+  const visiveis = limite ? itens.slice(0, limite) : itens
+  const restantes = itens.length - visiveis.length
+
+  return (
+    <div
+      className={cn(
+        'flex min-w-0 flex-1 flex-col gap-2 rounded-[var(--radius-controle)] border-2 border-tinta p-2',
+        lado === 'meu' ? 'bg-meu' : 'bg-papel',
+        !grande && 'max-w-40',
+      )}
+    >
+      <span
+        className={cn(
+          'self-start rounded-[var(--radius-etiqueta)] px-2 py-0.5 font-dado text-[10px] font-bold uppercase',
+          lado === 'meu' ? 'bg-azul text-azul-tinta' : 'bg-tinta text-cartela',
+        )}
+      >
+        {etiqueta}
+      </span>
+
+      {visiveis.length === 0 && (
+        <span className="py-4 text-center font-dado text-[11px] uppercase text-apagado">
+          nada
+        </span>
+      )}
+
+      {visiveis.map((item) => (
+        <CartaDoLoteNaTela key={item.chave} item={item} grande={grande} />
+      ))}
+
+      {restantes > 0 && (
+        <span className="font-dado text-[11px] font-bold text-apagado">
+          + {restantes} carta{restantes > 1 ? 's' : ''}
+        </span>
+      )}
+    </div>
+  )
+}
+
+function CartaDoLoteNaTela({
+  item,
+  grande,
+}: {
+  item: CartaDoLote
+  grande: boolean
+}) {
+  const { carta, acabamento, condicao } = item
+  // `disponivel` ausente quer dizer "não se pergunta" — é o caso da lista, onde
+  // a carta não está em negociação. Só o `false` explícito pinta a caducada.
+  const foraDoAr = item.disponivel === false
+
+  const conteudo = (
+    <>
+      {carta ? (
+        <CartaThumb
+          carta={carta}
+          className={cn(
+            'rounded-[var(--radius-imagem)] border-2 border-tinta',
+            foraDoAr && 'opacity-50',
+          )}
+        />
+      ) : (
+        <div className="aspect-[2.5/3.5] animate-pulse rounded-[var(--radius-imagem)] border-2 border-tinta bg-cartela" />
+      )}
+
+      <span className="flex min-w-0 flex-col gap-0.5">
+        <span
+          className={cn(
+            'line-clamp-2 font-titulo leading-tight font-bold text-tinta',
+            grande ? 'text-[16px] lg:text-[18px]' : 'text-[13px]',
+          )}
+        >
+          {carta?.nome_pt ?? carta?.nome_en ?? '—'}
+        </span>
+        <span className="truncate font-dado text-[11px] font-medium text-apagado">
+          {carta?.set_sigla ?? carta?.set_nome ?? carta?.set_code}
+          {carta?.numero && ` • ${carta.numero}`}
+        </span>
+
+        {/* Condição e acabamento andam juntos e só aparecem no grande: são o que
+            se confere antes de topar a troca — é a reverse ou a normal?, está
+            NM ou jogada? —, e numa linha de lista disputariam com a decisão de
+            abrir. Normal fica de fora: é a impressão da maioria e repeti-la
+            gastaria destaque com o que não distingue. */}
+        {grande && (condicao || acabamento) && (
+          <span className="mt-0.5 font-dado text-[11px] uppercase text-apagado">
+            {condicao}
+            {acabamento &&
+              acabamento.id !== NORMAL &&
+              ` · ${acabamento.nome_curto}`}
+          </span>
+        )}
+
+        {foraDoAr && (
+          <span className="mt-0.5 font-dado text-[10px] font-bold uppercase text-alerta">
+            fora do ar
+          </span>
+        )}
+      </span>
+    </>
+  )
+
+  const classe = cn(
+    'flex min-w-0 flex-col gap-1.5',
+    carta && 'transition-opacity hover:opacity-90',
+  )
+
   return carta ? (
     <Link to={`/carta/${carta.id}`} className={classe}>
       {conteudo}

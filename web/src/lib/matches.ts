@@ -121,7 +121,13 @@ export type MatchStatus =
 
 export interface Match {
   id: string
-  tipo: 'DIRETO' | 'MULTIPLO' | 'TRIANGULAR'
+  /**
+   * 'PROPOSTA' é a troca que nasceu de alguém oferecer na vitrine, não do
+   * motor de matching — ver db/schema/23. A tela precisa das duas vozes: uma é
+   * "vocês dois têm o que o outro procura", a outra é "você ofereceu e a pessoa
+   * topou".
+   */
+  tipo: 'DIRETO' | 'MULTIPLO' | 'TRIANGULAR' | 'PROPOSTA'
   status: MatchStatus
   score: number
   expira_em: string

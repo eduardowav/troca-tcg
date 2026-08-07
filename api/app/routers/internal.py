@@ -14,7 +14,7 @@ from app.core.config import settings
 from app.db.session import get_session
 from app.jobs.catalog.sync import sincronizar_sets
 from app.jobs.catalog.tcgdex import TCGdex
-from app.services import matching
+from app.services import matching, propostas
 
 router = APIRouter(prefix="/internal/jobs", tags=["internal"])
 
@@ -43,18 +43,25 @@ async def sync_catalog(
 
 @router.post("/expire", dependencies=[Depends(_verifica_secret)])
 async def expire(session: AsyncSession = Depends(get_session)) -> dict[str, int]:
-    """Fecha as trocas que passaram do prazo. Devolve quantas venceram.
+    """Fecha o que passou do prazo — trocas e propostas. Devolve quantas venceram.
 
-    O `sincronizar_matches` já varre os vencidos, mas só quando alguém abre o
-    app — e o match que mais precisa vencer é justamente o das duas pessoas que
-    sumiram. Sem esta passada diária, ele ficaria PENDENTE para sempre, ocupando
-    o par (só existe um match por dupla) e mantendo fora da métrica-mãe uma
-    troca que na prática não aconteceu.
+    O `sincronizar_matches` já varre os matches vencidos, mas só quando alguém
+    abre o app — e o match que mais precisa vencer é justamente o das duas
+    pessoas que sumiram. Sem esta passada diária, ele ficaria PENDENTE para
+    sempre, ocupando o par (só existe um match por dupla) e mantendo fora da
+    métrica-mãe uma troca que na prática não aconteceu.
 
-    O commit é daqui de propósito: `expirar_vencidos` roda no meio da transação
-    do sincronizar, que fecha depois de gravar os matches. Quem chama sozinho
+    Proposta vencida é ainda mais urgente que match vencido: são 72h, não sete
+    dias, e enquanto ela está ABERTA a dupla inteira fica travada — o índice
+    único deixa uma negociação por par de pessoas. As duas varreduras dividem a
+    mesma transação porque as duas são o mesmo trabalho: liberar o que ficou
+    pendurado.
+
+    O commit é daqui de propósito: as duas funções rodam no meio de transações
+    alheias (a de `sincronizar_matches`, no caso dos matches). Quem chama sozinho
     fecha sozinho — sem isto o job rodaria todo dia sem expirar nada.
     """
     expirados = await matching.expirar_vencidos(session)
+    propostas_expiradas = await propostas.expirar_propostas(session)
     await session.commit()
-    return {"expirados": expirados}
+    return {"expirados": expirados, "propostas": propostas_expiradas}

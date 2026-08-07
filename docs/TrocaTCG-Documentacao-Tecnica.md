@@ -1,10 +1,12 @@
 # TrocaTCG — Documentação Técnica
 
-**Versão:** 2.2
-**Data:** julho de 2026
+**Versão:** 2.3
+**Data:** agosto de 2026
 **Autor:** Eduardo
 **Status:** Especificação para desenvolvimento
 
+> **Mudanças da v2.2 → v2.3:** adicionada a [seção 22 — Vitrine e propostas](#22-vitrine-e-propostas). O motor de matching só funciona quando os dois lados declararam PROCURA, e boa parte das pessoas não sabe o que quer — sabe reconhecer quando vê. A vitrine é o caminho que funciona com um lado só declarado, que é o mínimo que existe no dia do lançamento. A seção fica no fim, e não entre a 9 e a 10, para não renumerar as seções 10–21, citadas por comentário de código e por commit.
+>
 > **Mudanças da v2.1 → v2.2:** adicionada a [seção 8 — Acabamentos](#8-acabamentos-finishes). O enum de variantes foi substituído por tabela de referência: sets recentes introduzem padrões inéditos a cada lançamento (Poké Ball, Master Ball, Quick Ball, Love Ball, Friend Ball, Dusk Ball, Team Rocket, vidro estilhaçado), e nenhuma API gratuita fornece essa taxonomia.
 >
 > **Mudanças da v2.0 → v2.1 (revisão de premissas externas, julho/2026):**
@@ -41,6 +43,7 @@
 19. [Testes e CI/CD](#19-testes-e-cicd)
 20. [Observabilidade e métricas](#20-observabilidade-e-métricas)
 21. [Riscos e mitigações](#21-riscos-e-mitigações)
+22. [Vitrine e propostas](#22-vitrine-e-propostas) — a troca que o matcher não enxerga
 
 ---
 
@@ -1173,6 +1176,14 @@ Deixe esses pesos em variáveis de configuração (`app/core/config.py`), não h
 | Triangular | Cron diário às 06:00 | Job Python |
 | Notificação "procuram sua carta" | Novo anúncio de PROCURA | Job leve, a cada 15 min |
 
+### 9.5 O que este motor não alcança
+
+Tudo acima depende de os **dois** lados terem declarado PROCURA. Quem só
+cadastrou o OFERTA — porque não sabe o que quer, o que é comum — fica invisível
+para o matcher, por mais cartas que tenha. Esse caso é atendido pela vitrine e
+pelas propostas, na [seção 22](#22-vitrine-e-propostas), que trabalha com um lado
+só declarado e desemboca no mesmo `matches` deste motor.
+
 ---
 
 ## 10. API — contratos
@@ -1272,6 +1283,10 @@ O campo `matches_imediatos` é deliberado: dá feedback instantâneo de valor lo
 ```
 
 `contatos_liberados` vira `true` só quando **todos** aceitam **e** o usuário aceitou o disclaimer via `/reveal-contact`. É a regra de privacidade e de isenção combinadas.
+
+As rotas de vitrine e proposta — `/vitrine` e `/me/propostas` — estão na
+[seção 22.7](#227-api--contratos). Elas param no aceite: a partir dali a troca é
+um `matches` comum e responde às rotas desta tabela.
 
 ### Perfil, denúncias e notificações
 
@@ -2197,6 +2212,258 @@ Log estruturado em JSON (`structlog`). Sempre inclua `user_id` e `request_id`. N
 É o **início a frio**. Um app de matching com 5 usuários não gera nenhum match, e quem entra e não vê nada não volta.
 
 Trate o lançamento como evento, não como deploy. Escolha um dia de torneio na loja, cadastre 40 pessoas presencialmente com ajuda, rode o matching na hora e mostre os primeiros resultados na tela para o grupo. Esse momento é o que faz o produto existir — e, para o portfólio, "20 trocas concluídas por usuários reais" vale mais numa entrevista que qualquer stack no currículo.
+
+---
+
+## 22. Vitrine e propostas
+
+> Seção nova na v2.3. Ela fica no fim, e não entre a 9 e a 10 onde o assunto
+> pediria, para não renumerar as seções 10–21 — a numeração é citada por
+> comentário de código, por commit e pelo próprio texto em dezenas de lugares, e
+> o custo de quebrar essas referências é maior que o de ler fora de ordem. Quem
+> for da seção 9 (matching) para cá está seguindo o caminho certo.
+
+### 22.1 O problema que o matcher não resolve
+
+O motor da seção 9 casa OFERTA com PROCURA. Isso exige que **os dois lados**
+tenham declarado o que querem, e é exatamente aí que ele para: boa parte das
+pessoas não sabe o que quer — sabe reconhecer quando vê. Quem nunca preencheu o
+PROCURA não aparece no feed de ninguém e não recebe feed nenhum, por mais cartas
+que tenha cadastrado no OFERTA.
+
+Isso soma-se ao risco número um da seção 21. No início, sem densidade, quase
+todo mundo está nessa situação: o matcher é excelente e chega tarde. A vitrine é
+o caminho que funciona com **um** lado declarado, que é o mínimo que existe no
+dia do lançamento.
+
+O fluxo é o do balcão da loja, e nada além disso: B olha as cartas de A, aponta
+uma, oferece algo em troca. A aceita, recusa, ou aponta outra coisa que B tem.
+
+### 22.2 A reversão de uma decisão anterior
+
+`services/matching.py`, em `mais_cartas_do_parceiro`, dizia que ver o acervo de
+alguém é consequência de já ter dado match "porque o produto é um quadro de
+trocas, não um diretório de pessoas". A vitrine derruba a segunda metade dessa
+frase e mantém a primeira.
+
+O que continua valendo: **não há diretório de pessoas.** Não existe busca por
+usuário, não existe lista de membros, não existe mensagem. O que abre é o
+acervo, alcançado a partir de uma carta — e anúncio ativo já era público por
+policy desde `09_rls.sql` (`"le anuncios ativos"`). A vitrine não expõe dado
+novo; expõe de outro ângulo o que já era legível.
+
+O que muda de verdade é o contato, e ele **não** muda: continua saindo só depois
+do aceite mútuo, agora dentro do match que a proposta gerou.
+
+### 22.3 Modelo de dados
+
+DDL completo e comentado em `db/schema/23_propostas.sql`. O resumo:
+
+```
+propostas
+  id, autor_id, destinatario_id
+  status     ABERTA | ACEITA | RECUSADA | RETIRADA | EXPIRADA
+  rodada     1..4
+  vez_de     de quem é a vez de responder
+  match_id   preenchido só no aceite
+  criada_em, respondida_em, expira_em
+
+proposta_itens
+  proposta_id, rodada
+  listing_id (anulável — vínculo vivo)
+  card_id, condicao, finish_id  (denormalizados — histórico)
+  de_user_id, para_user_id, quantidade
+```
+
+Três decisões que valem o registro:
+
+**Tabela nova em vez de campos em `matches`.** `matches.hash_grupo` é `unique` e
+vale por par de pessoas (`DIRETO:{a}:{b}`, ver `_hash_grupo`) — existe para
+deduplicar sugestão automática, que é uma por dupla. Proposta é humana: a mesma
+dupla negocia hoje e de novo semana que vem, legitimamente. Além disso
+`match_status` não tem estado de negociação e `match_items` não tem rodada.
+
+**Não existe status `CONTRAPROPOSTA`.** Contrapropor não muda a situação da
+proposta — ela segue aberta —, muda de quem é a vez. Virar status geraria a
+pergunta impossível "aberta ou contraproposta?" toda vez que o app listasse o
+que está pendente. Vez e rodada são colunas; status é desfecho.
+
+**Item guarda `listing_id` e a cópia da carta.** Mesmo padrão de `match_items`,
+pelo mesmo motivo: o anúncio é volátil e um histórico que depende dele se
+reescreve sozinho. O `listing_id` anulável é o vínculo vivo — quando vira null,
+a carta saiu do ar e a proposta caducou.
+
+### 22.4 Máquina de estados
+
+```
+        B abre (rodada 1, vez de A)
+                  │
+                  ▼
+             ┌─ ABERTA ─┐
+   contrapõe │          │ aceita ──► ACEITA ──► vira match (seção 13)
+  (rodada+1, │          │ recusa ──► RECUSADA
+  vez troca) │          │ retira ──► RETIRADA   (quem fez a última jogada)
+             └──────────┘ 72h ─────► EXPIRADA
+```
+
+**Aceitar, recusar e contrapropor são de quem tem a vez; retirar é de quem
+*não* tem.** As três primeiras são respostas — só responde quem está devendo
+resposta. Retirar é o oposto: é quem acabou de jogar puxando a jogada de volta
+antes de a outra pessoa olhar (mandou a carta errada, vendeu a carta, mudou de
+ideia). Para quem tem a vez, retirar seria um quarto botão dizendo o mesmo que
+recusar; sem ele, quem se arrependeu só teria a saída de deixar as 72h vencerem
+— e proposta pendurada tranca a dupla inteira, porque só existe uma negociação
+aberta por par.
+
+**Teto de 4 rodadas** (decisão do Eduardo, 2026-08-07). Com duas idas e voltas de
+cada lado, quase toda negociação que tinha acordo possível acha o acordo. Acima
+disso não há chat interno para sustentar a conversa e cada rodada custa um dia
+parado. Na rodada 4 só restam aceitar e recusar.
+
+**72h por rodada, e não os 7 dias do match.** Prazo de match é o tempo de marcar
+um encontro presencial; prazo de proposta é o tempo de responder uma pergunta no
+celular. Reinicia a cada rodada. O job `/internal/jobs/expire` passa a varrer as
+duas coisas.
+
+### 22.5 Antiabuso
+
+**Uma negociação aberta por dupla**, garantida por índice único parcial
+(`least/greatest` sobre os dois ids, `where status = 'ABERTA'`). Vitrine aberta
+com proposta livre tem desfecho previsível: a carta mais cobiçada da cidade
+recebe quarenta propostas, o dono não dá conta e desiste do app — perdendo o
+acervo que fazia a vitrine valer a pena. Se B quer duas cartas de A, elas vão na
+**mesma** proposta, que é multi-item por desenho.
+
+**Teto diário de propostas abertas** por pessoa, em `core/limites.py` junto de
+`max_anuncios` — é limite de plano, não constraint, porque constraint não
+distingue FREE de PRO. O campo é `propostas_por_dia` (10 no FREE, 100 no PRO) e
+a janela é móvel, das últimas 24h: dia de calendário devolveria cota de presente
+à meia-noite, que é justamente quando um disparo em massa passaria despercebido.
+Ele não é o antiabuso principal — esse é o índice único acima —, e sim o teto de
+quem abriria uma proposta para cada pessoa da base.
+
+**Reputação não é tocada.** Recusar não é furar: é a resposta que o produto está
+pedindo, e cobrá-la faria as pessoas pararem de responder. `RECUSADA` e
+`EXPIRADA` ficam fora da métrica-mãe pelo mesmo motivo que sugestão ignorada já
+fica — não houve encontro marcado, logo não houve encontro que deu errado.
+
+### 22.6 O aceite vira match
+
+No aceite, a API cria um `matches` com `tipo = 'PROPOSTA'`, `status = 'ACEITO'`,
+os dois `match_participants` já com `aceitou = true`, e os `match_items` da
+rodada corrente. `propostas.match_id` aponta para ele.
+
+O `hash_grupo` desse match é `PROPOSTA:{proposta_id}` — nunca `DIRETO:{a}:{b}`.
+Sem isso ele colidiria com a sugestão que o matcher mantém para a mesma dupla, e
+o unique derrubaria o aceite. Como ele nunca é `SUGERIDO`, o
+`sincronizar_matches` não o apaga na varredura de sugestões que não se sustentam.
+
+Daí para frente **nada é novo**: prazo e prorrogação, disclaimer bloqueante,
+revelação de contato, conclusão bilateral, `CANCELADO`, `FURADO`, denúncia e
+reputação são os da seção 13, sem uma linha a mais.
+
+A carta **não é reservada** durante a negociação: o anúncio segue na vitrine e
+segue casável pelo matcher. Reservar seria mentir sobre disponibilidade em troca
+de nada — não há custódia, a carta física está com a pessoa. Quem fechar primeiro
+fecha; o outro lado vê o `listing_id` virar null e a proposta cair.
+
+### 22.7 API — contratos
+
+| Método | Rota | Descrição |
+|---|---|---|
+| `GET` | `/vitrine` | Feed de OFERTA da base. Query: `q`, `set`, `raridade`, `page`. Exclui o próprio usuário e quem está bloqueado |
+| `GET` | `/vitrine/carta/{card_id}` | Quem tem esta carta, com acabamento e condição |
+| `GET` | `/vitrine/acervo/{username}` | O OFERTA de uma pessoa. Alcançado a partir de uma carta, nunca de uma busca por gente |
+| `GET` | `/me/propostas` | Query: `caixa=recebidas\|enviadas\|minha_vez\|historico` |
+| `POST` | `/me/propostas` | Abre. Body: `para`, `quero[]`, `ofereco[]` (ids de `listings`) |
+| `GET` | `/me/propostas/{id}` | Detalhe com todas as rodadas |
+| `POST` | `/me/propostas/{id}/aceitar` | Aceita a rodada corrente. Cria o match e devolve o `match_id` |
+| `POST` | `/me/propostas/{id}/recusar` | Encerra sem contraproposta |
+| `POST` | `/me/propostas/{id}/contrapropor` | Nova rodada. Mesmo body do `POST`, sem `para` |
+| `POST` | `/me/propostas/{id}/retirar` | Só quem fez a última jogada, e só antes de o outro responder |
+
+**Exemplo — `POST /me/propostas`:**
+
+```json
+{
+  "para": "marina",
+  "quero":   ["3ab1...", "9f02..."],
+  "ofereco": ["77c5..."]
+}
+```
+
+Resposta `201`:
+
+```json
+{
+  "id": "b41e...",
+  "status": "ABERTA",
+  "rodada": 1,
+  "vez_de": "marina",
+  "expira_em": "2026-08-10T14:00:00Z",
+  "rodadas": [
+    {
+      "rodada": 1,
+      "por": "eduardo",
+      "quero":   [{ "carta": "Charizard ex", "condicao": "NM", "finish": "Master Ball" }],
+      "ofereco": [{ "carta": "Mewtwo ex",    "condicao": "LP", "finish": "Normal" }]
+    }
+  ]
+}
+```
+
+Os itens entram por `listing_id`, não por `card_id` solto. É o que garante que a
+carta oferecida existe de verdade, com o acabamento e a condição que o dono
+declarou — e é o que faz a proposta caducar sozinha quando o anúncio sai do ar.
+
+**Erros específicos**, no padrão `{"erro": {"codigo", "mensagem"}}` da seção 10:
+
+| Código | Situação |
+|---|---|
+| `PROPOSTA_JA_ABERTA` | Já existe negociação aberta com essa pessoa (409) |
+| `NAO_E_SUA_VEZ` | Respondeu fora da vez (409) |
+| `RODADA_ESGOTADA` | Tentou contrapropor na rodada 4 (409) |
+| `ANUNCIO_INDISPONIVEL` | Algum `listing_id` saiu do ar entre montar e enviar (409) |
+| `PROPOSTA_ENCERRADA` | Já aceita, recusada, retirada ou expirada (409) |
+| `LIMITE_DE_PROPOSTAS` | Teto diário do plano (429) |
+| `NAO_E_SUA_JOGADA` | Tentou retirar tendo a vez — ali a saída é recusar (409) |
+| `PROPOSTA_PARA_SI_MESMO` | O `para` é o próprio @ (400) |
+
+O feed de `/vitrine` é **por carta**, não por anúncio: cinco pessoas oferecendo
+o mesmo Charizard são uma linha com `donos = 5`, e quem são as cinco é a
+pergunta seguinte (`/vitrine/carta/{card_id}`). Sem isso a carta mais comum da
+cidade ocuparia a primeira página inteira. A página tem 24 cartas, o mesmo
+tamanho da busca de catálogo — as duas telas são a mesma grade.
+
+As listas de vitrine e de acervo saem com `listing_id` junto, e não só com
+`card_id`: é ele que a proposta consome. Cartas saem por id, como no resto da
+API — nome e imagem o cliente já lê do catálogo.
+
+### 22.8 Interface
+
+Aba própria na navegação, ao lado de Trocas (decisão do Eduardo, 2026-08-07).
+Vitrine é porta de entrada: quem não tem match precisa achar sozinha, e enterrar
+isso dentro de outra tela esconderia a vitrine justamente de quem tem o feed
+vazio — que é quem mais precisa dela.
+
+Badge na aba pelo `idx_proposta_minha_vez`: o que espera resposta **minha**.
+Proposta enviada e ainda não respondida não gera badge — não é tarefa de quem
+enviou.
+
+A tela de detalhe mostra as rodadas em ordem, com a linguagem da seção 14: "você
+pediu X, ela ofereceu Y no lugar". Contraproposta abre o acervo do outro lado
+para escolher a substituição, que é a mesma consulta de
+`mais_cartas_do_parceiro`, agora sem o gate de match.
+
+### 22.9 O que fica de fora
+
+- **Chat.** Continua não existindo. As rodadas são a conversa, e o teto de 4 é o
+  que impede a proposta de virar chat mal feito.
+- **Proposta com dinheiro por diferença.** A seção 4.3 proíbe venda; abrir espaço
+  para "completo com R$ 20" seria construir a porta que os termos fecham.
+- **Proposta triangular.** A seção 9.2 já cobre triângulo pelo matcher. Negociação
+  humana a três, com vez e contraproposta, não fecha em 72h.
+- **Reserva de carta.** Ver 22.6.
 
 ---
 
