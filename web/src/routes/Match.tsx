@@ -192,7 +192,7 @@ export default function MatchDetalhe() {
             novo.status === 'ACEITO'
               ? 'Troca combinada! O contato está liberado.'
               : aceitou
-                ? 'Aceite registrado. Falta a outra pessoa.'
+                ? 'Interesse marcado. Falta a outra pessoa.'
                 : 'Troca recusada.',
           ),
         onError: (erro) =>
@@ -553,10 +553,11 @@ function Combinar({
   if (jaAceitei) {
     return (
       <div className="cartela mt-5 rounded-[var(--radius-card)] border border-edge bg-surface p-4 text-center">
-        <p className="text-[15px] text-paper">Você topou essa troca.</p>
+        <p className="text-[15px] text-paper">Você marcou interesse.</p>
         <p className="mt-1.5 text-[14px] leading-relaxed text-muted">
-          Assim que a outra pessoa aceitar, os contatos de vocês aparecem aqui
-          para combinarem onde se encontrar.
+          Quando a outra pessoa também marcar, o contato de vocês aparece aqui
+          para combinarem onde e quando. Se não rolar, dá para desmarcar sem
+          prejuízo à sua reputação.
         </p>
       </div>
     )
@@ -571,7 +572,7 @@ function Combinar({
         loading={enviando}
         onClick={() => onDecidir(true)}
       >
-        Topo essa troca
+        Tenho interesse
       </Button>
       <Button
         variant="ghost"
@@ -584,7 +585,7 @@ function Combinar({
       </Button>
       {match.status === 'PENDENTE' && (
         <p className="mt-1 text-center text-[13px] text-want">
-          A outra pessoa já aceitou. Falta você.
+          A outra pessoa já marcou interesse. Falta você.
         </p>
       )}
     </div>

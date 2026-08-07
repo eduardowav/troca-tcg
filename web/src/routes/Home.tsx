@@ -103,7 +103,7 @@ export default function Home() {
             numero={3}
             icone={<IconeRaio className="size-5" />}
             titulo="Vocês combinam e trocam"
-            texto="Os dois aceitam, o contato aparece, e o encontro é de vocês. Presencial, como troca de carta sempre foi."
+            texto="Os dois marcam interesse, o contato aparece, e o encontro é de vocês. Presencial, como troca de carta sempre foi."
           />
         </ol>
       </section>
