@@ -22,7 +22,7 @@ interface CartaThumbProps {
  * (moldura + anel interno). Skeleton enquanto carrega; sem imagem, cai para
  * a arte tipográfica com o código de set — nunca uma caixa quebrada.
  */
-export function CartaThumb({ carta, className, foil, alta }: CartaThumbProps) {
+export function CartaThumb({ carta, className, alta }: CartaThumbProps) {
   // A TCGdex serve o mesmo caminho em duas resoluções; o sync grava a baixa.
   const fonte =
     alta && carta.imagem_url
@@ -42,17 +42,9 @@ export function CartaThumb({ carta, className, foil, alta }: CartaThumbProps) {
         'relative aspect-[2.5/3.5] overflow-hidden rounded-[10px]',
         'bg-surface-2 ring-1 ring-edge/80',
         'shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04)]',
-        foil && 'ring-transparent',
         className,
       )}
     >
-      {foil && (
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 z-10 rounded-[10px] opacity-60 mix-blend-screen holo-sweep"
-        />
-      )}
-
       {estado === 'carregando' && (
         <div className="absolute inset-0 animate-pulse bg-surface-2" />
       )}

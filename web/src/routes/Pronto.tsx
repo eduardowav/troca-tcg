@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom'
 import { useAnuncios } from '@/hooks/useAnuncios'
 import { usePerfil } from '@/hooks/usePerfil'
 
-import { useMundo } from '@/hooks/useMundo'
 
 /**
  * Confirmação pós-onboarding.
@@ -12,7 +11,6 @@ import { useMundo } from '@/hooks/useMundo'
  * pessoa vê que as listas foram salvas de verdade, no servidor.
  */
 export default function Pronto() {
-  useMundo('brutal')
   const { data: perfil } = usePerfil()
   // Mesma query de Minhas cartas: uma chave só, para editar lá refletir aqui.
   const { data: anuncios } = useAnuncios()

@@ -4,7 +4,7 @@ import { IconeEngrenagem } from '@/components/brutal/Pecas'
 import { FichaPerfil } from '@/components/perfil/FichaPerfil'
 import { MinhasTrocas } from '@/components/perfil/MinhasTrocas'
 import { useAnuncios } from '@/hooks/useAnuncios'
-import { useMarcaOculta, useMundo } from '@/hooks/useMundo'
+import { useMarcaOculta } from '@/hooks/useMundo'
 import { usePerfil } from '@/hooks/usePerfil'
 
 /**
@@ -21,7 +21,6 @@ import { usePerfil } from '@/hooks/usePerfil'
  * caro que existe. Decisão do Eduardo.
  */
 export default function PerfilTela() {
-  useMundo('brutal')
   useMarcaOculta()
 
   const { data: perfil, isPending } = usePerfil()

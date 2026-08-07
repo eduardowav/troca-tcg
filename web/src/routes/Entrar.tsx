@@ -6,7 +6,6 @@ import { z } from 'zod'
 import { Campo } from '@/components/ui/Campo'
 import { Button } from '@/components/ui/Button'
 import { IconeEnvelope } from '@/components/ui/Icone'
-import { useMundo } from '@/hooks/useMundo'
 import { mensagemAuth } from '@/lib/authMensagens'
 import { cn } from '@/lib/cn'
 import { usernameDisponivel } from '@/lib/perfil'
@@ -49,7 +48,6 @@ const esquemaCriar = z.object({
 })
 
 export default function Entrar() {
-  useMundo('brutal')
   const [modo, setModo] = useState<Modo>('entrar')
   const [erros, setErros] = useState<Erros>({})
   const [enviando, setEnviando] = useState(false)

@@ -7,7 +7,7 @@ import { Denunciar } from '@/components/perfil/Denunciar'
 import { Button, estiloBotao } from '@/components/ui/Button'
 import { useAcabamentoPorId } from '@/hooks/useAcabamentos'
 import { useCartasPorId, usePrecosPorId } from '@/hooks/useAnuncios'
-import { useMarcaOculta, useMundo } from '@/hooks/useMundo'
+import { useMarcaOculta } from '@/hooks/useMundo'
 import {
   type Desfecho,
   useDesfechoMatch,
@@ -45,7 +45,6 @@ import { useUsuarioId } from '@/stores/auth'
 const ENCERRADOS = ['CONCLUIDO', 'FURADO', 'EXPIRADO', 'CANCELADO']
 
 export default function MatchDetalhe() {
-  useMundo('brutal')
   useMarcaOculta()
 
   const { id } = useParams<{ id: string }>()

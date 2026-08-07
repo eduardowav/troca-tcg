@@ -5,7 +5,6 @@ import {
   IconeRaio,
   IconeTrocas,
 } from '@/components/brutal/Pecas'
-import { useMundo } from '@/hooks/useMundo'
 import { useAuth } from '@/stores/auth'
 
 /**
@@ -26,7 +25,6 @@ import { useAuth } from '@/stores/auth'
  * tem 15.997 cartas.
  */
 export default function Home() {
-  useMundo('brutal')
 
   const carregando = useAuth((s) => s.carregando)
   const session = useAuth((s) => s.session)

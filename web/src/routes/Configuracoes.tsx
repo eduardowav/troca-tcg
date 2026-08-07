@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 
 import { usePerfil } from '@/hooks/usePerfil'
-import { useMarcaOculta, useMundo } from '@/hooks/useMundo'
+import { useMarcaOculta } from '@/hooks/useMundo'
 import { ApiError } from '@/lib/api'
 import { excluirConta, type Perfil } from '@/lib/perfil'
 import { sair } from '@/stores/auth'
@@ -24,7 +24,6 @@ import { sair } from '@/stores/auth'
  * duas últimas vieram do fim da tela de perfil, que é onde estavam soltas.
  */
 export default function Configuracoes() {
-  useMundo('brutal')
   useMarcaOculta()
 
   const { data: perfil } = usePerfil()

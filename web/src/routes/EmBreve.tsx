@@ -1,5 +1,4 @@
 import { Pokebola, Selo } from '@/components/brutal/Pecas'
-import { useMundo } from '@/hooks/useMundo'
 
 /**
  * A tela que ainda não existe.
@@ -23,7 +22,6 @@ function EmBreve({
   titulo: string
   descricao: string
 }) {
-  useMundo('brutal')
 
   return (
     <div className="mx-auto flex min-h-[70dvh] w-full max-w-xl flex-col items-center justify-center px-6 text-center">

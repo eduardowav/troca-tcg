@@ -5,7 +5,7 @@ import { toast } from 'sonner'
 import { z } from 'zod'
 
 import { Campo } from '@/components/ui/Campo'
-import { useMarcaOculta, useMundo } from '@/hooks/useMundo'
+import { useMarcaOculta } from '@/hooks/useMundo'
 import { usePerfil } from '@/hooks/usePerfil'
 import { ApiError } from '@/lib/api'
 import {
@@ -42,7 +42,6 @@ const esquema = z.object({
  * só rolava a página, leva de verdade a algum lugar.
  */
 export default function EditarPerfil() {
-  useMundo('brutal')
   useMarcaOculta()
 
   const { data: perfil, isPending } = usePerfil()

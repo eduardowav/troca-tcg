@@ -1,7 +1,7 @@
 import { Link, useParams } from 'react-router-dom'
 
 import { FichaPerfil } from '@/components/perfil/FichaPerfil'
-import { useMarcaOculta, useMundo } from '@/hooks/useMundo'
+import { useMarcaOculta } from '@/hooks/useMundo'
 import { usePerfilPublico } from '@/hooks/usePerfilPublico'
 import { ApiError } from '@/lib/api'
 import { membroDesde, type PerfilPublico } from '@/lib/perfil'
@@ -22,7 +22,6 @@ import { useUsuarioId } from '@/stores/auth'
  * tela informa uma decisão que acontece em outro lugar.
  */
 export default function PerfilPublicoTela() {
-  useMundo('brutal')
   useMarcaOculta()
 
   const { username } = useParams<{ username: string }>()

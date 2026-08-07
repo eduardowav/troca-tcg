@@ -8,7 +8,7 @@ import { FolhaAdicionar } from '@/components/carta/FolhaAdicionar'
 import { useAcabamentosDaCarta } from '@/hooks/useAcabamentos'
 import { useAnuncios, useCartasPorId, usePrecosPorId } from '@/hooks/useAnuncios'
 import { useCatalogo } from '@/hooks/useCatalogo'
-import { useMarcaOculta, useMundo } from '@/hooks/useMundo'
+import { useMarcaOculta } from '@/hooks/useMundo'
 import { precoDoAcabamento } from '@/lib/acabamentos'
 import { cn } from '@/lib/cn'
 import {
@@ -39,7 +39,6 @@ import {
  *   e US$ 0,22 em reverse. O bloco de preço continua uma linha por acabamento.
  */
 export default function CartaDetalhe() {
-  useMundo('brutal')
   useMarcaOculta()
 
   const { id } = useParams<{ id: string }>()

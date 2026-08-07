@@ -7,70 +7,112 @@ Ver contrato de direção no topo de `web/index.html`. Produto em [PRODUCT.md](P
 
 ## Mundo visual
 
-**Playmat.** A troca acontece sobre uma superfície de jogo em grafite escuro onde as
-cartas vivem. A única luz/foil é o momento holográfico do match. Recusa o dashboard
-dark-SaaS genérico (near-black + neon + bordas brilhantes) mergulhando no mundo
-material de TCG: sleeve, cartela, código de set como vernáculo, foil como recompensa.
+**Papel.** A troca acontece sobre papel creme, com borda preta grossa, sombra dura sem
+blur e cor chapada. Neobrutalismo, com a disciplina que o nome não promete: cor é
+significado, nunca decoração. Fonte: o arquivo Figma "TrocaTCG — Design", copiado nó a
+nó — nenhum valor deste documento foi escolhido de memória.
 
 Modo (impeccable): **Operate** — o visitante completa uma tarefa; expressão nunca
-obscurece a tarefa, o estado ou a afordância. A marca vive nos detalhes precisos.
+obscurece a tarefa, o estado ou a afordância.
 
 ## Tokens (fonte: `web/src/index.css`)
 
-Superfícies (grafite de playmat, não preto puro):
-`ink #0E1116` · `ink-deep #090C10` · `surface #161B22` · `surface-2 #1D232D` ·
-`edge #2A313C` · `edge-soft #222834`.
+Superfícies: `papel #FFFDF5` (fundo da página) · `cartela #FFFFFF` (tudo que se levanta
+dela com borda e sombra) · `meu #F2F4FF` (o que é meu numa troca).
 
-Texto (cardstock levemente quente): `paper #EAEEF4` · `muted #94A0B2` (secundário /
-placeholder, ≥4.5:1) · `faint #838DA0` (letra miúda — preço de referência, raridade,
-prazo, isenção; ≥4.5:1 até sobre `surface-2`).
+Tinta: `tinta #000000` — uma cor só para borda e texto, e é ela que dá a dureza do
+mundo · `apagado #555552` (secundário, letra miúda, dado frio).
 
-Acento e semântica:
-- `volt #7C5CFF` / `volt-strong #6B49F0` — ação primária.
-- `offer #2DD4BF` (Ofereço, o que eu dou) e `want #F5A524` (Procuro, o que eu quero) —
-  as duas listas têm cor própria, usadas como afordância, não como região.
-- `alert #F2555A`.
-- Holo `#5EE7DF → #B490CA → #FF9DC8` — **exclusivo do momento de match** (`.holo-sweep`,
-  `.text-holo`). Nunca decorativo fora dali.
+Cor com significado, e só três:
+- `azul #0038FF` — **ação, e nada além dela**. `azul-claro #6082FF` na aba ativa.
+- `ambar #996700` sobre `ambar-fraco #FFF4E5` — raridade de topo e aviso com hora
+  marcada. O texto **não** é o `#FFAB00` do arquivo: aquele dá 1,74:1 sobre o próprio
+  fundo e reprova no piso AA que este documento fixa. Escurecido 40% mantendo a
+  proporção entre canais — mesmo âmbar, 4,52:1.
+- `alerta #DC2626` sobre `alerta-fraco #FEE2E2` — **o que não tem volta**. Apagar conta
+  usa; sair da conta não, porque entrar de novo devolve tudo.
 
-Fundo do body: vinheta radial sutil (feltro de playmat), sem ruído falso.
+Não existe cor por lista. Ofereço e Procuro se distinguem por aba, rótulo e posição —
+nesta grade o azul já é `RARE` e o âmbar já é `ULTRA RARE` dentro da própria célula, e
+uma terceira cor de região disputaria a leitura.
+
+Raios: `cartela 20px` · `controle 12px` · `imagem 8px` · `etiqueta 6px`.
+
+Sombra dura, deslocada e sem blur — o deslocamento é a hierarquia: `4px` cartela,
+`3px` botão, `2px` peça pequena.
 
 ## Tipografia
 
-- **Display:** Cabinet Grotesk 700/800, tracking -0.03em, headings balanceados.
-- **Corpo:** Satoshi 400/500/700.
-- **Mono:** JetBrains Mono — código de set (`.set-code`, `SV08.5 059`), tabular. É o
+- **Título:** Outfit 500–900. A distância entre Medium e Black é o que carrega a
+  hierarquia.
+- **Corpo:** Inter 400–600.
+- **Dado:** Geist Mono — id de troca, código de set, nota, data, prazo, contagem. É o
   vernáculo do colecionador, não decoração "técnica".
 
-## Componentes
+## Componentes (`web/src/components/brutal/`)
 
-- **Elevação declarada uma vez** (borda OU sombra, nunca as duas = ghost card).
-  Raio: cartela `--radius-card 14px`, controle `--radius-control 10px`.
-- **`Button`** (`components/ui/Button.tsx`, cva): variantes `primary` (volt), `offer`,
-  `want`, `subtle`, `ghost`; tamanhos sm/md/lg; estados hover/active/disabled/loading.
-- **`CartaThumb`** (`components/carta/CartaThumb.tsx`): a carta como objeto físico,
-  proporção 2.5×3.5 dentro de um sleeve (moldura + anel interno), `low.webp` lazy,
-  skeleton no carregamento, fallback tipográfico (nome + código) quando não há imagem —
-  nunca uma caixa quebrada. `foil` aplica a varredura holo para acabamentos especiais.
+- **`Cartela`** — borda de 2px, sombra dura de 4px, raio 20. Os três andam juntos:
+  sombra sem borda vira mancha, borda sem sombra devolve a peça ao plano do fundo.
+- **`ParDeCartas`** — as duas cartas de uma troca, com a seta no vão. Dois tamanhos: no
+  feed só arte e nome; no detalhe, raridade, acabamento e preço. `trocado` inverte
+  posição **e** posse — depois da troca o azul vai para a carta que ficou com você.
+- **`CelulaBrutal` / `GradeBrutal`** — a carta na grade. Moldura 2,5×3,5 em pé, não o
+  4:3 do arquivo: o catálogo é scan de carta inteira, e cortá-lo numa faixa apaga nome,
+  número e borda.
+- **`SeloRaridade`** — três níveis, por padrão no texto e não por tabela: são 35
+  rótulos no catálogo e expansão nova traz rótulo novo. O que a regra não reconhece cai
+  no neutro.
+- **`BotaoBrutal`**, **`Selo`**, **`Pokebola`** — ação primária, estado, e o indicador
+  das telas que ainda não existem.
+- **`CartaThumb`** — a carta como objeto físico, `low.webp` lazy, esqueleto no
+  carregamento e fallback tipográfico quando não há imagem. Nunca uma caixa quebrada.
+
+Ícones: exportados do Figma, paths preservados byte a byte, `stroke` fixo trocado por
+`currentColor`. A exceção é o de cartas — no arquivo ele é um `card-sim` (chip de
+celular), leitura errada demais para um app de troca de cartas, e foi redesenhado na
+mesma língua.
 
 ## Motion
 
-Um único momento autoral: a **varredura holo** (`.holo-sweep`) reservada ao match.
-Fora disso, transições curtas e quietas (progresso, entrada de linha, bandeja com
-spring). `prefers-reduced-motion` desliga animações e congela o gradiente.
+Quase ausente, de propósito. Só a sombra que salta no toque e a **pokébola** que gira
+nas telas em desenvolvimento — a única animação contínua, e ela se justifica por ser
+literalmente um indicador de carregamento. `prefers-reduced-motion` desliga.
+
+A varredura holo do playmat foi removida com ele. O momento autoral do fechamento de
+uma troca **ainda não existe** neste mundo, e é a dívida de desenho mais visível que a
+migração deixou.
 
 ## Piso de qualidade
 
-Contraste AA (≥4.5:1) em texto; foco de teclado visível (anel volt) em tudo que é
-interativo; responsivo de 320px; skeleton em toda carga; estados vazio/erro/sem-resultado
-escritos na língua do produto. Nunca a palavra "coleção"; acabamento é `finish`.
+Contraste AA (≥4.5:1) em **todo** texto — verificado por varredura que compara cor
+computada com fundo herdado, não a olho; foi assim que o âmbar do arquivo foi pego.
+Foco de teclado visível (anel azul). Responsivo de 320px, sem rolagem horizontal.
+Esqueleto em toda carga. Estados vazio/erro/sem-resultado escritos na língua do
+produto. Nunca a palavra "coleção"; acabamento é `finish`.
+
+Cada tela mostra o que o produto tem. Onde o arquivo desenha função que não existe —
+chat, tema escuro, idioma, cache, notificação — a tela ou diz que não existe ainda
+(`EmBreve`) ou omite. Interruptor que não interrompe nada é pior que a ausência dele.
 
 ## Superfícies construídas
 
-- **Onboarding** (`web/src/routes/Onboarding.tsx`): busca real no catálogo (Supabase,
-  leitura pública), linhas de resultado com os dois gestos Ofereço/Procuro, progresso
-  animado (NumberFlow) rumo a 10 cartas, bandeja fixa com as cartas escolhidas e CTA que
-  só libera no limiar. Verificada por screenshot (desktop + mobile) com dados reais.
+Todas. Feed, minhas cartas, carta, detalhe da troca, busca, perfil, perfil público,
+editar perfil, configurações, onboarding, entrar, completar cadastro, pronto, termos,
+home, e as duas de "em desenvolvimento".
 
-Próximas superfícies (fases seguintes): Entrar, Minhas cartas, Feed de matches,
-Detalhe do match (onde a linha de troca e o holo ganham o palco), Perfil.
+A moldura do app — logo, sino e barra de baixo — vive no `LayoutApp`. Telas que têm
+cabeçalho próprio escondem o logo pelo `useMarcaOculta`: carta, troca, perfil, editar e
+configurações.
+
+## O que ficou para depois
+
+- **O momento da troca fechada.** Ver Motion.
+- **Tokens do playmat ainda definidos** em `index.css`. Vários componentes de base
+  (`Button`, `Campo`, `CartaThumb`, `ControlesAnuncio`, `BuscaRapida`, `FiltroCatalogo`,
+  `Denunciar`) ainda escrevem `bg-surface`, `text-paper` e afins nas suas classes, e o
+  mundo novo os repinta por cima via gancho. Apagar os tokens exige reescrever as
+  classes desses componentes um a um — trabalho mecânico, mas com risco de regressão
+  que merece uma passada própria e verificação tela a tela.
+- **`data-mundo="brutal"` no `<html>`.** Ele existe só para manter a especificidade das
+  regras de repintura enquanto o item acima não acontece. Quando os componentes
+  escreverem os tokens novos direto, o atributo e o seletor somem juntos.

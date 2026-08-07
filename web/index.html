@@ -1,10 +1,10 @@
 <!doctype html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-mundo="brutal">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#0E1116" />
+    <meta name="theme-color" content="#FFFDF5" />
     <meta
       name="description"
       content="Descubra com quem trocar suas cartas de Pokémon TCG. Ofereço, Procuro e o app acha o match."
@@ -13,51 +13,26 @@
 
     <!--
       ============================================================
-      CONTRATO DE DIREÇÃO VISUAL  (impeccable · new-work)
+      CONTRATO DE DIREÇÃO — ver DESIGN.md
       ============================================================
-      THESIS: A troca acontece sobre um playmat. O app é uma superfície
-        de jogo em grafite escuro onde as cartas vivem; a única luz/foil
-        é o momento holográfico de um match. Recusa o dashboard dark-SaaS
-        genérico (near-black + neon acento + bordas brilhantes).
-      OWN-WORLD: base de playmat grafite (não preto puro), texto em
-        cardstock levemente quente, acento elétrico "volt" calibrado,
-        gradiente holo reservado EXCLUSIVAMENTE ao match. Componentes com
-        sensação de carta enlutada (sleeve): elevação declarada uma vez
-        (borda OU sombra), raio 12–14px, textura sutil de cartela.
-        Tipo: Cabinet Grotesk (display), Satoshi (corpo), JetBrains Mono
-        para código de set — o vernáculo do colecionador (PRE 059/131).
-      STORY: o jogador chega com cartas na mão, declara Ofereço/Procuro
-        em segundos e sente o app já achando trocas ("faltam 3 para o 1º
-        match"). Entende que aqui tudo está disponível para troca.
-      FIRST VIEWPORT (onboarding): título curto, busca grande com
-        autocomplete, e as cartas encontradas viram cartelas tocáveis com
-        dois gestos claros — Ofereço / Procuro. Progresso sempre visível.
-      FORM: quadro de trocas mobile-first; mono como assinatura, holo como
-        recompensa. Motion: um único momento autoral (varredura holo no
-        match), o resto quieto. prefers-reduced-motion respeitado.
+      WORLD: neobrutalismo de papel. A troca acontece sobre papel
+        creme, com borda preta grossa, sombra dura sem blur e cor
+        chapada. Fonte: Figma "TrocaTCG — Design".
+      OWN-WORLD: azul chapado é ação e só ação; âmbar é raridade de
+        topo; vermelho é o que não tem volta. Elevação por sombra
+        deslocada, nunca por brilho. Mono para todo dado frio — id,
+        código de set, nota, data, prazo.
+        Tipo: Outfit (título), Inter (corpo), Geist Mono (dado).
+      STORY: o jogador declara Ofereço/Procuro em segundos e o app
+        cruza sozinho. A troca aparece pronta, com as duas cartas
+        lado a lado e quem está do outro lado.
+      FORM: quadro de trocas mobile-first. Motion quase ausente: só
+        a sombra que salta no toque e a pokébola das telas que ainda
+        não existem. prefers-reduced-motion respeitado.
       ============================================================
     -->
-
-    <link rel="preconnect" href="https://api.fontshare.com" crossorigin />
-    <link
-      href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@700,800&f[]=satoshi@400,500,700,900&display=swap"
-      rel="stylesheet"
-    />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;600&display=swap"
-      rel="stylesheet"
-    />
-
-    <!--
-      Tipografia do mundo novo (neobrutalismo). Uma requisição só para as três
-      famílias. Convive com as de cima enquanto as telas migram; quando a última
-      migrar, os dois blocos anteriores saem e sobra este.
-
-      Outfit vai de 500 a 900 porque o Figma usa Medium na aba inativa e Black
-      no título — a distância entre os dois é o que carrega a hierarquia.
-    -->
     <link
       href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;700;800;900&family=Inter:wght@400;500;600&family=Geist+Mono:wght@400;500;600;700&display=swap"
       rel="stylesheet"

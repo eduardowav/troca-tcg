@@ -16,7 +16,6 @@ import { CartaThumb } from '@/components/carta/CartaThumb'
 import { FiltroCatalogo } from '@/components/carta/FiltroCatalogo'
 import { useCardSearch } from '@/hooks/useCardSearch'
 import { useDebounced } from '@/hooks/useDebounced'
-import { useMundo } from '@/hooks/useMundo'
 import { criarAnunciosEmLote } from '@/lib/anuncios'
 import { ApiError } from '@/lib/api'
 import { cn } from '@/lib/cn'
@@ -30,7 +29,6 @@ import {
 import { contar, type Selecao, useOnboarding } from '@/stores/onboarding'
 
 export default function Onboarding() {
-  useMundo('brutal')
   const [termo, setTermo] = useState('')
   const [filtros, setFiltros] = useState<FiltrosBusca>(SEM_FILTRO)
   const [filtrosAbertos, setFiltrosAbertos] = useState(false)

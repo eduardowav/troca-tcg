@@ -5,7 +5,6 @@ import { z } from 'zod'
 
 import { Button } from '@/components/ui/Button'
 import { Campo } from '@/components/ui/Campo'
-import { useMundo } from '@/hooks/useMundo'
 import { ApiError } from '@/lib/api'
 import { criarPerfil, usernameDisponivel } from '@/lib/perfil'
 import { CampoTelefone } from '@/routes/Entrar'
@@ -39,7 +38,6 @@ const esquema = z.object({
  * externo). É a única porta de entrada que falta antes do onboarding.
  */
 export default function CompletarCadastro() {
-  useMundo('brutal')
   const [erros, setErros] = useState<Record<string, string>>({})
   const [enviando, setEnviando] = useState(false)
   const emailDaConta = useAuth((s) => s.session?.user.email)

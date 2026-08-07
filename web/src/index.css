@@ -1,15 +1,5 @@
 @import 'tailwindcss';
 
-/* A pele neobrutalista está DESLIGADA. O mundo do projeto é o playmat descrito
-   no DESIGN.md, e ela foi um protótipo para o Eduardo julgar (commit af682b9).
-   O arquivo continua em `estilos/brutal.css`, fora do bundle — sem o import
-   abaixo ele não chega ao navegador.
-
-   Para religar são duas coisas: descomentar o import e chamar `useMundo('brutal')`
-   nas rotas que devem usá-la (era `Matches.tsx` e `Match.tsx`).
-
-   @import './estilos/brutal.css'; */
-
 /* ============================================================
    TOKENS — mundo da carta física (playmat / sleeve / foil)
    Ver contrato de direção em index.html.
@@ -46,11 +36,6 @@
 
   /* Estado */
   --color-alert: #f2555a;
-
-  /* Foil / holo — SÓ no momento do match */
-  --color-holo-a: #5ee7df;
-  --color-holo-b: #b490ca;
-  --color-holo-c: #ff9dc8;
 
   /* Tipografia */
   --font-display: 'Cabinet Grotesk', 'Satoshi', ui-sans-serif, system-ui,
@@ -131,17 +116,7 @@
   --font-dado: 'Geist Mono', ui-monospace, 'SFMono-Regular', monospace;
 }
 
-/* Gradiente holo reutilizável (linha de troca) */
 @layer base {
-  :root {
-    --holo: linear-gradient(
-      110deg,
-      var(--color-holo-a),
-      var(--color-holo-b),
-      var(--color-holo-c)
-    );
-  }
-
   html {
     -webkit-text-size-adjust: 100%;
     -webkit-tap-highlight-color: transparent;
@@ -289,32 +264,7 @@
     box-shadow: none;
   }
 
-  /* A célula do playmat, que ainda serve o Onboarding.
-     ------------------------------------------------------------------
-     O Onboarding é a única tela que continua usando `CelulaCarta`,
-     `GradeDeCartas` e os botões de lista antigos. Migrá-la de verdade
-     é reescrever um fluxo de foco com bandeja, progresso e limiar de
-     dez cartas — trabalho que merece uma passada própria, não o fim de
-     uma varredura. Até lá, a repintura por gancho impede o pior: célula
-     grafite sobre papel creme, que é o que aconteceria sem isto. */
-  [data-mundo='brutal'] .celula {
-    border-width: 2px;
-    border-color: var(--color-tinta);
-    border-radius: var(--radius-controle);
-    background-color: var(--color-cartela);
-  }
-
-  [data-mundo='brutal'] .celula p,
-  [data-mundo='brutal'] .celula span {
-    color: var(--color-tinta);
-  }
-
-  [data-mundo='brutal'] .celula .set-code,
-  [data-mundo='brutal'] .celula .text-faint {
-    color: var(--color-apagado);
-  }
-
-  /* O esqueleto enquanto a arte carrega. Era `bg-surface-2`, o grafite
+/* O esqueleto enquanto a arte carrega. Era `bg-surface-2`, o grafite
      do playmat: num mundo de papel creme, cada carta piscava um
      retângulo cinza-escuro antes de aparecer — e numa troca são duas
      ao mesmo tempo, no meio da tela. */
@@ -620,79 +570,14 @@
 @layer utilities {
   /* Código de set: o vernáculo do colecionador (PRE 059/131) */
   .set-code {
-    font-family: var(--font-mono);
+    font-family: var(--font-dado);
     font-weight: 500;
     letter-spacing: 0.02em;
     font-variant-numeric: tabular-nums;
   }
 
-  .text-holo {
-    background: var(--holo);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-  }
 
-  /* Varredura holo — reservada ao match. Um único momento autoral. */
-  .holo-sweep {
-    background:
-      linear-gradient(
-          110deg,
-          transparent 20%,
-          color-mix(in oklab, var(--color-holo-b) 55%, transparent) 50%,
-          transparent 80%
-        )
-        no-repeat,
-      var(--holo);
-    background-size:
-      220% 100%,
-      100% 100%;
-    background-position:
-      -60% 0,
-      0 0;
-    animation: holo-sweep 2.4s ease-out both;
-  }
-
-  @keyframes holo-sweep {
-    to {
-      background-position:
-        160% 0,
-        0 0;
-    }
-  }
-
-  /* ---------- Selagem da troca ----------
-     O instante em que a segunda pessoa confirma e a troca vira CONCLUIDO. É o
-     único momento do produto em que a métrica-mãe sobe, e por isso é o único
-     que ganha movimento vistoso — o resto do app é transição curta e quieta.
-
-     Toca uma vez e sai (`forwards`, sem repeat). Celebração que fica em laço
-     vira ruído na segunda olhada, e esta tela continua sendo lida depois: é
-     dela que a pessoa tira o contato para retomar o assunto. */
-  /* Aceleração quase neutra de propósito: um ease-out forte faz a divisa saltar
-     para o fim e depois rastejar, que lê como falha de quadro e não como algo
-     atravessando. Aqui ela viaja.
-
-     Só `transform` e `opacity` — as duas únicas propriedades que o navegador
-     anima sem recalcular layout nem repintar. A primeira versão caminhava por
-     `left`/`right` e tremia. As porcentagens do `translateX` são da largura do
-     próprio elemento, e é por isso que cada divisa mora dentro de um vão da
-     largura da linha inteira: assim 18% e 78% são posições na linha. */
-  .rastro-direita,
-  .rastro-esquerda {
-    animation: 1.35s cubic-bezier(0.4, 0.08, 0.3, 1) forwards;
-    filter: drop-shadow(0 0 5px currentColor) drop-shadow(0 1px 2px rgb(0 0 0 / 0.45));
-  }
-
-  .rastro-direita {
-    animation-name: rastro-direita;
-  }
-
-  .rastro-esquerda {
-    animation-name: rastro-esquerda;
-  }
-
-  /* Sai de dentro da carta de origem e some antes de encostar na de destino: o
+/* Sai de dentro da carta de origem e some antes de encostar na de destino: o
      rastro sugere o caminho, não desenha uma seta de ponta a ponta por cima da
      arte, que é o que a pessoa veio ver. Entrada e saída longas (30% de cada
      lado) para nenhuma ponta aparecer ou sumir de estalo. */
@@ -734,27 +619,7 @@
     }
   }
 
-  /* A marca entra depois das divisas passarem — ela é a conclusão da frase, não
-     o começo dela.
-
-     Desaceleração exponencial, não elástica. A primeira versão usava a curva de
-     mola (o segundo ponto de controle acima de 1), que é a curva de gel e
-     envelhece a tela inteira. O peso de carimbo vem de outro lugar — de vir
-     grande e girada e assentar, com uma passagem curta de 6% pelo ponto final.
-     Objeto pesado desacelera; não quica.
-
-     Duas animações: a saída é separada e com `forwards` (não `both`) para não
-     valer antes da hora — com `both` ela imporia o próprio estado inicial desde
-     o quadro zero e apagaria a entrada. A saída existe porque a selagem some do
-     DOM quando acaba, e desaparecer de estalo é o oposto de suave: quando o
-     componente sai, a marca já está invisível há tempo. */
-  .marca-troca {
-    animation:
-      marca-entra 700ms cubic-bezier(0.16, 1, 0.3, 1) 800ms both,
-      marca-sai 420ms ease-in 2380ms forwards;
-  }
-
-  @keyframes marca-entra {
+@keyframes marca-entra {
     0% {
       opacity: 0;
       transform: translate(-50%, -50%) scale(0.55) rotate(-14deg);
@@ -801,20 +666,6 @@
         animação vistosa aqui cansa em vez de ajudar. 4% e 180ms.
      3. **Só `transform`.** Roda na GPU, não recalcula layout e não empurra as
         cartas vizinhas — o `z-index` põe a carta ampliada por cima delas. */
-  @media (hover: hover) and (pointer: fine) {
-    .carta-cresce {
-      transition: transform 180ms cubic-bezier(0.23, 1, 0.32, 1);
-    }
-
-    .grupo-carta:hover .carta-cresce {
-      transform: scale(1.04);
-    }
-
-    .grupo-carta:hover {
-      z-index: 10;
-    }
-  }
-
   /* Movimento é justamente o que incomoda quem pediu menos movimento. O bloco
      geral abaixo zera a duração, mas o salto de escala continuaria — aqui ele
      some de vez. */
@@ -825,9 +676,6 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .holo-sweep {
-      animation: none;
-    }
     * {
       animation-duration: 0.001ms !important;
       transition-duration: 0.001ms !important;

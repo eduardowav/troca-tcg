@@ -12,7 +12,6 @@ import { FiltroCatalogo } from '@/components/carta/FiltroCatalogo'
 import { FolhaAdicionar } from '@/components/carta/FolhaAdicionar'
 import { IconeBusca } from '@/components/ui/Icone'
 import { useAcabamentosDaCarta } from '@/hooks/useAcabamentos'
-import { useMundo } from '@/hooks/useMundo'
 import { useAnuncios, usePrecosPorId } from '@/hooks/useAnuncios'
 import { useCardSearch } from '@/hooks/useCardSearch'
 import { useDebounced } from '@/hooks/useDebounced'
@@ -35,7 +34,6 @@ import {
  * num dropdown sem virar aquele painel que tomava a tela do celular.
  */
 export default function Buscar() {
-  useMundo('brutal')
 
   const [params, setParams] = useSearchParams()
   const [termo, setTermo] = useState(params.get('q') ?? '')

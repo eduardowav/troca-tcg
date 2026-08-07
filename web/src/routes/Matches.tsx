@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 
+import { CelulaBrutal, GradeBrutal } from '@/components/brutal/Cartas'
 import {
   BotaoBrutal,
   Cartela,
@@ -8,11 +9,9 @@ import {
   ParDeCartas,
   Selo,
 } from '@/components/brutal/Pecas'
-import { CelulaCarta, GradeDeCartas } from '@/components/carta/GradeDeCartas'
 import { IconeTroca } from '@/components/ui/Icone'
 import { useCartasPorId, useProcuradas } from '@/hooks/useAnuncios'
 import { useMatches } from '@/hooks/useMatches'
-import { useMundo } from '@/hooks/useMundo'
 import type { CartaProcurada } from '@/lib/anuncios'
 import { cn } from '@/lib/cn'
 import {
@@ -40,7 +39,6 @@ import { useUsuarioId } from '@/stores/auth'
  * Ela entra no `LayoutApp`, junto com a barra de baixo.
  */
 export default function Matches() {
-  useMundo('brutal')
 
   const meuId = useUsuarioId()
   const { data: matches, isPending, isError, refetch } = useMatches()
@@ -297,21 +295,17 @@ function Vazio() {
         </p>
       </div>
 
-      {/* `GradeDeCartas` e `CelulaCarta` ainda são do playmat: elas são as
-          mesmas peças das telas de Ofereço e Procuro, e repintá-las aqui
-          mudaria Minhas cartas junto, que ainda não migrou. Elas trocam de
-          mundo quando Minhas cartas trocar — é a mesma migração, não outra. */}
-      <GradeDeCartas className="mt-5">
+      <GradeBrutal className="mt-5">
         {procuradas.map((p) => {
           const carta = cartas?.get(p.card_id)
           if (!carta) return null
           return (
-            <CelulaCarta key={p.card_id} carta={carta} destaque="OFERTA">
+            <CelulaBrutal key={p.card_id} carta={carta} destaque="OFERTA">
               <QuemQuer procurada={p} />
-            </CelulaCarta>
+            </CelulaBrutal>
           )
         })}
-      </GradeDeCartas>
+      </GradeBrutal>
 
       <BotaoBrutal to="/minhas-cartas" className="mt-5">
         Adicionar cartas que eu procuro
@@ -332,13 +326,13 @@ function QuemQuer({ procurada }: { procurada: CartaProcurada }) {
   const restantes = procurada.procurando - procurada.pessoas.length
 
   return (
-    <div className="fileira rounded-[var(--radius-control)] border border-[color-mix(in_oklab,var(--color-want)_32%,transparent)] bg-[color-mix(in_oklab,var(--color-want)_10%,transparent)] px-2 py-1.5">
-      <p className="text-[11px] font-medium text-want lg:text-[12px]">
+    <div className="rounded-[var(--radius-etiqueta)] border-2 border-tinta bg-meu px-2 py-1.5">
+      <p className="font-titulo text-[11px] font-bold text-tinta">
         {procurada.procurando === 1
           ? '1 pessoa procura'
           : `${procurada.procurando} pessoas procuram`}
       </p>
-      <p className="set-code mt-1 text-[10px] leading-relaxed break-words text-muted lg:text-[11px]">
+      <p className="mt-1 font-dado text-[10px] leading-relaxed break-words text-apagado">
         {procurada.pessoas.map((q) => `@${q.username}`).join(', ')}
         {restantes > 0 && ` e mais ${restantes}`}
       </p>

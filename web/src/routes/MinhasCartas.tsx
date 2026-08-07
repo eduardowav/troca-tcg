@@ -12,7 +12,6 @@ import {
 } from '@/components/carta/ControlesAnuncio'
 import { Button } from '@/components/ui/Button'
 import { IconeBusca, IconeCartas } from '@/components/ui/Icone'
-import { useMundo } from '@/hooks/useMundo'
 import { type Acabamento, NORMAL, precoDoAcabamento } from '@/lib/acabamentos'
 import {
   type Anuncio,
@@ -43,7 +42,6 @@ import {
 } from '@/hooks/useAnuncios'
 
 export default function MinhasCartas() {
-  useMundo('brutal')
 
   // Ofereço abre primeiro: é a lista que o app precisa que exista para um match
   // acontecer, e a que costuma estar mais vazia (média 4, contra 7 de Procuro).
