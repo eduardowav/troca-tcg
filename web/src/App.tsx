@@ -11,6 +11,7 @@ import EditarPerfil from '@/routes/EditarPerfil'
 import { Mensagens, Notificacoes } from '@/routes/EmBreve'
 import Entrar from '@/routes/Entrar'
 import Home from '@/routes/Home'
+import LabTroca from '@/routes/LabTroca'
 import MatchDetalhe from '@/routes/Match'
 import Matches from '@/routes/Matches'
 import MinhasCartas from '@/routes/MinhasCartas'
@@ -31,6 +32,15 @@ export default function App() {
       <Route path="/" element={<Home />} />
       <Route path="/entrar" element={<Entrar />} />
       <Route path="/termos" element={<Termos />} />
+
+      {/* Laboratório da animação de troca. Só existe em desenvolvimento: a
+          condição é avaliada no build, então em produção a rota não entra na
+          tabela e o componente sai do pacote pelo tree-shaking. É bancada de
+          decisão, não funcionalidade — quando a animação for escolhida, ela vai
+          para o detalhe do match e esta rota morre. */}
+      {import.meta.env.DEV && (
+        <Route path="/lab/troca" element={<LabTroca />} />
+      )}
 
       <Route element={<ExigeSessao />}>
         <Route path="/completar-cadastro" element={<CompletarCadastro />} />
