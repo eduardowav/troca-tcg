@@ -1,3 +1,5 @@
+import NumberFlow from '@number-flow/react'
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { NavLink, Outlet } from 'react-router-dom'
 
 import {
@@ -135,6 +137,12 @@ function Navegacao() {
   // pessoa, não uma novidade genérica.
   const minhaVez = useMinhaVez()
 
+  // Quem pediu menos movimento ao sistema recebe a barra parada. O `!important`
+  // do CSS global zera duração de transição e de `animation`, mas não alcança o
+  // motion, que anima por JavaScript — aqui a decisão precisa ser tomada no
+  // componente.
+  const semMovimento = useReducedMotion()
+
   return (
     <nav
       aria-label="Navegação principal"
@@ -165,21 +173,66 @@ function Navegacao() {
               {({ isActive }) => (
                 <>
                   <span className="relative">
-                    <Icone className="size-6" />
+                    {/* O ícone dá um salto curto ao virar ativo e afunda no
+                        toque. É o mesmo gesto físico das peças do mundo novo —
+                        a sombra que salta no botão —, traduzido para algo que
+                        não tem sombra. Curto de propósito: a barra é tocada
+                        dezenas de vezes por sessão, e o que encanta na primeira
+                        atrasa na vigésima. */}
+                    <motion.span
+                      className="block"
+                      animate={
+                        semMovimento
+                          ? undefined
+                          : { scale: isActive ? [1, 1.18, 1] : 1 }
+                      }
+                      whileTap={semMovimento ? undefined : { scale: 0.86 }}
+                      transition={{ duration: 0.24, ease: 'easeOut' }}
+                    >
+                      <Icone className="size-6" />
+                    </motion.span>
+
+                    {/* A barrinha é uma peça só que desliza entre as abas, e
+                        não uma que some aqui e nasce ali: com `layoutId` o
+                        motion move a mesma caixa, e o traço acompanha o dedo em
+                        vez de piscar. */}
                     {isActive && (
-                      <span
+                      <motion.span
                         aria-hidden
+                        layoutId={semMovimento ? undefined : 'aba-ativa'}
                         className="absolute -top-2.5 left-1/2 h-0.5 w-6 -translate-x-1/2 rounded-full bg-volt"
+                        transition={{
+                          type: 'spring',
+                          stiffness: 480,
+                          damping: 38,
+                        }}
                       />
                     )}
-                    {badge && minhaVez > 0 && (
-                      <span
-                        aria-hidden
-                        className="absolute -top-1.5 -right-2.5 grid min-w-4 place-items-center rounded-full border-2 border-tinta bg-azul px-1 font-dado text-[9px] font-bold text-azul-tinta"
-                      >
-                        {minhaVez}
-                      </span>
-                    )}
+
+                    <AnimatePresence>
+                      {badge && minhaVez > 0 && (
+                        // A badge nasce com mola e some sem alarde: ela aparece
+                        // quando alguém responde do outro lado, ou seja, sem a
+                        // pessoa ter feito nada — e uma coisa que aparece
+                        // sozinha precisa se anunciar.
+                        <motion.span
+                          aria-hidden
+                          initial={semMovimento ? false : { scale: 0 }}
+                          animate={{ scale: 1 }}
+                          exit={{ scale: 0 }}
+                          transition={{
+                            type: 'spring',
+                            stiffness: 620,
+                            damping: 24,
+                          }}
+                          className="absolute -top-1.5 -right-2.5 grid min-w-4 place-items-center rounded-full border-2 border-tinta bg-azul px-1 font-dado text-[9px] font-bold text-azul-tinta"
+                        >
+                          {/* O número rola em vez de trocar: de 1 para 2 é uma
+                              proposta nova chegando, e a rolagem conta isso. */}
+                          <NumberFlow value={minhaVez} />
+                        </motion.span>
+                      )}
+                    </AnimatePresence>
                   </span>
                   <span className="w-full truncate text-center">{rotulo}</span>
                 </>

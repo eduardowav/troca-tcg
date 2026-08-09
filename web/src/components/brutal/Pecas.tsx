@@ -11,6 +11,7 @@
  * nó do arquivo. Se faltar um tom, ele vem do frame que precisa dele — não de
  * um vizinho plausível.
  */
+import { motion, useReducedMotion } from 'motion/react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 
@@ -744,6 +745,7 @@ export function ParDeLotes({
   limite?: number
 }) {
   const grande = tamanho === 'grande'
+  const semMovimento = useReducedMotion()
 
   return (
     <div className="flex items-start gap-2">
@@ -755,15 +757,23 @@ export function ParDeLotes({
         limite={limite}
       />
       {/* A seta desce até a altura da primeira arte — o eixo da troca está nas
-          cartas, não na etiqueta que as nomeia. */}
-      <span
+          cartas, não na etiqueta que as nomeia.
+
+          No detalhe ela entra deslizando da esquerda: é o gesto da troca
+          acontecendo, e ali há uma proposta por tela. Na lista fica parada — vinte
+          setas deslizando ao mesmo tempo viram um enxame, e a lista existe para
+          ser varrida, não assistida. */}
+      <motion.span
+        initial={grande && !semMovimento ? { x: -6, opacity: 0 } : false}
+        animate={{ x: 0, opacity: 1 }}
+        transition={{ type: 'spring', stiffness: 420, damping: 30 }}
         className={cn(
           'grid size-8 shrink-0 place-items-center rounded-[16px] border-2 border-tinta bg-cartela shadow-[var(--shadow-duro-xs)]',
           grande ? 'mt-20' : 'mt-12',
         )}
       >
         <IconeSetaDireita className="size-4 text-tinta" />
-      </span>
+      </motion.span>
       <LadoDoLote
         itens={recebo}
         etiqueta={rotulos.recebo}

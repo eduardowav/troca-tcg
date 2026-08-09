@@ -177,9 +177,13 @@ function CartaoMatch({
             </span>
           </span>
 
-          <BotaoBrutal to={`/matches/${match.id}`}>
+          {/* As duas setas do ícone giram meia volta ao passar o dedo/cursor:
+              o glifo é uma troca, e girá-lo é a própria ação acontecendo. Em
+              CSS, e não no motion, porque é estado de hover puro — e o
+              `prefers-reduced-motion` global já zera a duração. */}
+          <BotaoBrutal to={`/matches/${match.id}`} className="group/trocar">
             Trocar
-            <IconeTrocar className="size-3.5" />
+            <IconeTrocar className="size-3.5 transition-transform duration-300 group-hover/trocar:rotate-180" />
           </BotaoBrutal>
         </div>
       </Cartela>

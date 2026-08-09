@@ -1,3 +1,5 @@
+import NumberFlow from '@number-flow/react'
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { NavLink } from 'react-router-dom'
 
 import { useMinhaVez } from '@/hooks/usePropostas'
@@ -40,6 +42,8 @@ function Aba({
   contagem?: number
   children: React.ReactNode
 }) {
+  const semMovimento = useReducedMotion()
+
   return (
     <NavLink
       to={para}
@@ -59,16 +63,26 @@ function Aba({
       {({ isActive }) => (
         <>
           {children}
-          {contagem ? (
-            <span
-              className={cn(
-                'grid min-w-5 place-items-center rounded-full border-2 border-tinta px-1 font-dado text-[11px] font-bold',
-                isActive ? 'bg-cartela text-tinta' : 'bg-azul text-azul-tinta',
-              )}
-            >
-              {contagem}
-            </span>
-          ) : null}
+          <AnimatePresence>
+            {contagem ? (
+              // Mesma mola da badge da barra de baixo, e pelo mesmo motivo: o
+              // número aparece quando alguém responde do outro lado, sem a
+              // pessoa ter feito nada. O `NumberFlow` rola de 1 para 2 em vez
+              // de trocar, que é o que conta que chegou mais uma.
+              <motion.span
+                initial={semMovimento ? false : { scale: 0 }}
+                animate={{ scale: 1 }}
+                exit={{ scale: 0 }}
+                transition={{ type: 'spring', stiffness: 620, damping: 24 }}
+                className={cn(
+                  'grid min-w-5 place-items-center rounded-full border-2 border-tinta px-1 font-dado text-[11px] font-bold',
+                  isActive ? 'bg-cartela text-tinta' : 'bg-azul text-azul-tinta',
+                )}
+              >
+                <NumberFlow value={contagem} />
+              </motion.span>
+            ) : null}
+          </AnimatePresence>
         </>
       )}
     </NavLink>
