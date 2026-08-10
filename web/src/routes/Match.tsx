@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { useReducedMotion } from 'motion/react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 
 import { ParDeCartas } from '@/components/brutal/Pecas'
@@ -29,6 +30,7 @@ import {
   prazoUrgente,
   reputacaoTexto,
 } from '@/lib/matches'
+import { tocar } from '@/lib/sons'
 import { linkWhatsApp } from '@/lib/telefone'
 import {
   type Carta,
@@ -60,6 +62,7 @@ export default function MatchDetalhe() {
   const { data: cartas } = useCartasPorId(ids)
   const { data: precos } = usePrecosPorId(ids)
   const acabamentoPorId = useAcabamentoPorId()
+  const selagem = useSelagem(match?.status)
 
   if (isPending) {
     return (
@@ -127,6 +130,17 @@ export default function MatchDetalhe() {
         ? { dou: 'Você daria', recebo: 'Você receberia' }
         : { dou: 'Você dá', recebo: 'Você recebe' }
   const trocado = match.status === 'CONCLUIDO'
+
+  // O que o carimbo diz, e se ele existe. Duas palavras para dois fatos
+  // diferentes: o acordo (ACEITO) e a entrega (CONCLUIDO). Nos outros estados
+  // não há o que carimbar — uma troca recusada, furada ou vencida não deixou
+  // marca de acordo nenhuma.
+  const selo =
+    match.status === 'CONCLUIDO'
+      ? 'Trocado'
+      : match.status === 'ACEITO'
+        ? 'Combinada'
+        : null
   const especificacoes = trocado
     ? [
         {
@@ -158,11 +172,10 @@ export default function MatchDetalhe() {
       { id: match!.id, desfecho: escolha },
       {
         onSuccess: (novo) => {
-          // A selagem — a animação que rolava até as cartas e tocava o holo
-          // quando a troca fechava pelos dois — está desligada por enquanto,
-          // por decisão do Eduardo: ela é do mundo do playmat e o mundo novo
-          // ainda não tem o momento que vai no lugar dela. O `toast` abaixo
-          // continua dando a notícia.
+          // A cena das cartas girando é daqui: é na conclusão que elas
+          // mudaram de mão de verdade. O aceite ganha só o carimbo — combinar
+          // não é entregar. Quem dispara é o `useSelagem`, observando o status
+          // virar CONCLUIDO; este `toast` só dá a notícia por escrito.
           toast.success(
             novo.status === 'CONCLUIDO'
               ? 'Troca concluída pelos dois. Reputação atualizada.'
@@ -248,7 +261,7 @@ export default function MatchDetalhe() {
         {/* Tempo verbal: numa troca encerrada, "você dá" está falando de uma
             coisa que já aconteceu. O histórico do perfil já corrigia isso; o
             detalhe, que é para onde o histórico leva, não corrigia. */}
-        <div>
+        <div className="relative">
           <ParDeCartas
             dou={dou && cartas?.get(dou.card_id)}
             recebo={recebo && cartas?.get(recebo.card_id)}
@@ -256,7 +269,36 @@ export default function MatchDetalhe() {
             tamanho="grande"
             trocado={trocado}
             rotulos={rotulos}
+            selando={selagem.selando}
           />
+
+          {/* O carimbo fica, batido torto como um selo de mão — mas cada
+              palavra tem de ser verdadeira no momento em que aparece.
+
+              **COMBINADA** no aceite: vocês fecharam o acordo, e as cartas
+              continuam cada uma do seu lado, porque ninguém entregou nada
+              ainda. **TROCADO** só depois que os dois confirmam o encontro, e é
+              lá que as cartas trocam de lado (regra do `ParDeCartas`). Carimbar
+              "trocado" no aceite seria afirmar uma entrega que ainda não houve
+              — e, se a troca furar, a tela teria mentido para os dois.
+
+              Some enquanto as cartas giram: o selo é o que assenta depois delas,
+              não um adesivo em cima do movimento. */}
+          {selo && !selagem.selando && (
+            <div className="pointer-events-none absolute inset-x-0 top-1/2 grid -translate-y-1/2 place-items-center">
+              <span
+                className={cn(
+                  'rounded-[var(--radius-controle)] border-4 border-tinta bg-azul px-4 py-2',
+                  'font-titulo text-[17px] font-black uppercase text-azul-tinta shadow-[var(--shadow-duro)]',
+                  // A queda é do instante, não do estado: quem abre a tela dias
+                  // depois encontra o selo parado, e não uma cena repetida.
+                  selagem.selado ? 'selo-troca' : 'rotate-[-8deg]',
+                )}
+              >
+                {selo}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Os rótulos repetem, palavra por palavra, os das cartas logo acima —
@@ -857,4 +899,110 @@ function Moldura({ children }: { children: React.ReactNode }) {
       {children}
     </div>
   )
+}
+
+/**
+ * Os dois instantes que merecem um carimbo — e só um deles move as cartas.
+ *
+ * **O aceite** é o acordo: as cartas continuam cada uma na mão do seu dono, e
+ * por isso nada gira. Desce o selo COMBINADA, e só.
+ *
+ * **A conclusão** é a entrega: os dois confirmaram que se encontraram e as
+ * cartas mudaram de mão de verdade. É aqui que elas giram e trocam de lado — a
+ * cena existe para representar um fato, não para enfeitar um clique —, e o selo
+ * que desce depois diz TROCADO.
+ *
+ * Toca uma vez, e só na transição. Uma troca combinada há três dias não precisa
+ * se anunciar de novo; quem precisa é o segundo que acabou de acontecer.
+ *
+ * Três caminhos chegam aqui, e cada um é um acontecimento real:
+ *
+ *   1. O aceite mútuo nesta tela — o status vira ACEITO com ela aberta.
+ *   2. O aceite de uma proposta, que cria a troca já ACEITA e manda para cá com
+ *      `?selar=1`. Sem esse bilhete não haveria transição para observar: a tela
+ *      nasceria com o acordo pronto.
+ *   3. A segunda confirmação de conclusão, que vira CONCLUIDO com a tela aberta.
+ *
+ * Quem pede menos movimento recebe o carimbo sem a viagem das cartas. O som
+ * fica: ele acompanha o selo, e é confirmação, não decoração de movimento.
+ */
+function useSelagem(status: string | undefined) {
+  const [params, setParams] = useSearchParams()
+  const semMovimento = useReducedMotion()
+  const [selando, setSelando] = useState(false)
+  const [selado, setSelado] = useState(false)
+  const statusAnterior = useRef(status)
+  const jaSelou = useRef<string | null>(null)
+
+  // Lido **uma vez**, na montagem, e guardado. Duas armadilhas moram aqui, e as
+  // duas custaram uma cena que nunca acontecia: `useSearchParams` devolve um
+  // objeto novo a cada render, então depender dele reinicia o efeito sem parar;
+  // e apagar o parâmetro da URL muda o próprio valor de que o efeito dependia,
+  // reiniciando-o de novo. Nos dois casos a limpeza cancelava os próprios
+  // temporizadores, o carimbo nunca caía e as cartas ficavam giradas para
+  // sempre. Uma leitura só, num `ref`, não sofre nem de um nem de outro.
+  const pedidoNaUrl = useRef(params.get('selar') === '1')
+
+  // A limpeza da URL é assunto à parte da cena, e roda uma vez: sem isso, um
+  // recarregamento — ou o botão voltar — repetiria a selagem.
+  useEffect(() => {
+    if (!pedidoNaUrl.current) return
+    setParams(
+      (atual) => {
+        const limpa = new URLSearchParams(atual)
+        limpa.delete('selar')
+        return limpa
+      },
+      { replace: true },
+    )
+  }, [setParams])
+
+  useEffect(() => {
+    const anterior = statusAnterior.current
+    statusAnterior.current = status
+
+    const combinouAgora =
+      status === 'ACEITO' &&
+      ((anterior !== undefined && anterior !== 'ACEITO') || pedidoNaUrl.current)
+    const trocouAgora =
+      status === 'CONCLUIDO' && anterior !== undefined && anterior !== 'CONCLUIDO'
+
+    if (!combinouAgora && !trocouAgora) return
+    // Um carimbo por estado: a mesma tela pode ver o acordo e, dias depois, a
+    // entrega — são dois acontecimentos, não a repetição de um.
+    if (jaSelou.current === status) return
+    jaSelou.current = status ?? null
+
+    let vivo = true
+    const marcas: number[] = []
+    const daqui = (ms: number, faz: () => void) => {
+      marcas.push(window.setTimeout(() => vivo && faz(), ms))
+    }
+
+    // As cartas só giram na entrega. Os 850ms são a duração da animação em
+    // `index.css` — mudou lá, muda aqui.
+    const giro = trocouAgora && !semMovimento ? 850 : 0
+    if (giro) setSelando(true)
+
+    daqui(giro, () => {
+      // A viagem acaba no mesmo quadro em que o selo cai: as cartas já
+      // assentaram e é a vez dele. Deixar `selando` ligado até o fim da cena
+      // segurava o carimbo escondido justamente durante a queda.
+      setSelando(false)
+      setSelado(true)
+      tocar('fechou')
+    })
+
+    // `selado` marca só o instante da queda; passado ele, o selo continua na
+    // tela, agora parado. Quem abre a troca amanhã encontra o carimbo, não a
+    // cena.
+    daqui(giro + 900, () => setSelado(false))
+
+    return () => {
+      vivo = false
+      marcas.forEach(window.clearTimeout)
+    }
+  }, [status, semMovimento])
+
+  return { selando, selado }
 }

@@ -113,8 +113,13 @@ export default function PropostaDetalhe() {
           // O aceite não termina aqui: ele cria a troca, e é lá que a pessoa
           // combina o encontro e vê o contato. Mandar para a troca é continuar
           // a mesma tarefa, não abrir outra.
+          //
+          // `?selar=1` é o bilhete que pede a selagem na chegada. Sem ele a
+          // tela da troca nasceria com o acordo já pronto e não teria transição
+          // nenhuma para anunciar — o instante em que a troca passou a existir
+          // aconteceu aqui, uma tela atrás.
           toast.success('Proposta aceita! A troca está combinada.')
-          navegar(`/matches/${nova.match_id}`)
+          navegar(`/matches/${nova.match_id}?selar=1`)
           return
         }
         toast.success(

@@ -675,6 +675,157 @@
     }
   }
 
+  /* ------------------------------------------------------------------
+     A troca acontecendo — laboratório da animação de fechamento.
+
+     Em CSS, e não no motion, porque é aqui que o giro no eixo vertical
+     existe de verdade: o motion não anima `rotateY` neste projeto (não
+     escreve transform nenhum) e ainda descarta a pose inteira quando a
+     rotação cai num múltiplo exato de 360°. O navegador faz as duas
+     coisas sem reclamar.
+
+     O deslocamento tem três parcelas, e faltar qualquer uma põe a carta
+     perto do lugar da outra em vez de no lugar dela: a **largura da
+     própria carta**, a **seta** que fica no meio e os **dois vãos** que a
+     cercam. Uma percentagem redonda (`105%`) errava por alguns pixels e
+     por uma quantidade diferente em cada largura de tela — foi o que dava
+     a impressão de que a carta não assentava.
+
+     Largura da seta e vão vêm por variável (`--troca-seta`, `--troca-vao`),
+     as mesmas que a fileira usa para desenhar o `gap` e o tamanho da seta,
+     para não poderem divergir do que a animação assume.
+
+     `forwards` porque a cena termina com as cartas trocadas — é o
+     resultado, não um efeito que se desfaz. Quem devolve ao começo é o
+     botão "Voltar", tirando a classe.
+     ------------------------------------------------------------------ */
+  .troca-anima {
+    /* O caminho de uma carta até o lugar da outra. `100%` aqui é a largura
+       da própria carta — a variável precisa viver no elemento animado. */
+    --troca-passo: calc(
+      100% + var(--troca-seta, 2rem) + var(--troca-vao, 0.5rem) * 2
+    );
+    animation-duration: var(--troca-dur, 0.7s);
+    animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    animation-fill-mode: forwards;
+    transform-style: preserve-3d;
+  }
+
+  /* Só deslizam, cada uma para o lado da outra. O desvio vertical no meio
+     do caminho evita que as duas pareçam trilhos: elas passam uma pela
+     outra, não uma através da outra. */
+  @keyframes troca-desliza-a {
+    from {
+      transform: translateX(0) translateY(0);
+    }
+    50% {
+      transform: translateX(calc(var(--troca-passo) / 2)) translateY(-16px);
+    }
+    to {
+      transform: translateX(var(--troca-passo)) translateY(0);
+    }
+  }
+
+  @keyframes troca-desliza-b {
+    from {
+      transform: translateX(0) translateY(0);
+    }
+    50% {
+      transform: translateX(calc(var(--troca-passo) / -2)) translateY(16px);
+    }
+    to {
+      transform: translateX(calc(var(--troca-passo) * -1)) translateY(0);
+    }
+  }
+
+  /* A volta inteira sobre o eixo vertical, como a carta vira na mão. Aos
+     180° ela está de perfil — daí o encolhimento no meio, que é o que dá
+     profundidade sem precisar de sombra. Os 360° no fim deixam as duas de
+     frente: o que virou foi o dono, não a carta. */
+  @keyframes troca-gira-a {
+    from {
+      transform: translateX(0) rotateY(0deg) scale(1);
+    }
+    50% {
+      transform: translateX(calc(var(--troca-passo) / 2)) rotateY(180deg)
+        scale(0.9);
+    }
+    to {
+      transform: translateX(var(--troca-passo)) rotateY(360deg)
+        scale(1);
+    }
+  }
+
+  @keyframes troca-gira-b {
+    from {
+      transform: translateX(0) rotateY(0deg) scale(1);
+    }
+    50% {
+      transform: translateX(calc(var(--troca-passo) / -2)) rotateY(-180deg)
+        scale(0.9);
+    }
+    to {
+      transform: translateX(calc(var(--troca-passo) * -1)) rotateY(-360deg)
+        scale(1);
+    }
+  }
+
+  .troca-desliza-a {
+    animation-name: troca-desliza-a;
+  }
+  .troca-desliza-b {
+    animation-name: troca-desliza-b;
+  }
+  .troca-gira-a {
+    animation-name: troca-gira-a;
+  }
+  .troca-gira-b {
+    animation-name: troca-gira-b;
+  }
+
+  /* O carimbo do acordo: cai grande e torto, como um selo batido à mão, e
+     assenta. Aparece uma vez, no instante em que a troca passa a existir.
+
+     `backwards` para ele já nascer grande e transparente no primeiro quadro —
+     sem isso a primeira imagem é o selo no tamanho final, e o baque se perde. */
+  .selo-troca {
+    animation: selo-cai 0.42s cubic-bezier(0.2, 1.4, 0.4, 1) backwards;
+  }
+
+  @keyframes selo-cai {
+    from {
+      opacity: 0;
+      transform: scale(2.4) rotate(-14deg);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1) rotate(-8deg);
+    }
+  }
+
+  /* Quem pede menos movimento recebe o resultado, não a viagem: as cartas
+     aparecem já trocadas, e o carimbo aparece sem cair. */
+  @media (prefers-reduced-motion: reduce) {
+    .troca-anima {
+      animation: none;
+    }
+
+    .troca-desliza-a,
+    .troca-gira-a {
+      transform: translateX(var(--troca-passo));
+    }
+
+    .troca-desliza-b,
+    .troca-gira-b {
+      transform: translateX(calc(var(--troca-passo) * -1));
+    }
+
+    .selo-troca {
+      animation: none;
+      transform: rotate(-8deg);
+    }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     * {
       animation-duration: 0.001ms !important;

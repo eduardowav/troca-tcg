@@ -495,6 +495,7 @@ export function ParDeCartas({
   tamanho = 'compacto',
   lados,
   trocado = false,
+  selando = false,
 }: {
   dou: Carta | undefined
   recebo: Carta | undefined
@@ -529,6 +530,16 @@ export function ParDeCartas({
    * saiu da mão de ninguém.
    */
   trocado?: boolean
+  /**
+   * A troca está sendo selada agora: as duas cartas dão uma volta sobre o eixo
+   * vertical e assumem o lugar uma da outra.
+   *
+   * Só o detalhe da troca passa isto, e só no instante do aceite — é o momento
+   * em que a troca passa a existir. Os quadros moram em `index.css`
+   * (`troca-gira-*`), e não no motion, porque `rotateY` não anima por lá; a
+   * história completa está no comentário daquele arquivo.
+   */
+  selando?: boolean
 }) {
   const grande = tamanho === 'grande'
 
@@ -547,6 +558,7 @@ export function ParDeCartas({
       grande={grande}
       acabamento={lados?.dou?.acabamento}
       preco={lados?.dou?.preco}
+      className={selando ? 'troca-anima troca-gira-a' : undefined}
     />
   )
   const cartaQueEntra = (
@@ -557,6 +569,7 @@ export function ParDeCartas({
       grande={grande}
       acabamento={lados?.recebo?.acabamento}
       preco={lados?.recebo?.preco}
+      className={selando ? 'troca-anima troca-gira-b' : undefined}
     />
   )
 
@@ -565,15 +578,37 @@ export function ParDeCartas({
     // mesma altura — nome de duas linhas de um lado, selo de acabamento do
     // outro — e centralizar faria uma carta subir e a outra descer sem que nada
     // nelas justificasse o degrau.
-    <div className={cn('flex gap-2', grande ? 'items-start' : 'items-center')}>
+    <div
+      // O vão e o tamanho da seta são declarados aqui e lidos pelas animações
+      // em `index.css`: o caminho de uma carta até o lugar da outra é a largura
+      // dela mais a seta mais os dois vãos. Enquanto forem as mesmas variáveis,
+      // a carta para exatamente no lugar da outra, em qualquer tela.
+      style={{
+        ['--troca-vao' as string]: '0.5rem',
+        ['--troca-seta' as string]: '2rem',
+      }}
+      className={cn(
+        'flex gap-[var(--troca-vao)]',
+        grande ? 'items-start' : 'items-center',
+        // Enquanto sela, as cartas andam para fora da própria coluna; sem isto
+        // a página ganha uma barra de rolagem horizontal no meio da cena.
+        selando && 'overflow-hidden',
+      )}
+    >
       {trocado ? cartaQueEntra : cartaQueSai}
       {/* A seta fica fora das duas molduras, sobre o vão: ela é a relação entre
           elas, não propriedade de nenhuma. No tamanho grande ela desce para o
-          meio das artes, que é onde o eixo da troca realmente está. */}
+          meio das artes, que é onde o eixo da troca realmente está.
+
+          Ela sai de cena enquanto a troca sela: parada, a seta é quem diz que
+          aquilo é uma troca; em movimento, quem diz é o movimento — e ela vira
+          um obstáculo atravessado pelas duas cartas. */}
       <span
         className={cn(
-          'grid size-8 shrink-0 place-items-center rounded-[16px] border-2 border-tinta bg-cartela shadow-[var(--shadow-duro-xs)]',
+          'grid size-[var(--troca-seta)] shrink-0 place-items-center rounded-[16px] border-2 border-tinta bg-cartela shadow-[var(--shadow-duro-xs)]',
           grande && 'mt-16 self-start',
+          'transition-all duration-150',
+          selando && 'scale-50 opacity-0',
         )}
       >
         <IconeSetaDireita className="size-4 text-tinta" />
@@ -590,6 +625,7 @@ function LadoDaTroca({
   grande = false,
   acabamento,
   preco,
+  className,
 }: {
   carta: Carta | undefined
   etiqueta: string
@@ -597,6 +633,8 @@ function LadoDaTroca({
   grande?: boolean
   acabamento?: Acabamento
   preco?: PrecoEscolhido
+  /** Classes da selagem, quando a troca está sendo fechada. */
+  className?: string
 }) {
   const valor = formatarPreco(preco?.preco)
   const classe = cn(
@@ -608,6 +646,7 @@ function LadoDaTroca({
     // isso que o defeito não aparecia lá. A peça antiga tinha o mesmo limite.
     !grande && 'max-w-32',
     carta && 'transition-shadow hover:shadow-[var(--shadow-duro-xs)]',
+    className,
   )
 
   const conteudo = (
