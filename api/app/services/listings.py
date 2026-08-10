@@ -7,6 +7,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import RegraNegocio
+from app.core.limites import limites_de, plano_vigente
 from app.schemas.listing import AnuncioAtualizar, AnuncioItem, AnuncioOut
 
 _COLUNAS = """
@@ -49,6 +50,47 @@ _ACABAMENTOS_DAS_CARTAS = text("""
 """).bindparams(bindparam("ids", expanding=True))
 
 NORMAL = 1
+
+# Plano e ofertas ativas numa ida só ao banco: são lidos sempre juntos, e a
+# escrita do anúncio já é o caminho mais quente do app depois do feed.
+_PLANO_E_OFERTAS = text("""
+    select
+      (select plano from profiles where id = cast(:eu as uuid)) as plano,
+      (select count(*) from listings
+         where user_id = cast(:eu as uuid)
+           and tipo = 'OFERTA' and ativo = true) as ofertas
+""")
+
+
+async def _checar_teto_de_ofertas(session: AsyncSession, user_id: UUID) -> None:
+    """O teto de ofertas do plano — conferido depois da escrita, antes do commit.
+
+    **Só OFERTA conta.** Procura é ilimitada nos dois planos; o porquê está em
+    `core/limites.py`.
+
+    **Depois do upsert, e não antes**, é o que faz a regra acertar o recadastro.
+    `_UPSERT` reativa a carta que já existe em vez de duplicar, então somar "o
+    que já tenho + o que está entrando" contaria de novo quem já estava lá e
+    barraria quem só está editando a própria lista. Contar o resultado dentro da
+    transação vê exatamente o que vai ficar gravado; o `raise` desfaz tudo.
+    """
+    linha = (
+        (await session.execute(_PLANO_E_OFERTAS, {"eu": str(user_id)}))
+        .mappings()
+        .first()
+    )
+    plano = (linha["plano"] if linha else None) or "FREE"
+    teto = limites_de(plano_vigente(plano)).max_ofertas
+    if teto is None:
+        return
+
+    if (linha["ofertas"] if linha else 0) > teto:
+        raise RegraNegocio(
+            "LIMITE_DE_ANUNCIOS",
+            f"Seu plano permite anunciar até {teto} cartas. "
+            "Assine o PRO para anunciar sem limite.",
+            status_code=409,
+        )
 
 
 async def _resolver_acabamentos(
@@ -128,10 +170,15 @@ async def criar_anuncio(
     try:
         res = await session.execute(_UPSERT, _params(user_id, item, finish_id))
         row = res.mappings().first()
+        if item.tipo == "OFERTA":
+            await _checar_teto_de_ofertas(session, user_id)
         await session.commit()
     except IntegrityError as exc:
         await session.rollback()
         raise _traduzir(exc) from exc
+    except RegraNegocio:
+        await session.rollback()
+        raise
     assert row is not None
     return AnuncioOut(**dict(row))
 
@@ -151,10 +198,15 @@ async def criar_bulk(
             text("update profiles set onboarding_ok = true where id = :id"),
             {"id": str(user_id)},
         )
+        if any(i.tipo == "OFERTA" for i in itens):
+            await _checar_teto_de_ofertas(session, user_id)
         await session.commit()
     except IntegrityError as exc:
         await session.rollback()
         raise _traduzir(exc) from exc
+    except RegraNegocio:
+        await session.rollback()
+        raise
     return len(itens)
 
 

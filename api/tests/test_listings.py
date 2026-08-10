@@ -1,5 +1,6 @@
 """Testes dos anúncios que não dependem de um Postgres real."""
 
+import inspect
 from uuid import uuid4
 
 import pytest
@@ -7,6 +8,7 @@ from fastapi.testclient import TestClient
 from pydantic import ValidationError
 from sqlalchemy.exc import IntegrityError
 
+from app.core import limites
 from app.main import app
 from app.schemas.listing import AnuncioAtualizar
 from app.services import listings
@@ -187,3 +189,86 @@ def test_patch_exige_autenticacao():
     client = TestClient(app)
     resp = client.patch(f"/v1/me/listings/{uuid4()}", json={"quantidade": 2})
     assert resp.status_code in (401, 403)
+
+
+# ------------------------------------------------------- teto de ofertas
+
+
+class _LinhaUnica:
+    """Fake de resultado para as consultas que leem uma linha só."""
+
+    def __init__(self, linha: dict | None):
+        self._linha = linha
+
+    def mappings(self):
+        return self
+
+    def first(self):
+        return self._linha
+
+
+class _SessaoDeUmaLinha:
+    def __init__(self, linha: dict | None):
+        self._linha = linha
+
+    async def execute(self, *_args, **_kwargs):
+        return _LinhaUnica(self._linha)
+
+
+async def test_teto_bloqueia_quem_passou(monkeypatch):
+    """FREE anuncia 20; a 21ª volta com o convite para o PRO."""
+    monkeypatch.setattr(limites, "COBRANCA_ATIVA", True)
+    sessao = _SessaoDeUmaLinha({"plano": "FREE", "ofertas": 21})
+    with pytest.raises(Exception) as erro:
+        await listings._checar_teto_de_ofertas(sessao, uuid4())  # type: ignore[arg-type]
+    assert erro.value.codigo == "LIMITE_DE_ANUNCIOS"  # type: ignore[attr-defined]
+    assert erro.value.status_code == 409  # type: ignore[attr-defined]
+    assert "20" in erro.value.mensagem  # type: ignore[attr-defined]
+
+
+async def test_teto_deixa_passar_quem_esta_no_limite(monkeypatch):
+    """Exatamente 20 é permitido — o teto é "até", não "menos que"."""
+    monkeypatch.setattr(limites, "COBRANCA_ATIVA", True)
+    sessao = _SessaoDeUmaLinha({"plano": "FREE", "ofertas": 20})
+    await listings._checar_teto_de_ofertas(sessao, uuid4())  # type: ignore[arg-type]
+
+
+async def test_portao_fechado_nao_bloqueia_ninguem():
+    """Enquanto não há como pagar, bloquear é pedágio: a regra existe desligada.
+
+    Este teste é o que quebra no dia em que `COBRANCA_ATIVA` virar True — de
+    propósito, para a virada ser uma decisão e não um efeito colateral.
+    """
+    assert limites.COBRANCA_ATIVA is False
+    sessao = _SessaoDeUmaLinha({"plano": "FREE", "ofertas": 999})
+    await listings._checar_teto_de_ofertas(sessao, uuid4())  # type: ignore[arg-type]
+
+
+async def test_pro_anuncia_sem_limite(monkeypatch):
+    monkeypatch.setattr(limites, "COBRANCA_ATIVA", True)
+    assert limites.limites_de("PRO").max_ofertas is None
+    sessao = _SessaoDeUmaLinha({"plano": "PRO", "ofertas": 5_000})
+    await listings._checar_teto_de_ofertas(sessao, uuid4())  # type: ignore[arg-type]
+
+
+def test_procura_nao_entra_na_conta():
+    """Limitar o que a pessoa procura seria limitar a demanda que faz o matcher
+    achar par para os outros — o princípio de precificação da seção 16."""
+    assert "tipo = 'OFERTA'" in listings._PLANO_E_OFERTAS.text
+    for fonte in (
+        inspect.getsource(listings.criar_anuncio),
+        inspect.getsource(listings.criar_bulk),
+    ):
+        assert 'tipo == "OFERTA"' in fonte
+
+
+def test_teto_e_conferido_depois_da_escrita():
+    """Antes do upsert a conta erraria o recadastro: `_UPSERT` reativa a carta
+    que já existe, e somar "tenho + entrando" barraria quem só edita a lista."""
+    fonte = inspect.getsource(listings.criar_anuncio)
+    posicao_upsert = fonte.index("_UPSERT")
+    posicao_checagem = fonte.index("_checar_teto_de_ofertas")
+    posicao_commit = fonte.index("session.commit")
+    assert posicao_upsert < posicao_checagem < posicao_commit
+    # Sem o rollback, a linha barrada ficaria pendurada na transação.
+    assert "except RegraNegocio:" in fonte

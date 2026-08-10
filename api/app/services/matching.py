@@ -30,6 +30,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import RegraNegocio
+from app.core.limites import limites_de, plano_vigente
 from app.schemas.listing import CartaProcurada, QuemProcura
 from app.schemas.match import (
     CartaDoParceiro,
@@ -553,19 +554,28 @@ _DESISTIU_POR = """
     order by e.criado_em desc limit 1) as desistiu_por
 """
 
+# A janela do plano filtra por `desfecho_em`, que é expressão e não coluna — daí
+# a subconsulta: em SQL não se referencia um alias do select dentro do where.
+# `:dias` nulo é histórico completo, e o cast explícito existe porque sem ele o
+# Postgres não consegue inferir o tipo de um parâmetro que só aparece num
+# `is null`.
 _HISTORICO = text(f"""
-    select m.id::text, m.tipo::text, m.status::text, m.score,
-           m.expira_em, m.prorrogacoes,
-           {_DESISTIU_POR},
-           coalesce(
-             (select max(e.criado_em) from match_events e where e.match_id = m.id),
-             m.criado_em
-           ) as desfecho_em
-    from matches m
-    join match_participants mp on mp.match_id = m.id
-    where mp.user_id = :eu
-      and m.status in ('CONCLUIDO', 'FURADO', 'EXPIRADO', 'CANCELADO')
-    order by desfecho_em desc
+    select * from (
+      select m.id::text, m.tipo::text, m.status::text, m.score,
+             m.expira_em, m.prorrogacoes,
+             {_DESISTIU_POR},
+             coalesce(
+               (select max(e.criado_em) from match_events e where e.match_id = m.id),
+               m.criado_em
+             ) as desfecho_em
+      from matches m
+      join match_participants mp on mp.match_id = m.id
+      where mp.user_id = :eu
+        and m.status in ('CONCLUIDO', 'FURADO', 'EXPIRADO', 'CANCELADO')
+    ) h
+    where cast(:dias as int) is null
+       or h.desfecho_em > now() - make_interval(days => cast(:dias as int))
+    order by h.desfecho_em desc
     limit :limite
 """)
 
@@ -578,9 +588,23 @@ async def listar_historico(
     Serializa ParticipanteResumo, como o feed: contato não tem o que fazer numa
     lista. O limite existe para a tela não crescer sem fim — quem chegar nele já
     é um caso bom de ter, e paginar antes disso seria inventar problema.
+
+    A janela é a do plano (`historico_dias`). Ela esconde linhas antigas, não
+    apaga nada e não mexe em reputação: `trocas_concluidas` e `trocas_furadas`
+    são contadores em `profiles` e não são recalculados a partir desta lista.
     """
+    plano = await session.scalar(
+        text("select plano from profiles where id = cast(:eu as uuid)"),
+        {"eu": str(user_id)},
+    )
+    dias = limites_de(plano_vigente(plano or "FREE")).historico_dias
+
     linhas = (
-        (await session.execute(_HISTORICO, {"eu": str(user_id), "limite": limite}))
+        (
+            await session.execute(
+                _HISTORICO, {"eu": str(user_id), "limite": limite, "dias": dias}
+            )
+        )
         .mappings()
         .all()
     )

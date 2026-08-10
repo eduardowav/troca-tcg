@@ -1786,57 +1786,112 @@ Não cobre agora. Mas construa de forma que cobrar depois seja mudança de confi
 1. **Coluna `plano` em `profiles`** — já está no schema, default `FREE`
 2. **Camada de limites centralizada:**
 
-```python
-# app/core/limites.py
-from dataclasses import dataclass
+O arquivo é `api/app/core/limites.py`. Dois eixos moram lá, e confundi-los é o
+erro que a estrutura previne:
 
+- **Limites de plano** existem para vender o PRO. Passam por `plano_vigente()`,
+  que devolve PRO para todo mundo enquanto `COBRANCA_ATIVA` for `False`.
+- **Limites de antiabuso** (`propostas_por_dia`) não são disso: existem para o
+  app não virar disparador em massa, valem desde o primeiro dia e por isso leem
+  `limites_de()` direto, sem passar pelo portão.
 
-@dataclass(frozen=True)
-class Limites:
-    max_anuncios: int
-    matches_visiveis: int
-    triangular: bool
-    alerta_carta: bool
-    historico_dias: int
+3. **Toda regra de negócio consulta `limites_de(plano_vigente(plano))`** — nunca condicional espalhada
+4. **Enquanto `COBRANCA_ATIVA` for `False`, todos recebem os limites PRO.** A regra está construída e testada, e o portão segue aberto: bloquear antes de existir meio de pagamento é pedágio, não oferta. Ligar é trocar uma linha.
 
+### Modelo de cobrança — decidido em agosto de 2026
 
-PLANOS: dict[str, Limites] = {
-    "FREE": Limites(
-        max_anuncios=150,
-        matches_visiveis=5,
-        triangular=False,
-        alerta_carta=False,
-        historico_dias=30,
-    ),
-    "PRO": Limites(
-        max_anuncios=10_000,
-        matches_visiveis=999,
-        triangular=True,
-        alerta_carta=True,
-        historico_dias=3650,
-    ),
-}
+**PRO: R$ 19,90/mês ou R$ 199,90/ano** — o anual sai por dez meses, e numa base
+pequena é ele que segura o caixa e corta churn. A posição é explícita: **o FREE é
+o teste, o PRO é o app.**
 
-
-def limites_de(plano: str) -> Limites:
-    return PLANOS.get(plano, PLANOS["FREE"])
-```
-
-3. **Toda regra de negócio consulta `limites_de(user.plano)`** — nunca condicional espalhada
-4. **Na v1, todos os usuários recebem os limites PRO.** O gate existe no código mas está aberto. Ligar depois é trocar o default.
-
-### Modelo de cobrança sugerido (v2)
-
-| | Free | Pro — R$ 9,90/mês |
+| | Free | Pro — R$ 19,90/mês ou R$ 199,90/ano |
 |---|---|---|
-| Cartas anunciadas | 150 | Ilimitado |
-| Matches visíveis por dia | 5 | Ilimitado |
+| Cartas anunciadas (**OFERTA**) | 20 | Ilimitado |
+| Cartas procuradas (**PROCURA**) | Ilimitado | Ilimitado |
+| Cadastro em massa (colar lista) | — | ✅ |
 | Match triangular | — | ✅ |
-| Alerta quando alguém procura sua carta | — | ✅ |
+| Alerta quando a carta aparecer | — | ✅ |
+| Propostas por dia | 10 | 100 |
 | Histórico de trocas | 30 dias | Completo |
-| Selo verificado no perfil | — | ✅ |
+| Selo PRO no perfil | — | ✅ |
+| Matches visíveis | Todos | Todos |
+| Ver vitrine, acervo, quem tem a carta | ✅ | ✅ |
+| Abrir, aceitar, recusar, contrapropor | ✅ | ✅ |
+| Concluir, avaliar, denunciar | ✅ | ✅ |
 
 **Princípio de precificação:** nunca limite o que gera efeito de rede. Anunciar carta e concluir troca precisam ser sempre livres — são eles que fazem o app valer a pena para os outros. Cobre por **conveniência e alcance** (triangular, alertas, volume), não por participação.
+
+#### Por que a tabela é essa
+
+**OFERTA e PROCURA se separam.** Moram na mesma tabela (`listings.tipo`), mas são
+coisas opostas. Procura é demanda: declarar o que se quer não custa nada ao
+sistema e é o que faz o matcher achar par para os *outros* — limitar seria
+limitar efeito de rede em estado puro. Oferta é alcance de quem anuncia, e
+alcance é o que o princípio manda cobrar. Só OFERTA entra na conta do teto.
+
+**Vinte, e não dez nem cento e cinquenta.** O post típico de grupo local de troca
+raramente passa de dez cartas, então 20 não encosta no usuário mediano: o teto só
+aperta quem tem coleção, que é exatamente quem tem por que assinar. Dez morreria
+no onboarding — a pessoa abre a caixa, tem quarenta repetidas e bate no muro
+antes de ter visto um único match. Cento e cinquenta não seria limite, seria
+enfeite.
+
+**`matches_visiveis` não é ligado.** É a alavanca clássica de marketplace e
+também a única que reduz direto a métrica-mãe: esconder match é esconder o
+produto, e o app ainda precisa provar que gera match. Reavaliar acima de ~500
+usuários ativos.
+
+**O ciclo do match é intocável.** Se um usuário FREE não pode aceitar ou
+responder, a proposta de quem paga morre sem resposta — seria punir o assinante.
+Reputação, denúncia e conclusão também ficam livres: são segurança, não
+conveniência.
+
+**Cadastro em massa é o melhor gate deste app.** Não limita *quanto* se cadastra,
+limita o trabalho: FREE cadastra uma a uma, PRO cola a lista. Conveniência pura,
+custo zero de rede — e a rota `POST /me/listings/bulk` já existe.
+
+**Não haverá destaque pago na vitrine.** Degrada o feed para todo mundo e é a
+porta de entrada do pay-to-win, que num app de comunidade local queima confiança
+rápido.
+
+### O caminho até cobrar, em três fases
+
+**Fase A — ligar o que já existe.** Não depende de pagamento nem de decisão de
+preço, e é onde a regra fica construída e desligada.
+
+1. ✅ Teto de ofertas em `criar` e `criar_bulk`, contando só OFERTA, conferido
+   *depois* do upsert e antes do commit — antes, a conta erraria o recadastro,
+   porque `_UPSERT` reativa a carta que já existe em vez de duplicar.
+2. ✅ `historico_dias` filtrando `listar_historico`. Esconde linha antiga, não
+   apaga nada: reputação é contador em `profiles` e não sai desta lista.
+3. ✅ `COBRANCA_ATIVA` e `plano_vigente()` — o portão, com teste que quebra de
+   propósito no dia da virada, para ela ser decisão e não efeito colateral.
+
+**Fase B — construir o valor do PRO.** Sem isso, R$ 19,90 compra a remoção de um
+limite, o que lê como pedágio. **A cobrança não liga antes desta fase terminar.**
+
+4. Gate e tela do cadastro em massa — menor esforço, maior retorno, a rota existe.
+5. `alerta_carta`, que nasce do vazio da busca.
+6. `triangular` (Fase 5 do roadmap) — o carro-chefe, e o que nenhum concorrente tem.
+
+**Fase C — cobrar.**
+
+7. **Mercado Pago**: Pix é praticamente obrigatório no Brasil e o checkout é
+   pronto. O webhook que mantém `profiles.plano` é a fonte da verdade do plano —
+   não a tela.
+8. **Tela de planos** (`/planos`), o estado "você é PRO" no perfil, e o convite
+   aparecendo no instante em que a pessoa esbarra num limite — não antes.
+9. **Termos**: falta a cláusula da assinatura, com renovação automática,
+   cancelamento a qualquer tempo e o direito de arrependimento de 7 dias do CDC.
+   Mexer nos termos exige nova `VERSAO` e novo aceite (seção 4).
+10. **Queda de plano.** Nada é apagado, nunca. São 7 dias de carência com os
+    limites do PRO — tempo de resolver o pagamento; depois disso os excedentes
+    são **desativados** (`ativo = false`), do mais recente para o mais antigo,
+    e a pessoa escolhe quais 20 reativar. Congelar tudo ativo faria o teto virar
+    decoração para todo ex-assinante.
+
+**Decisão ainda em aberto:** se o lançamento é só Belém ou aberto. Ela muda o
+texto da vitrine e a expectativa de match de quem entra de fora.
 
 ### Alternativa de receita
 
@@ -1921,6 +1976,59 @@ Priorize as regras dos sets que a comunidade local realmente joga e troca hoje. 
 - Métricas e observabilidade
 - Testes de carga
 - README de portfólio com decisões de arquitetura documentadas
+
+### Fila atual (agosto de 2026)
+
+O roadmap acima é o plano original, e ele foi cumprido até a Fase 4 — com a
+vitrine e as propostas (seção 22) entrando fora de ordem, porque o matcher
+sozinho não atende quem só declarou um lado. Isto aqui é o que está na frente
+hoje, na ordem em que faz sentido atacar.
+
+**Produto**
+
+1. **Notificar "é a sua vez"** (Fase 6, antecipada). Proposta vence em 72h e
+   morre calada se ninguém abrir o app. `notifications` e `push_subscriptions`
+   estão criadas e sem uso — é a mudança que mais deve mexer na métrica-mãe.
+2. **Vitrine como destino de quem não tem match.** Quem entra sem PROCURA cai
+   num feed vazio, e é exatamente o público que a vitrine existe para atender.
+3. **Login e cadastro reformulados** e **modo escuro** — os dois esperando o
+   arquivo do Figma, porque começam por decisão visual, não por código. No
+   escuro, o problema não é inverter tokens: borda preta e sombra dura somem, e
+   a linguagem inteira precisa de tradução.
+4. **A animação da troca fechando**, escolhida no laboratório
+   (`/lab/troca`, só em desenvolvimento), com som. Entra no aceite — o instante
+   em que a troca passa a existir —, não na conclusão, que acontece dias depois.
+5. **Filtro por bairro** na vitrine. A troca é presencial: "quem tem essa carta
+   perto de mim" decide mais que preço.
+6. **Alerta de carta** ("avise quando aparecer"), que nasce do vazio da busca e
+   já está previsto como limite de plano.
+7. **Medir de onde vem a troca.** O evento do aceite guarda o id da proposta;
+   falta a consulta que responde se a vitrine fecha mais troca que o motor — a
+   pergunta que decide se ela fica.
+
+**Planos pagos** — decidido e detalhado na
+[seção 16](#16-preparação-para-monetização): FREE com 20 ofertas, PRO ilimitado
+a R$ 19,90/mês, sem destaque pago. A Fase A está pronta e desligada; falta a
+Fase B (cadastro em massa, alerta de carta, triangular), que é o que dá ao PRO
+o que vender, e só depois a Fase C (Mercado Pago, tela de planos, termos, queda
+de plano).
+
+**Divulgação e lançamento**
+
+8. **Página "Como instalar"** (`/instalar`). Não existe loja: no iPhone é
+   Safari → Compartilhar → "Adicionar à Tela de Início", no Android é o próprio
+   Chrome oferecendo instalar. "Baixar" é a palavra que a pessoa vai procurar, e
+   ela não vai achar loja nenhuma — a página precisa existir com esse nome e com
+   o passo a passo ilustrado dos dois sistemas.
+9. **Imagem de compartilhamento** (Open Graph, 1200×630) e `twitter:card`. O
+   `index.html` não tem nenhuma das duas: hoje um link do app colado no WhatsApp
+   aparece sem imagem.
+10. **Capturas no manifesto** (`screenshots`, com `form_factor` estreito e
+    largo). É o que o Chrome mostra na caixa de instalação do Android, e hoje
+    está vazio.
+11. **Peças de divulgação**: a vitrine, uma troca fechando e a comparação de
+    planos. Quando a animação estiver escolhida, um GIF da troca fechando é a
+    melhor peça que este app tem para mostrar.
 
 ### Depois da v1 — em ordem de prioridade
 
@@ -2335,8 +2443,10 @@ acervo que fazia a vitrine valer a pena. Se B quer duas cartas de A, elas vão n
 **mesma** proposta, que é multi-item por desenho.
 
 **Teto diário de propostas abertas** por pessoa, em `core/limites.py` junto de
-`max_anuncios` — é limite de plano, não constraint, porque constraint não
-distingue FREE de PRO. O campo é `propostas_por_dia` (10 no FREE, 100 no PRO) e
+`max_ofertas` — é limite de plano, não constraint, porque constraint não
+distingue FREE de PRO. Diferente dos outros, este **não passa pelo portão da
+cobrança**: é antiabuso, e antiabuso vale desde o primeiro dia. O campo é
+`propostas_por_dia` (10 no FREE, 100 no PRO) e
 a janela é móvel, das últimas 24h: dia de calendário devolveria cota de presente
 à meia-noite, que é justamente quando um disparo em massa passaria despercebido.
 Ele não é o antiabuso principal — esse é o índice único acima —, e sim o teto de
@@ -2556,6 +2666,9 @@ async def sincronizar_set(client: httpx.AsyncClient, set_id: str) -> None:
 - [ ] Endpoint `/health` consultando o banco de verdade, não só retornando 200
 - [ ] Domínio com HTTPS e HSTS
 - [ ] PWA instalável testada em Android e iOS
+- [ ] Página "Como instalar" publicada, com o passo a passo dos dois sistemas — não existe loja, e "baixar" é o que a pessoa vai procurar
+- [ ] Imagem de compartilhamento (Open Graph 1200×630) e `twitter:card` no `index.html`
+- [ ] `screenshots` no manifesto (estreito e largo) — é o que o Chrome mostra na caixa de instalação
 - [ ] Catálogo de acabamentos populado para os sets em circulação
 - [ ] Seletor de acabamento limitado ao que existe para cada carta
 - [ ] 30+ usuários pré-cadastrados

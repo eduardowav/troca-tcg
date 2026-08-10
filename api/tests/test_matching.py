@@ -270,7 +270,7 @@ def test_historico_ordena_pelo_desfecho():
     """Mais recente primeiro, e a data vem do último evento do match — `matches`
     não guarda quando mudou de status."""
     sql = matching._HISTORICO.text
-    assert "order by desfecho_em desc" in sql
+    assert "order by h.desfecho_em desc" in sql
     assert "max(e.criado_em) from match_events e" in sql
 
 
