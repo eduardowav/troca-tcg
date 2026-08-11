@@ -1991,13 +1991,13 @@ hoje, na ordem em que faz sentido atacar.
    estão criadas e sem uso — é a mudança que mais deve mexer na métrica-mãe.
 2. **Vitrine como destino de quem não tem match.** Quem entra sem PROCURA cai
    num feed vazio, e é exatamente o público que a vitrine existe para atender.
-3. **Login e cadastro reformulados** e **modo escuro** — os dois esperando o
-   arquivo do Figma, porque começam por decisão visual, não por código. No
-   escuro, o problema não é inverter tokens: borda preta e sombra dura somem, e
-   a linguagem inteira precisa de tradução.
-4. **A animação da troca fechando**, escolhida no laboratório
-   (`/lab/troca`, só em desenvolvimento), com som. Entra no aceite — o instante
-   em que a troca passa a existir —, não na conclusão, que acontece dias depois.
+3. ✅ **Login e cadastro reformulados** e **modo escuro** — feitos em 2026-08-10
+   (`78f8212`). O escuro passou por um laboratório de cinco peles antes de
+   escolher: linha e degrau saem do mesmo token, o degrau sai do preto (senão
+   vira buraco em vez de degrau), e a tinta deixou de ser borda para ser só
+   texto. Seletor em Configurações, com "seguir o sistema" como padrão.
+4. ✅ **A animação da troca fechando** — feita em 2026-08-10 (`8139fb7`). Selo
+   COMBINADA no aceite; giro das cartas e selo TROCADO só na conclusão.
 5. **Filtro por bairro** na vitrine. A troca é presencial: "quem tem essa carta
    perto de mim" decide mais que preço.
 6. **Alerta de carta** ("avise quando aparecer"), que nasce do vazio da busca e
@@ -2008,10 +2008,24 @@ hoje, na ordem em que faz sentido atacar.
 
 **Planos pagos** — decidido e detalhado na
 [seção 16](#16-preparação-para-monetização): FREE com 20 ofertas, PRO ilimitado
-a R$ 19,90/mês, sem destaque pago. A Fase A está pronta e desligada; falta a
-Fase B (cadastro em massa, alerta de carta, triangular), que é o que dá ao PRO
-o que vender, e só depois a Fase C (Mercado Pago, tela de planos, termos, queda
-de plano).
+a R$ 19,90/mês ou R$ 199,90/ano, sem destaque pago. A Fase A está commitada e
+desligada (`925fe9d`); falta a Fase B (cadastro em massa, alerta de carta,
+triangular), que é o que dá ao PRO o que vender, e só depois a Fase C (Mercado
+Pago, tela de planos, termos, queda de plano).
+
+**Esperando o olho do Eduardo** — três coisas subiram sem ele ter visto rodando,
+e nenhuma é bug conhecido; são julgamentos visuais:
+
+- **O azul da marca escura.** `marca-escura.svg` usa `#1F4FFE`, que foi o azul
+  que o Figma escolheu para fundo escuro. A interface voltou a `#0038ff` (o
+  mesmo do claro), e os dois azuis ficaram levemente diferentes lado a lado.
+  Saídas: aceitar, editar o SVG, ou levar a interface para `#1F4FFE`.
+- **O próprio `#0038ff` no escuro.** Ele é mais legível que o azul clareado
+  para o texto branco em cima (6,98:1 contra 4,52:1), mas separa menos a peça
+  do papel escuro (2,82:1 contra 4,35:1) — o que só não é problema porque toda
+  peça carrega borda de 2px. Se fechar demais na tela do celular à noite,
+  voltar é uma linha.
+- **A selagem da troca** (`8139fb7`), commitada antes da aprovação visual.
 
 **Divulgação e lançamento**
 
