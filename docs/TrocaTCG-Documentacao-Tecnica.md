@@ -2006,6 +2006,72 @@ hoje, na ordem em que faz sentido atacar.
    falta a consulta que responde se a vitrine fecha mais troca que o motor — a
    pergunta que decide se ela fica.
 
+**Segurança do app** — varredura de 2026-08-11 sobre API, banco, PWA e CI.
+Decisão do Eduardo no mesmo dia: **este bloco é o último da fila, e fecha antes
+de o app ir para os usuários de teste** — nada aqui bloqueia o trabalho de
+produto que vem antes. A lista está em ordem de gravidade para ser atacada nessa
+ordem quando a vez chegar. Uma ressalva que não é de segurança e por isso não
+espera junto: o item 2 tem duas metades, e a metade do backup quebrado é perda
+de dados hoje, com ou sem usuário no app.
+
+1. **O rate limit não roda.** `main.py` cria o `Limiter` com `default_limits`
+   de 100/minuto, guarda-o em `app.state` e registra o handler do 429 — mas
+   nunca adiciona o `SlowAPIMiddleware`, e nenhuma rota usa `@limiter.limit`.
+   No slowapi, o `default_limits` só vale através desse middleware; sem ele o
+   objeto existe e não limita nada. Provado contra a API local: 120 chamadas a
+   `/v1/health` dentro de um minuto, 120 respostas 200, nenhum 429. O comentário
+   do `render.yaml` que justifica `--proxy-headers` descreve uma proteção por
+   pessoa que hoje não existe para ninguém. Sem ela, o freio da vitrine e de
+   `/u/{username}` contra raspagem é só "estar logado", que custa uma conta.
+2. **Backup quebrado, e o destino dele é público.** São duas coisas que se
+   agravam juntas. O workflow falha todo dia desde pelo menos 07/08 — cinco
+   execuções seguidas com `pg_dump: aborting because of server version
+   mismatch` (servidor 17.6, cliente 16.14): o passo instala o client 17 do
+   PGDG, mas o `pg_dump` do PATH continua sendo o 16, e o certo é chamar
+   `/usr/lib/postgresql/17/bin/pg_dump`. Hoje não existe backup nenhum. E
+   quando ele voltar a funcionar, sobe como artifact do Actions num repositório
+   **público**: o dump traz `contato_visivel` de toda a base e a `auth.users`
+   com os e-mails, e artifact de repositório público é baixável por qualquer
+   um. Consertar o dump antes de trocar o destino é publicar a base — a ordem é
+   fechar o destino primeiro (bucket privado ou repositório privado), depois
+   consertar o cliente.
+3. **Quem foi bloqueado continua agindo.** `bloqueado` filtra listagem: perfil
+   público, vitrine, acervo, matcher e demanda. Não há checagem nenhuma na
+   autenticação nem nas escritas, então quem foi bloqueado ainda cria anúncio,
+   abre proposta, aceita match e denuncia — fica invisível, não impedido. O
+   lugar da trava é uma dependência de escrita, ou o próprio `usuario_atual`.
+4. **`/docs` e `/openapi.json` abertos em produção.** O `FastAPI()` não desliga
+   nada por ambiente, e o contrato inteiro — incluindo `/internal/jobs/*` — é
+   o mapa que o atacante não precisaria levantar sozinho.
+5. **`JOB_SECRET` tem default no repositório.** `dev-job-secret`, em
+   `config.py`. No Render o valor vem de `generateValue`, mas basta a variável
+   faltar num ambiente novo para as rotas internas abrirem com um segredo que
+   está publicado aqui. Junto disso, a comparação em `internal.py` é `!=` puro,
+   não `secrets.compare_digest`.
+6. **PWA sem Content-Security-Policy.** O `render.yaml` manda
+   `X-Frame-Options`, `nosniff` e `Referrer-Policy`, e para o CSP. A sessão do
+   Supabase mora em `localStorage`, então um XSS leva a conta inteira. Não
+   achei injeção hoje — não há `dangerouslySetInnerHTML`, `innerHTML` nem
+   `eval` no `web/src` —, e é justamente por isso que a rede vale a pena
+   agora, enquanto é barata.
+7. **Miúdos.** `bairro` e `avatar_url` entram sem limite de tamanho e sem
+   validação, no Pydantic e no banco, e o `avatar_url` é servido a terceiros no
+   perfil público. As policies `for all` de `notifications` e
+   `push_subscriptions` não têm `with check` explícito e essas tabelas não
+   receberam o `revoke` que `profiles`, `listings` e `propostas` receberam —
+   hoje o `using` serve de check e não há buraco, mas a defesa em profundidade
+   está desigual. E o evento de furo monta JSON com f-string em
+   `matching.py`; o valor é um uuid vindo do banco, então não é explorável, é
+   só frágil.
+
+O que a varredura confirmou que está bem, para não se perder no meio da lista:
+a validação do JWT lida pelo JWKS e imune à confusão de algoritmo; o grant por
+coluna que tira `contato_visivel` do alcance da anon key; o contato revelado só
+em `ACEITO`/`CONCLUIDO` e sempre depois de conferir participação; RLS em todas
+as tabelas, inclusive nas criadas depois do 09; SQL sempre parametrizado, com as
+interpolações restritas a constantes internas; `.env` nunca commitado; o `bulk`
+travado em 300 itens; e o antiabuso de propostas por dia ativo desde o começo.
+
 **Planos pagos** — decidido e detalhado na
 [seção 16](#16-preparação-para-monetização): FREE com 20 ofertas, PRO ilimitado
 a R$ 19,90/mês ou R$ 199,90/ano, sem destaque pago. A Fase A está commitada e
