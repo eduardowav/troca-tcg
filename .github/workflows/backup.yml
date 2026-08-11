@@ -1,8 +1,22 @@
 name: Backup diário
 
 # O free tier do Supabase não tem backup automático. Dump diário desde o
-# primeiro dia. Guardado como artifact (30 dias); para retenção longa, aponte
-# para um repositório privado. Ver seção 15 da doc.
+# primeiro dia. Ver seção 15 da doc.
+#
+# O dump é **criptografado antes de sair do runner** e só então vira artifact
+# (30 dias). O motivo é que este repositório é público, e artifact de
+# repositório público é baixável por qualquer pessoa: um dump em claro
+# entregaria o `contato_visivel` de toda a base e os e-mails da `auth.users`.
+# Com o AES256 simétrico o artifact continua onde estava e deixa de ser um
+# vazamento — quem baixar leva um arquivo que não abre.
+#
+# A senha vive no secret BACKUP_PASSPHRASE e em nenhum outro lugar do GitHub.
+# Guarde-a fora daqui: sem ela o backup não é restaurável, e esse é o único
+# jeito de perder os dados que este workflow existe para proteger.
+#
+# Restaurar:
+#   gpg --batch --decrypt --passphrase '<a senha>' -o backup.dump backup.dump.gpg
+#   pg_restore --no-owner --no-acl -d "$DATABASE_URL_DIRECT" backup.dump
 on:
   schedule:
     - cron: '0 8 * * *'      # 05:00 BRT
@@ -12,11 +26,15 @@ jobs:
   dump:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-
       # O runner vem com client 16 e o servidor é 17.6. O pg_dump se recusa a
       # ler servidor mais novo que ele ("server version mismatch") e aborta
       # antes de escrever um byte — então o client tem de vir do PGDG.
+      #
+      # Instalar não basta, e foi o que quebrou o backup todos os dias entre
+      # 07/08 e 11/08: o pacote põe o binário em /usr/lib/postgresql/17/bin,
+      # que não está no PATH, e `pg_dump` continuava resolvendo para o 16 do
+      # sistema. O GITHUB_PATH resolve isso para todos os passos seguintes; o
+      # `pg_dump --version` no fim é a prova de que resolveu.
       - name: Cliente PostgreSQL 17
         run: |
           sudo install -d /usr/share/postgresql-common/pgdg
@@ -26,26 +44,46 @@ jobs:
             | sudo tee /etc/apt/sources.list.d/pgdg.list > /dev/null
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends postgresql-client-17
-          pg_dump --version
+          echo "/usr/lib/postgresql/17/bin" >> "$GITHUB_PATH"
+          /usr/lib/postgresql/17/bin/pg_dump --version
 
       # O nome do secret diz DIRECT, mas o valor é o do pooler (Supavisor,
       # porta 5432 = session mode). No plano free o host direto
       # `db.<ref>.supabase.co` só publica AAAA, e o runner do GitHub não tem
       # IPv6: pela conexão direta isto morre em timeout. O pooler tem IPv4.
+      #
+      # A checagem da BACKUP_PASSPHRASE vem antes do dump de propósito: sem ela
+      # o certo é não gerar dump nenhum. Gerar e não conseguir cifrar deixaria
+      # um arquivo em claro no runner à espera do próximo passo que o suba.
       - name: pg_dump
         env:
           DATABASE_URL_DIRECT: ${{ secrets.DATABASE_URL_DIRECT }}
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
         run: |
           if [ -z "$DATABASE_URL_DIRECT" ]; then
             echo "Secret DATABASE_URL_DIRECT ainda não configurado — backup em espera."
             exit 0
           fi
+          if [ -z "$BACKUP_PASSPHRASE" ]; then
+            echo "Secret BACKUP_PASSPHRASE ausente: o repositório é público e o dump"
+            echo "em claro viraria artifact baixável por qualquer um. Abortando."
+            exit 1
+          fi
           pg_dump "$DATABASE_URL_DIRECT" --no-owner --no-acl -Fc -f backup.dump
-          ls -lh backup.dump
+          # A senha entra por stdin, não por argumento: argv de processo é
+          # legível por qualquer processo do runner, e o secret ficaria lá.
+          printf '%s' "$BACKUP_PASSPHRASE" | gpg --batch --yes \
+            --symmetric --cipher-algo AES256 \
+            --passphrase-fd 0 \
+            -o backup.dump.gpg backup.dump
+          # O original sai do disco antes do passo de upload existir.
+          shred -u backup.dump 2>/dev/null || rm -f backup.dump
+          ls -lh backup.dump.gpg
+
       - name: Upload do artifact
-        if: ${{ hashFiles('backup.dump') != '' }}
+        if: ${{ hashFiles('backup.dump.gpg') != '' }}
         uses: actions/upload-artifact@v4
         with:
           name: backup-${{ github.run_id }}
-          path: backup.dump
+          path: backup.dump.gpg
           retention-days: 30
