@@ -15,6 +15,35 @@
     <title>TrocaTCG</title>
 
     <!--
+      O tema, antes da primeira pintura.
+
+      Precisa ser um script bloqueante no `<head>`, e não código do React: o
+      bundle só roda depois do primeiro quadro, e nesse quadro a página seria
+      creme. Quem escolheu escuro veria um flash branco a cada abertura — que é
+      exatamente o que mais incomoda em modo escuro mal feito, e num PWA aberto
+      dezenas de vezes por dia isso não passa despercebido.
+
+      Duas linhas, sem dependência, deliberadamente burro: a lógica de verdade
+      mora em `src/stores/tema.ts`, e este trecho só precisa acertar o atributo.
+      `try` porque `localStorage` lança em modo restrito de alguns navegadores, e
+      falhar aqui derrubaria a página inteira antes de qualquer coisa carregar.
+    -->
+    <script>
+      try {
+        var t = localStorage.getItem('troca:tema')
+        var escuro =
+          t === 'escuro' ||
+          (t !== 'claro' && matchMedia('(prefers-color-scheme: dark)').matches)
+        if (escuro) {
+          document.documentElement.dataset.tema = 'escuro'
+          document
+            .querySelector('meta[name="theme-color"]')
+            .setAttribute('content', '#0B0B0D')
+        }
+      } catch (e) {}
+    </script>
+
+    <!--
       ============================================================
       CONTRATO DE DIREÇÃO — ver DESIGN.md
       ============================================================

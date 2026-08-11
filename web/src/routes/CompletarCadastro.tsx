@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/Button'
 import { Campo } from '@/components/ui/Campo'
 import { ApiError } from '@/lib/api'
 import { criarPerfil, usernameDisponivel } from '@/lib/perfil'
-import { CampoTelefone } from '@/routes/Entrar'
+import { CampoTelefone, CampoUsuario } from '@/routes/Entrar'
 import { telefoneSchema } from '@/lib/telefone'
 import { sair, useAuth } from '@/stores/auth'
 
@@ -114,20 +114,10 @@ export default function CompletarCadastro() {
           rotulo="Como querem te chamar"
           name="nome_exibicao"
           autoComplete="name"
-          placeholder="Eduardo"
+          placeholder="Seu Nome"
           erro={erros.nome_exibicao}
         />
-        <Campo
-          rotulo="Seu @ na comunidade"
-          name="username"
-          prefixo="@"
-          autoComplete="username"
-          autoCapitalize="none"
-          spellCheck={false}
-          placeholder="eduardo_tcg"
-          dica="É assim que os outros vão te achar."
-          erro={erros.username}
-        />
+        <CampoUsuario erro={erros.username} />
         <CampoTelefone erro={erros.telefone} />
 
         <div className="flex flex-col gap-1.5">

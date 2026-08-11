@@ -96,9 +96,19 @@ export function IconeRaio({ className }: { className?: string }) {
  *
  * A arte é mais larga que alta (577×458). Quem usa passa **altura** e deixa a
  * largura em `auto` — `size-*`, que fixa as duas, achataria o leque.
+ *
+ * **No escuro ela troca de arquivo**, e quem troca é o CSS, pela classe
+ * `marca-svg` (regra em `index.css`). Não é teimosia: o tema é um atributo que
+ * pode viver no `<html>` — no app — ou num `<div>` no meio da página, que é como
+ * o laboratório mostra claro e escuro lado a lado. Um hook de React não enxerga
+ * um atributo posto acima dele por outro componente; o CSS enxerga. Escolher
+ * aqui, em JavaScript, daria a marca certa no app e a errada no laboratório —
+ * justamente onde ela está sendo julgada.
  */
 export function MarcaTrocaTCG({ className }: { className?: string }) {
-  return <img src="/marca.svg" alt="" aria-hidden className={className} />
+  return (
+    <img src="/marca.svg" alt="" aria-hidden className={cn('marca-svg', className)} />
+  )
 }
 
 export function IconeSetaDireita({ className }: { className?: string }) {
@@ -543,13 +553,14 @@ export function ParDeCartas({
 }) {
   const grande = tamanho === 'grande'
 
-  // A cor segue a posse, não a posição.
+  // O lado segue a posse, não a posição.
   //
-  // O azul-claro quer dizer "esta carta é minha". Enquanto a troca está de pé,
-  // a minha é a que eu vou entregar. Depois de concluída, ela deixou de ser —
-  // e quem passou a ser minha é a que eu recebi. Fixar a cor na carta que sai
-  // pintava de "meu" justamente a que não é mais, ao lado de um rótulo dizendo
-  // "Você deu". Achado testando uma troca concluída.
+  // Quem carrega isso hoje é a etiqueta — azul de um lado, preta do outro.
+  // Enquanto a troca está de pé, a minha é a que eu vou entregar; depois de
+  // concluída, ela deixou de ser, e quem passou a ser minha é a que eu recebi.
+  // Fixar o lado na carta que sai marcava de "meu" justamente a que não é mais,
+  // ao lado de um rótulo dizendo "Você deu". Achado testando uma troca
+  // concluída, e continua valendo agora que a posse mora só na etiqueta.
   const cartaQueSai = (
     <LadoDaTroca
       carta={dou}
@@ -574,10 +585,16 @@ export function ParDeCartas({
   )
 
   return (
-    // Alinhado pelo topo, não pelo centro: as duas colunas quase nunca têm a
-    // mesma altura — nome de duas linhas de um lado, selo de acabamento do
-    // outro — e centralizar faria uma carta subir e a outra descer sem que nada
-    // nelas justificasse o degrau.
+    // Esticado, não alinhado.
+    //
+    // As duas colunas quase nunca têm o mesmo conteúdo — nome de duas linhas de
+    // um lado, de uma só do outro; selo de acabamento aqui e não ali —, e antes
+    // isso virava duas molduras de alturas diferentes lado a lado, o que lia
+    // como defeito e não como informação. `items-stretch` iguala as duas pela
+    // mais alta; o `min-h` do nome, lá embaixo, faz a mais alta ser sempre a
+    // mesma. Uma coisa sem a outra não resolve: sem o `min-h`, duas cartas de
+    // nome curto encolhem as duas molduras juntas e o par muda de tamanho de
+    // uma troca para a seguinte.
     <div
       // O vão e o tamanho da seta são declarados aqui e lidos pelas animações
       // em `index.css`: o caminho de uma carta até o lugar da outra é a largura
@@ -588,8 +605,7 @@ export function ParDeCartas({
         ['--troca-seta' as string]: '2rem',
       }}
       className={cn(
-        'flex gap-[var(--troca-vao)]',
-        grande ? 'items-start' : 'items-center',
+        'flex items-stretch gap-[var(--troca-vao)]',
         // Enquanto sela, as cartas andam para fora da própria coluna; sem isto
         // a página ganha uma barra de rolagem horizontal no meio da cena.
         selando && 'overflow-hidden',
@@ -606,7 +622,11 @@ export function ParDeCartas({
       <span
         className={cn(
           'grid size-[var(--troca-seta)] shrink-0 place-items-center rounded-[16px] border-2 border-tinta bg-cartela shadow-[var(--shadow-duro-xs)]',
-          grande && 'mt-16 self-start',
+          // Com a fileira esticando, a seta precisa dizer onde fica: ela tem
+          // altura fixa e não estica junto, então sem isto encostaria no topo.
+          // No compacto, o meio da moldura; no grande, a altura das artes, que
+          // é onde o eixo da troca realmente está.
+          grande ? 'mt-16 self-start' : 'self-center',
           'transition-all duration-150',
           selando && 'scale-50 opacity-0',
         )}
@@ -638,8 +658,14 @@ function LadoDaTroca({
 }) {
   const valor = formatarPreco(preco?.preco)
   const classe = cn(
-    'flex min-w-0 flex-1 flex-col gap-2 rounded-[var(--radius-controle)] border-2 border-tinta p-2',
-    lado === 'meu' ? 'bg-meu' : 'bg-papel',
+    // As duas molduras na mesma cor, e a cor é a do papel — a que era do lado
+    // da outra pessoa. Decisão do Eduardo, vendo as duas rodando: o azul-claro
+    // em ambas puxava o par inteiro para uma mancha fria; o papel deixa a arte
+    // da carta ser a única cor forte ali dentro, que é o que se veio ver.
+    // No escuro isso ainda ganha um segundo efeito: o papel é mais escuro que a
+    // cartela, então a moldura afunda em vez de flutuar, e as duas artes ficam
+    // sobre o tom mais fundo da tela.
+    'flex min-w-0 flex-1 flex-col gap-2 rounded-[var(--radius-controle)] border-2 border-tinta bg-papel p-2',
     // Teto no compacto. Sem ele, numa coluna larga — o histórico do perfil —
     // as duas cartas incham até ocupar a linha inteira e cada troca vira meia
     // tela. No feed a célula já é estreita e o teto não muda nada; era por
@@ -666,20 +692,30 @@ function LadoDaTroca({
           className="rounded-[var(--radius-imagem)] border-2 border-tinta"
         />
       ) : (
-        <div className="aspect-[2.5/3.5] rounded-[var(--radius-imagem)] border-2 border-tinta bg-papel" />
+        // `cartela`, e não `papel`: a moldura em volta virou papel também, e
+        // dois papéis um dentro do outro deixariam o vão da carta que falta
+        // indistinguível do fundo dela.
+        <div className="aspect-[2.5/3.5] rounded-[var(--radius-imagem)] border-2 border-tinta bg-cartela" />
       )}
 
       <span className="flex min-w-0 flex-col gap-0.5">
-        {/* Duas linhas para o nome, não uma.
+        {/* Duas linhas para o nome — sempre duas, nem mais nem menos.
             No celular cada lado da troca tem ~107px, e em uma linha só
             "Mega Dragonite ex" vira "Mega Dragon…" — que é onde mora a
             diferença entre uma carta e outra. Numa troca de duas cartas
             parecidas, o nome cortado deixa as duas idênticas na tela.
-            O `line-clamp` segura em duas e ainda evita que um nome
-            comprido empurre a cartela. */}
+            O `line-clamp` segura o teto em duas.
+
+            O `min-h` é o piso, e existe pelo motivo oposto: "Mew ex" cabe
+            numa linha, e sem o piso a moldura dele nascia mais baixa que a
+            do vizinho de nome comprido. Duas cartas lado a lado com alturas
+            diferentes leem como erro de alinhamento, não como "um nome é
+            maior que o outro". `2lh` é literalmente "duas linhas desta
+            entrelinha": muda junto com o `text-` de cada tamanho, sem
+            número mágico para envelhecer. */}
         <span
           className={cn(
-            'line-clamp-2 font-titulo leading-tight font-bold text-tinta',
+            'line-clamp-2 min-h-[2lh] font-titulo leading-tight font-bold text-tinta',
             grande ? 'text-[17px] lg:text-[19px]' : 'text-[14px]',
           )}
         >

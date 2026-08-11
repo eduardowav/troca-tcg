@@ -1,8 +1,8 @@
-import { motion } from 'motion/react'
 import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { z } from 'zod'
 
+import { Cartela, MarcaTrocaTCG } from '@/components/brutal/Pecas'
 import { Campo } from '@/components/ui/Campo'
 import { Button } from '@/components/ui/Button'
 import { IconeEnvelope } from '@/components/ui/Icone'
@@ -134,15 +134,17 @@ export default function Entrar() {
   }
 
   return (
-    <div className="mx-auto flex min-h-[100dvh] w-full max-w-sm flex-col justify-center px-5 py-12">
+    <div className="mx-auto flex min-h-[100dvh] w-full max-w-sm flex-col justify-center gap-6 px-5 py-10">
+      <Lockup />
+      <TrocaQueRoda />
+
       <header>
-        <p className="set-code text-xs tracking-wide text-muted">TROCATCG</p>
-        <h1 className="mt-3 text-[28px] leading-[1.1]">
+        <h1 className="text-[30px] leading-[1.05]">
           {modo === 'entrar'
             ? 'Bem-vindo de volta.'
             : 'Sua conta no quadro de trocas.'}
         </h1>
-        <p className="mt-2 text-[15px] leading-relaxed text-muted">
+        <p className="mt-2 text-[15px] leading-relaxed text-apagado">
           {modo === 'entrar'
             ? 'Entre para ver suas listas e seus matches.'
             : 'Leva um minuto. Depois é só montar Ofereço e Procuro.'}
@@ -151,75 +153,167 @@ export default function Entrar() {
 
       <Alternador modo={modo} onModo={trocarModo} />
 
-      <form onSubmit={aoEnviar} noValidate className="mt-6 flex flex-col gap-4">
-        {modo === 'criar' && (
-          <>
-            <Campo
-              rotulo="Como querem te chamar"
-              name="nome_exibicao"
-              autoComplete="name"
-              placeholder="Eduardo"
-              erro={erros.nome_exibicao}
-            />
-            <Campo
-              rotulo="Seu @ na comunidade"
-              name="username"
-              prefixo="@"
-              autoComplete="username"
-              autoCapitalize="none"
-              spellCheck={false}
-              placeholder="eduardo_tcg"
-              dica="É assim que os outros vão te achar."
-              erro={erros.username}
-            />
-          </>
-        )}
+      <Cartela className="p-5">
+        <form onSubmit={aoEnviar} noValidate className="flex flex-col gap-4">
+          {modo === 'criar' && (
+            <>
+              <Campo
+                rotulo="Como querem te chamar"
+                name="nome_exibicao"
+                autoComplete="name"
+                placeholder="Seu Nome"
+                erro={erros.nome_exibicao}
+              />
+              <CampoUsuario erro={erros.username} />
+            </>
+          )}
 
-        <Campo
-          rotulo="E-mail"
-          name="email"
-          type="email"
-          inputMode="email"
-          autoComplete="email"
-          autoCapitalize="none"
-          spellCheck={false}
-          placeholder="voce@email.com"
-          erro={erros.email}
-        />
+          <Campo
+            rotulo="E-mail"
+            name="email"
+            type="email"
+            inputMode="email"
+            autoComplete="email"
+            autoCapitalize="none"
+            spellCheck={false}
+            placeholder="voce@email.com"
+            erro={erros.email}
+          />
 
-        {modo === 'criar' && <CampoTelefone erro={erros.telefone} />}
+          {modo === 'criar' && <CampoTelefone erro={erros.telefone} />}
 
-        <Campo
-          rotulo="Senha"
-          name="senha"
-          type="password"
-          autoComplete={modo === 'criar' ? 'new-password' : 'current-password'}
-          placeholder="••••••••"
-          dica={modo === 'criar' ? 'Ao menos 8 caracteres.' : undefined}
-          erro={erros.senha}
-        />
+          <Campo
+            rotulo="Senha"
+            name="senha"
+            type="password"
+            autoComplete={modo === 'criar' ? 'new-password' : 'current-password'}
+            placeholder="••••••••"
+            dica={modo === 'criar' ? 'Ao menos 8 caracteres.' : undefined}
+            erro={erros.senha}
+          />
 
-        {modo === 'criar' && <AceiteTermos erro={erros.aceite} />}
+          {modo === 'criar' && <AceiteTermos erro={erros.aceite} />}
 
-        {erros.form && (
-          <p
-            role="alert"
-            className="rounded-[var(--radius-controle)] border border-[color-mix(in_oklab,var(--color-alert)_40%,transparent)] bg-[color-mix(in_oklab,var(--color-alert)_12%,transparent)] px-3.5 py-3 text-[14px] text-alert"
+          {erros.form && (
+            <p
+              role="alert"
+              className="rounded-[var(--radius-controle)] border-2 border-alerta bg-alerta-fraco px-3.5 py-3 text-[14px] font-medium text-alerta"
+            >
+              {erros.form}
+            </p>
+          )}
+
+          <Button
+            type="submit"
+            variant="primary"
+            size="lg"
+            block
+            loading={enviando}
+            className="shadow-[var(--shadow-duro-sm)] hover:shadow-[var(--shadow-duro)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none"
           >
-            {erros.form}
-          </p>
-        )}
+            {modo === 'entrar' ? 'Entrar' : 'Criar conta'}
+          </Button>
+        </form>
+      </Cartela>
+    </div>
+  )
+}
 
-        <Button type="submit" variant="primary" size="lg" block loading={enviando}>
-          {modo === 'entrar' ? 'Entrar' : 'Criar conta'}
-        </Button>
-      </form>
+/* ---------- A marca ---------- */
+
+/**
+ * O mesmo lockup do topo do app — marca à esquerda, palavra à direita.
+ *
+ * Repetido aqui, e não herdado do `LayoutApp`, porque `/entrar` fica fora dele:
+ * quem ainda não entrou não tem barra de navegação nem cabeçalho. É a primeira
+ * vez que a pessoa vê a marca, então ela vem maior do que dentro do app.
+ */
+function Lockup() {
+  return (
+    <div className="flex items-center justify-center gap-2.5">
+      <MarcaTrocaTCG className="h-9 w-auto shrink-0" />
+      <span className="font-titulo text-[30px] leading-none font-black text-tinta">
+        TrocaTCG
+      </span>
+    </div>
+  )
+}
+
+/* ---------- A troca rodando ---------- */
+
+/**
+ * Duas cartas trocando de lugar, em laço, acima do formulário.
+ *
+ * Esta é a única tela do app que alguém vê **antes** de ter conta, e até aqui
+ * ela pedia dados sem ter mostrado nada. O app inteiro é sobre uma coisa só —
+ * a carta que falta para você está na mão de outra pessoa, e vice-versa — e
+ * essa frase se explica melhor em dois segundos de movimento que em parágrafo.
+ *
+ * As cartas são formas, não scans: o catálogo exige sessão, e inventar arte de
+ * carta de verdade aqui seria promessa que a tela não pode cumprir. O que
+ * importa é a leitura de cor do mundo novo — azul é o seu lado, papel é o do
+ * outro —, que é a mesma do `ParDeCartas` no detalhe da troca.
+ *
+ * O movimento mora no CSS (`entrar-troca`, em index.css) pelo mesmo motivo da
+ * animação da troca: percurso com volta e pausa é onde o motion desiste.
+ */
+function TrocaQueRoda() {
+  return (
+    <div aria-hidden className="flex flex-col items-center gap-3">
+      <div className="entrar-fileira">
+        <CartaDaDemo tom="meu" rotulo="VOCÊ" />
+        <CartaDaDemo tom="dele" rotulo="ELE" />
+      </div>
+      <p className="text-center text-[13px] leading-snug text-apagado">
+        Você tem a carta que falta para ele.
+        <br />
+        Ele tem a que falta para você.
+      </p>
+    </div>
+  )
+}
+
+function CartaDaDemo({ tom, rotulo }: { tom: 'meu' | 'dele'; rotulo: string }) {
+  return (
+    <div
+      className={cn(
+        // A altura é acordo com `--entrar-arco` em index.css: os dois arcos
+        // somados precisam passar dela para as cartas se cruzarem sem se cobrir.
+        'entrar-troca grid h-[78px] w-[56px] place-items-end rounded-[var(--radius-imagem)]',
+        'border-2 border-tinta p-1.5 shadow-[var(--shadow-duro-xs)]',
+        tom === 'meu' ? 'bg-azul' : 'entrar-troca-b bg-cartela',
+      )}
+    >
+      <span
+        className={cn(
+          'font-dado text-[9px] leading-none font-bold',
+          tom === 'meu' ? 'text-azul-tinta' : 'text-tinta',
+        )}
+      >
+        {rotulo}
+      </span>
     </div>
   )
 }
 
 /* ---------- Alternador Entrar / Criar conta ---------- */
 
+/**
+ * Segmentado de dois estados, com a pastilha deslizando de um lado ao outro.
+ *
+ * A pastilha é **um elemento só, sempre montado**, movido por `translateX` numa
+ * transição de CSS. A versão anterior usava `layoutId` do motion e uma pastilha
+ * que só existia no lado ativo: a cada troca, uma desmontava e outra montava, e
+ * o motion tinha de medir as duas para animar entre elas. Ele media no mesmo
+ * quadro em que o formulário inteiro mudava de altura — o modo "criar" traz
+ * três campos a mais —, então a medida saía de um layout que já não existia. Daí
+ * o atraso e a pastilha atravessando a tela para achar o lugar.
+ *
+ * Sem medição não há o que sair errado: são duas posições, 0 e 100% da largura
+ * da própria pastilha, e a largura é calculada pelo CSS. O deslocamento até a
+ * segunda aba é exatamente a largura dela — metade da pista menos o respiro —,
+ * então `translateX(100%)` assenta no lugar certo em qualquer tela.
+ */
 function Alternador({
   modo,
   onModo,
@@ -231,8 +325,20 @@ function Alternador({
     <div
       role="tablist"
       aria-label="Entrar ou criar conta"
-      className="mt-7 grid grid-cols-2 gap-1 rounded-[var(--radius-controle)] border-2 border-tinta bg-cartela p-1"
+      className="relative grid grid-cols-2 rounded-[var(--radius-controle)] border-2 border-tinta bg-cartela p-1 shadow-[var(--shadow-duro-xs)]"
     >
+      <span
+        aria-hidden
+        className={cn(
+          'pointer-events-none absolute inset-y-1 left-1 w-[calc(50%-0.25rem)]',
+          'rounded-[8px] bg-azul transition-transform duration-200 ease-out',
+          'motion-reduce:transition-none',
+        )}
+        style={{
+          transform: modo === 'criar' ? 'translateX(100%)' : 'translateX(0)',
+        }}
+      />
+
       {(['entrar', 'criar'] as const).map((m) => {
         const ativo = modo === m
         return (
@@ -243,25 +349,65 @@ function Alternador({
             aria-selected={ativo}
             onClick={() => onModo(m)}
             className={cn(
-              'relative h-9 rounded-[7px] text-[14px] font-medium',
-              'transition-colors',
-              ativo ? 'text-paper' : 'text-muted hover:text-paper',
+              'relative z-10 h-10 rounded-[8px]',
+              'font-titulo text-[13px] font-extrabold uppercase',
+              'transition-colors duration-200',
+              ativo ? 'text-azul-tinta' : 'text-apagado hover:text-tinta',
             )}
           >
-            {ativo && (
-              <motion.span
-                layoutId="aba-auth"
-                transition={{ type: 'spring', stiffness: 420, damping: 36 }}
-                className="absolute inset-0 rounded-[7px] bg-meu shadow-[var(--shadow-card)]"
-              />
-            )}
-            <span className="relative">
-              {m === 'entrar' ? 'Entrar' : 'Criar conta'}
-            </span>
+            {m === 'entrar' ? 'Entrar' : 'Criar conta'}
           </button>
         )
       })}
     </div>
+  )
+}
+
+/* ---------- O @ da comunidade ---------- */
+
+/**
+ * O `@`, com a caixa baixando enquanto se digita.
+ *
+ * O schema só aceita `^[a-z0-9_]{3,20}$`, e o envio já convertia para
+ * minúscula — mas só no envio. Quem digitava "Eduardo" via o campo aceitar e o
+ * formulário recusar, por uma regra que a tela não tinha como anunciar. Baixar
+ * a caixa aqui é dizer a mesma coisa sem texto de erro: a pessoa vê o `E` virar
+ * `e` no momento em que digita e entende a regra sozinha.
+ *
+ * Mora aqui, exportado, como o `CampoTelefone`: o `CompletarCadastro` pede o
+ * mesmo `@` — é a segunda porta para o mesmo cadastro, quando o perfil não
+ * nasceu junto com a sessão — e duas cópias sairiam de sintonia na primeira
+ * mudança de regra.
+ *
+ * Reescreve o valor só quando ele muda de verdade, e devolve o cursor onde
+ * estava: `value = ...` manda o cursor para o fim, o que só passa despercebido
+ * enquanto se digita no fim. Quem volta para corrigir uma letra no meio perderia
+ * o lugar a cada tecla. `toLowerCase()` não muda o comprimento das letras que
+ * este campo aceita, então o índice de antes continua valendo.
+ */
+export function CampoUsuario({ erro }: { erro?: string }) {
+  return (
+    <Campo
+      rotulo="Seu @ na comunidade"
+      name="username"
+      prefixo="@"
+      autoComplete="username"
+      autoCapitalize="none"
+      spellCheck={false}
+      // Sem o "@": o campo já desenha um, fixo, à esquerda — repetir aqui
+      // mostraria "@ @usuario" na tela.
+      placeholder="usuario"
+      dica="É assim que os outros vão te achar."
+      erro={erro}
+      onChange={(e) => {
+        const campo = e.currentTarget
+        const minusculo = campo.value.toLowerCase()
+        if (minusculo === campo.value) return
+        const cursor = campo.selectionStart
+        campo.value = minusculo
+        campo.setSelectionRange(cursor, cursor)
+      }}
+    />
   )
 }
 
@@ -299,12 +445,15 @@ function AceiteTermos({ erro }: { erro?: string }) {
         <input
           type="checkbox"
           name="aceite"
-          className="mt-0.5 size-5 shrink-0 accent-[var(--color-volt)]"
+          className="mt-0.5 size-5 shrink-0 accent-[var(--color-azul)]"
           aria-invalid={erro ? true : undefined}
         />
-        <span className="text-[14px] leading-relaxed text-muted">
+        <span className="text-[14px] leading-relaxed text-apagado">
           Li e aceito os{' '}
-          <Link to="/termos" className="text-paper underline underline-offset-2">
+          <Link
+            to="/termos"
+            className="font-medium text-azul underline underline-offset-2"
+          >
             termos de uso
           </Link>
           . Entendo que o TrocaTCG apenas conecta pessoas — a troca acontece
@@ -312,7 +461,7 @@ function AceiteTermos({ erro }: { erro?: string }) {
         </span>
       </label>
       {erro && (
-        <p role="alert" className="text-[13px] text-alert">
+        <p role="alert" className="text-[13px] text-alerta">
           {erro}
         </p>
       )}
@@ -324,18 +473,23 @@ function AceiteTermos({ erro }: { erro?: string }) {
 
 function ConfirmeEmail({ email }: { email: string }) {
   return (
-    <div className="mx-auto flex min-h-[100dvh] w-full max-w-sm flex-col justify-center px-5 py-12 text-center">
-      <div className="mx-auto grid size-14 place-items-center rounded-2xl border-2 border-tinta bg-cartela text-muted">
-        <IconeEnvelope className="size-7" />
-      </div>
-      <h1 className="mt-5 text-[24px] leading-[1.15]">Confirme seu e-mail</h1>
-      <p className="mt-3 text-[15px] leading-relaxed text-muted">
-        Enviamos um link para <span className="text-paper">{email}</span>. Abra
-        para ativar a conta — depois é só voltar aqui e entrar.
-      </p>
-      <p className="mt-6 text-[13px] text-faint">
-        Não chegou? Confira o spam ou aguarde um minuto.
-      </p>
+    <div className="mx-auto flex min-h-[100dvh] w-full max-w-sm flex-col justify-center gap-6 px-5 py-10">
+      <Lockup />
+
+      <Cartela className="p-6 text-center">
+        <div className="mx-auto grid size-14 place-items-center rounded-[var(--radius-controle)] border-2 border-tinta bg-azul text-azul-tinta shadow-[var(--shadow-duro-xs)]">
+          <IconeEnvelope className="size-7" />
+        </div>
+        <h1 className="mt-5 text-[24px] leading-[1.15]">Confirme seu e-mail</h1>
+        <p className="mt-3 text-[15px] leading-relaxed text-apagado">
+          Enviamos um link para{' '}
+          <span className="font-medium text-tinta">{email}</span>. Abra para
+          ativar a conta — depois é só voltar aqui e entrar.
+        </p>
+        <p className="mt-6 font-dado text-[11px] uppercase text-apagado">
+          Não chegou? Confira o spam ou aguarde um minuto.
+        </p>
+      </Cartela>
     </div>
   )
 }

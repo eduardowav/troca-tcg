@@ -74,6 +74,17 @@
   --color-tinta: #000000;
   --color-apagado: #555552; /* secundário, letra miúda, dado frio */
 
+  /* A borda, que no claro é a própria tinta.
+     ----------------------------------------------------------
+     Existe separada por causa do escuro, e só por isso. No papel
+     branco, borda e texto podem ser a mesma cor porque preto sobre
+     branco funciona nos dois papéis. No fundo escuro eles se
+     separam: o texto quer ser quase branco para ser lido, e uma
+     borda quase branca em volta de cada cartela transformaria a
+     tela numa grade de contornos gritando. Enquanto o valor for
+     `var(--color-tinta)`, nada muda no claro. */
+  --color-borda: var(--color-tinta);
+
   /* Ação. Azul chapado, sem gradiente. */
   --color-azul: #0038ff;
   --color-azul-claro: #6082ff; /* aba ativa da navegação */
@@ -235,7 +246,7 @@
 
   [data-mundo='brutal'] .nav-app {
     background-color: var(--color-cartela);
-    border-top: 2px solid var(--color-tinta);
+    border-top: 2px solid var(--color-borda);
     backdrop-filter: none;
   }
 
@@ -290,7 +301,7 @@
   [data-mundo='brutal'] .filtro-catalogo select,
   [data-mundo='brutal'] .filtro-catalogo button {
     background-color: var(--color-cartela);
-    border: 2px solid var(--color-tinta);
+    border: 2px solid var(--color-borda);
     border-radius: var(--radius-controle);
     color: var(--color-tinta);
     font-family: var(--font-corpo);
@@ -309,7 +320,7 @@
      mais tarde e mais difícil de notar. */
   [data-mundo='brutal'] .busca-rapida input {
     background-color: var(--color-cartela);
-    border: 2px solid var(--color-tinta);
+    border: 2px solid var(--color-borda);
     border-radius: var(--radius-controle);
     color: var(--color-tinta);
     font-family: var(--font-corpo);
@@ -326,7 +337,7 @@
   /* O painel: qualquer filho posicionado que não seja o campo. */
   [data-mundo='brutal'] .busca-rapida > div:not(:first-child) {
     background-color: var(--color-cartela);
-    border: 2px solid var(--color-tinta);
+    border: 2px solid var(--color-borda);
     border-radius: var(--radius-controle);
   }
 
@@ -334,7 +345,7 @@
   [data-mundo='brutal'] .busca-rapida p,
   [data-mundo='brutal'] .busca-rapida li {
     color: var(--color-tinta);
-    border-color: var(--color-tinta);
+    border-color: var(--color-borda);
   }
 
   /* Rede de segurança dos textos herdados.
@@ -384,7 +395,7 @@
 
   [data-mundo='brutal'] .campo input {
     background-color: var(--color-cartela);
-    border: 2px solid var(--color-tinta);
+    border: 2px solid var(--color-borda);
     border-radius: var(--radius-controle);
     color: var(--color-tinta);
     font-family: var(--font-corpo);
@@ -406,7 +417,7 @@
      Vale para o `Button` também, que é compartilhado com as telas
      ainda no playmat — por isso `[data-mundo]` e não classe nova. */
   [data-mundo='brutal'] .cartela {
-    border: 2px solid var(--color-tinta);
+    border: 2px solid var(--color-borda);
     border-radius: var(--radius-cartela);
     background-color: var(--color-cartela);
     box-shadow: var(--shadow-duro);
@@ -419,7 +430,7 @@
      ficaria reservado ao destrutivo, e prazo apertado não é erro. */
   [data-mundo='brutal'] .cartela[data-tom='atencao'] {
     background-color: var(--color-ambar-fraco);
-    border-color: var(--color-tinta);
+    border-color: var(--color-borda);
   }
 
   [data-mundo='brutal'] .titulo-tom {
@@ -455,7 +466,7 @@
      no mundo novo cor é significado, e essas duas ali eram decoração
      herdada. `ghost` e `subtle` já eram os discretos e continuam. */
   [data-mundo='brutal'] .botao {
-    border: 2px solid var(--color-tinta);
+    border: 2px solid var(--color-borda);
     border-radius: var(--radius-controle);
     font-family: var(--font-titulo);
     font-weight: 800;
@@ -496,7 +507,7 @@
 
   [data-mundo='brutal'] .folha-inferior {
     background-color: var(--color-papel);
-    border-top: 2px solid var(--color-tinta);
+    border-top: 2px solid var(--color-borda);
     box-shadow: none;
   }
 
@@ -504,7 +515,7 @@
   [data-mundo='brutal'] .folha-inferior [aria-hidden],
   [data-mundo='brutal'] .folha-inferior hr {
     background-color: var(--color-tinta);
-    border-color: var(--color-tinta);
+    border-color: var(--color-borda);
   }
 
   [data-mundo='brutal'] .folha-inferior h2,
@@ -521,7 +532,7 @@
      papel de fundo — e o selecionado vira azul cheio, que é o
      vocabulário do arquivo para "este é o valor ativo". */
   [data-mundo='brutal'] .folha-inferior button {
-    border: 2px solid var(--color-tinta);
+    border: 2px solid var(--color-borda);
     border-radius: var(--radius-etiqueta);
     background-color: var(--color-cartela);
     color: var(--color-tinta);
@@ -531,7 +542,7 @@
   [data-mundo='brutal'] .folha-inferior button[aria-checked='true'],
   [data-mundo='brutal'] .folha-inferior button[aria-pressed='true'] {
     background-color: var(--color-azul);
-    border-color: var(--color-tinta);
+    border-color: var(--color-borda);
     color: var(--color-azul-tinta);
   }
 
@@ -824,6 +835,237 @@
       animation: none;
       transform: rotate(-8deg);
     }
+  }
+
+  /* ------------------------------------------------------------------
+     A troca que roda sozinha na tela de entrar.
+     ------------------------------------------------------------------
+     Quem ainda não tem conta nunca viu este app funcionar, e a tela de
+     entrar é o único lugar onde dá para mostrar o produto antes de pedir
+     qualquer coisa em troca. São duas cartas trocando de lugar em laço.
+
+     As pausas nas duas pontas não são enfeite: é o que deixa ler o
+     "antes" e o "depois". Sem elas o movimento vira vaivém nervoso e
+     deixa de contar uma história.
+
+     É irmã de `troca-anima`, não a mesma peça. Aquela é de uma vez só,
+     com `forwards`, porque a troca do detalhe acontece uma vez e fica;
+     esta precisa voltar ao começo para sempre. Cada carta guarda o
+     próprio desvio vertical — A sempre por cima, B sempre por baixo —,
+     senão as duas passariam uma através da outra em vez de se cruzarem.
+     ------------------------------------------------------------------ */
+  /* O vão mora aqui, e não numa classe de utilitário na fileira, porque
+     é a mesma medida em dois lugares: o `gap` que separa as cartas e o
+     percurso que cada uma faz até o lugar da outra. Separados, um dia um
+     muda sem o outro e a carta passa a assentar fora do lugar. */
+  .entrar-fileira {
+    --entrar-vao: 1rem;
+    /* Quanto cada carta sobe (ou desce) no meio do caminho.
+       ----------------------------------------------------------------
+       Vira `padding` da fileira porque o layout não conta com transform:
+       sem reservar o espaço, a carta que sobe invade a marca e a que
+       desce invade a legenda.
+
+       O valor não é estético, é geométrico. Na metade do percurso as
+       duas estão no mesmo x — o destino de uma é a origem da outra, e
+       não há defasagem de tempo que evite isso. O que separa as duas ali
+       é só o desvio vertical, e ele precisa somar mais que a altura da
+       carta (78px), senão uma cobre a outra e o cruzamento vira uma
+       pilha. Dois arcos de 40px dão 80px: elas se tocam sem se cobrir. */
+    --entrar-arco: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--entrar-vao);
+    padding-block: var(--entrar-arco);
+  }
+
+  .entrar-troca {
+    /* `100%` é a largura da própria carta; o vão vem da fileira. */
+    --entrar-passo: calc(100% + var(--entrar-vao, 1rem));
+    animation: entrar-troca-a 5.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  }
+
+  .entrar-troca-b {
+    animation-name: entrar-troca-b;
+  }
+
+  @keyframes entrar-troca-a {
+    0%,
+    14% {
+      transform: translate(0, 0);
+    }
+    27% {
+      transform: translate(
+        calc(var(--entrar-passo) / 2),
+        calc(var(--entrar-arco) * -1)
+      );
+    }
+    40%,
+    60% {
+      transform: translate(var(--entrar-passo), 0);
+    }
+    73% {
+      transform: translate(
+        calc(var(--entrar-passo) / 2),
+        calc(var(--entrar-arco) * -1)
+      );
+    }
+    86%,
+    100% {
+      transform: translate(0, 0);
+    }
+  }
+
+  @keyframes entrar-troca-b {
+    0%,
+    14% {
+      transform: translate(0, 0);
+    }
+    27% {
+      transform: translate(
+        calc(var(--entrar-passo) / -2),
+        var(--entrar-arco)
+      );
+    }
+    40%,
+    60% {
+      transform: translate(calc(var(--entrar-passo) * -1), 0);
+    }
+    73% {
+      transform: translate(
+        calc(var(--entrar-passo) / -2),
+        var(--entrar-arco)
+      );
+    }
+    86%,
+    100% {
+      transform: translate(0, 0);
+    }
+  }
+
+  /* Quem pede menos movimento fica com as duas cartas paradas onde
+     começaram. Aqui não há "resultado" a preservar como no detalhe da
+     troca: a cena é ilustrativa, e parada ela continua dizendo a mesma
+     coisa — duas cartas, lado a lado, prestes a trocar de dono. */
+  @media (prefers-reduced-motion: reduce) {
+    .entrar-troca {
+      animation: none;
+    }
+  }
+
+  /* ==================================================================
+     MUNDO ESCURO
+     ==================================================================
+     O problema não é inverter tokens. No claro, o neobrutalismo se
+     sustenta em duas coisas que **somem** no escuro: a borda preta e a
+     sombra dura preta. Sobre fundo quase preto, uma não aparece e a
+     outra não existe.
+
+     Cinco traduções foram construídas e comparadas lado a lado, no
+     tamanho do celular, com carta de verdade. Esta é a escolhida, e o
+     que ela decide:
+
+     - `--color-tinta` deixa de ser borda e passa a ser **só texto**.
+       Quem desenha borda é `--color-borda`, que no claro é a própria
+       tinta e aqui se separa dela.
+     - **Linha e degrau na mesma cor**, saindo do mesmo token. No claro
+       eles sempre foram: a borda preta e a sombra preta são o mesmo
+       preto, e é isso que faz a peça parecer recortada de uma folha só
+       em vez de desenhada com dois lápis. Dois cinzas parecidos
+       reintroduziam no escuro uma distinção que o claro nunca teve.
+     - O degrau **sai do preto**. Sombra preta sobre fundo quase preto
+       ainda aparece — a cartela é mais clara que a página —, mas
+       aparece como *ausência*: um pedaço de fundo vazando por baixo da
+       peça, um buraco em vez de um degrau. Em cinza ele volta a ser
+       matéria.
+     - O contorno é **forte, não vinco** (#6b6b76). No claro a borda não
+       é sutileza, é metade da linguagem; um cinza discreto a entregava
+       ao fundo em troca de calma.
+     - A superfície da cartela fica **mais clara** que o papel da
+       página, invertendo a relação do claro (onde a cartela é branca
+       sobre creme, quase o mesmo tom, e quem separa é a borda).
+     - **O azul é o mesmo do claro** (#0038ff), em teste. A primeira
+       versão o clareava para #2b6bff, com a justificativa de que o
+       branco em cima do azul original reprovaria no escuro — o que
+       estava simplesmente errado: branco sobre #0038ff dá **6,98:1**, e
+       sobre o #2b6bff clareado dá **4,52:1**. Clarear o azul *piorava*
+       a leitura do rótulo, porque aproximava o fundo do branco.
+
+       O que o azul claro melhorava era outra coisa: a separação entre a
+       peça azul e o papel escuro. Ali #0038ff dá 2,82:1 e #2b6bff dá
+       4,35:1, contra um piso de 3:1 para elemento não-textual. Só que
+       esse piso vale para quem depende do próprio azul para achar a
+       borda do botão — e aqui **todo botão carrega borda de 2px**, que é
+       quem desenha o limite. O azul não precisa fazer esse trabalho.
+
+       Voltar para #0038ff é decisão do Eduardo, para ver rodando. Se
+       ficar fechado demais em tela de celular no escuro, é uma linha.
+
+     Quem liga o atributo é `stores/tema.ts`, no `<html>`, junto com o
+     script de primeira pintura em `index.html`. Ajustar o tom da peça
+     inteira é mexer em `--color-borda` e mais nada: o degrau segue.
+     ------------------------------------------------------------------ */
+  [data-tema='escuro'] {
+    --color-papel: #0b0b0d;
+    --color-cartela: #17171a;
+    --color-meu: #141c33; /* o lado que é meu, agora em azul de noite */
+
+    --color-tinta: #f5f5f7; /* só texto, daqui para baixo */
+    --color-borda: #6b6b76;
+    --color-apagado: #96969e; /* 6,5:1 sobre a cartela */
+
+    /* Sem sobrescrita: os três herdam o valor do claro. Escrever o
+       hexadecimal de novo aqui seria criar dois lugares para o mesmo
+       azul e uma chance de eles se separarem sem ninguém decidir. */
+
+    --color-alerta: #ff6b63;
+    --color-alerta-fraco: #3a1414;
+    --color-ambar: #e5a83a;
+    --color-ambar-fraco: #33260c;
+
+    /* A sombra dura para de sair da tinta — com a tinta virando texto
+       quase branco, ela pintaria um degrau branco embaixo de cada
+       cartela — e passa a sair da borda, que é o ponto acima. */
+    --shadow-duro: 4px 4px 0 var(--color-borda);
+    --shadow-duro-sm: 3px 3px 0 var(--color-borda);
+    --shadow-duro-xs: 2px 2px 0 var(--color-borda);
+
+    background-color: var(--color-papel);
+    color: var(--color-tinta);
+  }
+
+  /* As bordas escritas como utilitário do Tailwind (`border-tinta`, 118
+     chamadas espalhadas pelo app) continuam apontando para a tinta, que
+     agora é texto. Repintar a classe num lugar só resolve as 118 sem
+     tocar em arquivo nenhum — é a mesma manobra que o mundo novo já usa
+     para `.text-paper` e `.botao`, e pelo mesmo motivo.
+
+     `border-tinta/25` (a linha tracejada do rodapé da troca) fica de
+     fora de propósito: ela quer ser um traço fraco de texto, não uma
+     borda de peça, e a 25% da tinta nova ela já sai como o tracejado
+     claro que o escuro pede. */
+  [data-tema='escuro'] .border-tinta {
+    border-color: var(--color-borda);
+  }
+
+  /* A marca troca de arquivo no escuro.
+     ------------------------------------------------------------------
+     `marca.svg` tem o traço preto e o azul do papel creme; nenhum dos
+     dois sobrevive ao fundo escuro. `marca-escura.svg` é a irmã dela,
+     exportada do mesmo arquivo do Figma, com o traço em #F6F7FA e o azul
+     subido para #1F4FFE.
+
+     Trocar por `content` e não por `src` é o que permite as duas marcas
+     na mesma página: o tema é um atributo, e o laboratório abre claro e
+     escuro lado a lado. Um `src` decidido em JavaScript acertaria o app e
+     erraria o laboratório, que é onde a marca está sendo julgada.
+
+     `alt` já é vazio e a peça é `aria-hidden` — o letreiro "TrocaTCG" vem
+     ao lado em texto —, então substituir o conteúdo não tira nada de quem
+     usa leitor de tela. */
+  [data-tema='escuro'] .marca-svg {
+    content: url('/marca-escura.svg');
   }
 
   @media (prefers-reduced-motion: reduce) {

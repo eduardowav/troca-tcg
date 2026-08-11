@@ -7,6 +7,10 @@ import { Toaster } from 'sonner'
 import App from '@/App'
 import { queryClient } from '@/lib/queryClient'
 import '@/stores/auth' // assina o estado de sessão do Supabase o quanto antes
+// Importado aqui, e não só onde é usado: o módulo assina a troca de tema do
+// sistema e mantém a `theme-color` em dia. Se só a tela de Configurações o
+// carregasse, quem nunca abre Configurações ficaria sem as duas coisas.
+import '@/stores/tema'
 import './index.css'
 
 createRoot(document.getElementById('root')!).render(
@@ -15,14 +19,20 @@ createRoot(document.getElementById('root')!).render(
       <BrowserRouter>
         <App />
       </BrowserRouter>
+      {/* O aviso segue os tokens do mundo novo, e por isso acompanha o tema
+          sozinho. Antes ele era fixo em `dark` com as cores do playmat: uma
+          faixa grafite caindo no topo de um app de papel creme — a única peça
+          que nunca migrou. Agora é cartela com borda e degrau, como o resto. */}
       <Toaster
         position="top-center"
-        theme="dark"
         toastOptions={{
           style: {
-            background: 'var(--color-surface-2)',
-            border: '1px solid var(--color-edge)',
-            color: 'var(--color-paper)',
+            background: 'var(--color-cartela)',
+            border: '2px solid var(--color-borda)',
+            borderRadius: 'var(--radius-controle)',
+            boxShadow: 'var(--shadow-duro-sm)',
+            color: 'var(--color-tinta)',
+            fontFamily: 'var(--font-corpo)',
           },
         }}
       />
