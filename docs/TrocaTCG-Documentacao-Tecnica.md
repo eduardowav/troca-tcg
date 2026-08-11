@@ -1421,6 +1421,54 @@ class ParticipanteCompleto(ParticipanteResumo):
 
 O serviço escolhe qual usar. Assim é impossível vazar por engano — não depende de o frontend esconder nada.
 
+### Quem pode moderar e mexer no app
+
+Levantado em 2026-08-11 consultando cada console, não de memória. **Hoje é uma
+pessoa só: o Eduardo.** Esta subseção existe para que isso seja uma afirmação
+verificada e datada, e para que o dia em que deixar de ser verdade tenha um
+lugar onde ser registrado.
+
+O app não tem papel de administrador. Não há coluna de papel em `profiles`, não
+há rota de admin, não há tela. Toda rota da API pergunta uma coisa só — quem é o
+dono deste token — e nenhuma pergunta se essa pessoa pode mais que as outras. A
+fronteira do poder não passa entre usuários do app: passa entre quem tem as
+credenciais de infraestrutura e quem não tem.
+
+| Onde | Quem | O que pode | Verificado por |
+|---|---|---|---|
+| GitHub `eduardowav/troca-tcg` | `eduardowav` (único colaborador, admin) | Alterar código, secrets e workflows — o que roda em produção | `gh api .../collaborators` |
+| Supabase (org `eduardowav's Org`) | conta do Eduardo | Banco inteiro: ler contato e e-mail de todos, escrever qualquer linha | `list_organizations` |
+| Render (workspace `My Workspace`) | `eduardowav@icloud.com` | Variáveis de ambiente e deploy da API e do PWA | `list_workspaces` |
+| Moderação de denúncias | quem tem a connection string | Ler `user_reports` e bloquear perfil, à mão no SQL Editor | `db/queries/moderacao.sql` |
+
+Quatro coisas que essa tabela deixa explícitas e que valem dizer em voz alta:
+
+**Moderar hoje é ter o banco inteiro.** Não existe privilégio intermediário:
+quem lê a fila de denúncias é quem pode ler o `contato_visivel` de toda a base.
+Enquanto for uma pessoa e ela for a dona do projeto, isso é irrelevante. Deixa
+de ser no instante em que alguém for convidado só para moderar — e aí o caminho
+é o que o runbook já desenha, uma rota atrás do `X-Job-Secret`.
+
+**O Claude Code não é uma segunda identidade.** Ele age com as credenciais do
+Eduardo, na máquina do Eduardo: o `gh` autenticado como `eduardowav`, o git
+assinando como ele, os MCP de Supabase e Render na sessão dele. Não há conta,
+chave nem trilha de auditoria própria — o que o agente faz aparece nos consoles
+como ação do Eduardo. O único rastro que separa os dois é o `Co-Authored-By` nos
+commits, que é convenção de mensagem, não controle de acesso. Listar "o Claude
+Code" como quem pode mexer no app é honesto na prática e falso no papel: o poder
+é o do Eduardo, emprestado a cada sessão. A regra que decorre disso é a que já
+vale — commit, push e qualquer ação irreversível são pedidos um de cada vez.
+
+**Bloquear não bloqueia.** A única ação de moderação que existe,
+`bloqueado = true`, tira a pessoa das listagens mas não a impede de criar
+anúncio, abrir proposta ou aceitar match. É o item 3 do bloco de segurança da
+seção 17.
+
+**Ninguém tem cópia das chaves.** Uma pessoa só detém tudo: GitHub, Supabase,
+Render e a senha do backup (`BACKUP_PASSPHRASE`, seção 15), que não existe em
+lugar nenhum além do secret e de onde ele a guardou. Não é problema de segurança
+— é de continuidade, e o remédio não é técnico.
+
 ---
 
 ## 12. Notificações
@@ -2023,18 +2071,28 @@ de dados hoje, com ou sem usuário no app.
    do `render.yaml` que justifica `--proxy-headers` descreve uma proteção por
    pessoa que hoje não existe para ninguém. Sem ela, o freio da vitrine e de
    `/u/{username}` contra raspagem é só "estar logado", que custa uma conta.
-2. **Backup quebrado, e o destino dele é público.** São duas coisas que se
-   agravam juntas. O workflow falha todo dia desde pelo menos 07/08 — cinco
-   execuções seguidas com `pg_dump: aborting because of server version
-   mismatch` (servidor 17.6, cliente 16.14): o passo instala o client 17 do
-   PGDG, mas o `pg_dump` do PATH continua sendo o 16, e o certo é chamar
-   `/usr/lib/postgresql/17/bin/pg_dump`. Hoje não existe backup nenhum. E
-   quando ele voltar a funcionar, sobe como artifact do Actions num repositório
-   **público**: o dump traz `contato_visivel` de toda a base e a `auth.users`
-   com os e-mails, e artifact de repositório público é baixável por qualquer
-   um. Consertar o dump antes de trocar o destino é publicar a base — a ordem é
-   fechar o destino primeiro (bucket privado ou repositório privado), depois
-   consertar o cliente.
+2. ✅ **Backup quebrado, e o destino dele era público** — feito em 2026-08-11
+   (`9ef33e1`), fora da ordem do resto do bloco porque não era sobre proteger
+   usuário: era o trabalho sem cópia desde 07/08. Eram duas coisas que se
+   agravavam juntas. O workflow falhava todo dia — cinco execuções seguidas com
+   `pg_dump: aborting because of server version mismatch` (servidor 17.6,
+   cliente 16.14): o passo instalava o client 17 do PGDG, mas o binário fica em
+   `/usr/lib/postgresql/17/bin`, fora do PATH, e `pg_dump` seguia resolvendo
+   para o 16 do sistema. O diretório passou a entrar no `GITHUB_PATH`. A outra
+   metade era o destino: artifact do Actions num repositório **público** é
+   baixável por qualquer um, e o dump traz o `contato_visivel` de toda a base e
+   os e-mails da `auth.users` — consertar o cliente sem mexer no destino teria
+   publicado a base no primeiro backup que desse certo. Agora o dump é cifrado
+   com AES256 simétrico antes do upload, com a senha no secret
+   `BACKUP_PASSPHRASE` e entrando por stdin, e sem esse secret o job falha
+   antes de gerar dump nenhum. Verificado com um disparo manual: `pg_dump`
+   17.10, artifact `backup.dump.gpg` de 1,8 MB, pacote OpenPGP tag 3 com cifra
+   9 (AES256) e nenhum `PGDMP` legível no arquivo.
+
+   O que sobra desta linha é operacional, e é do Eduardo: a senha não existe em
+   lugar nenhum além do secret e de onde ele a guardou — se ela se perder, os
+   backups viram lixo cifrado. Vale provar a restauração uma vez, num banco
+   descartável, antes de precisar dela num dia ruim.
 3. **Quem foi bloqueado continua agindo.** `bloqueado` filtra listagem: perfil
    público, vitrine, acervo, matcher e demanda. Não há checagem nenhuma na
    autenticação nem nas escritas, então quem foi bloqueado ainda cria anúncio,
