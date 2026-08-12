@@ -2118,7 +2118,28 @@ limite, o que lê como pedágio. **A cobrança não liga antes desta fase termin
 
    O interruptor vive em dois lugares: no detalhe da carta e no vazio da
    vitrine, que é o mesmo momento visto de dois ângulos.
-6. `triangular` (Fase 5 do roadmap) — o carro-chefe, e o que nenhum concorrente tem.
+6. **`triangular`** (Fase 5 do roadmap) — o carro-chefe. **Motor pronto e
+   desligado em 2026-08-12**; falta a tela, e é ela que segura a chave.
+
+   O que existe: `services/triangular.py` com a extração de arestas em SQL (a
+   mesma regra de compatibilidade do motor direto, mais estoque, bloqueio e
+   plano — filtrar o plano na origem é o que impede um triângulo de nascer
+   dependendo de quem não pode participar dele), a detecção de ciclos em Python
+   conforme a seção 9.2, a gravação com `hash_grupo` do trio e o aviso
+   `NOVO_MATCH` com o texto triangular que já existia. Dezesseis testes cobrem o
+   grafo: o trio contado uma vez só, a ordem do ciclo preservada (a posição é
+   quem dá para quem — ordenar por id perderia a troca), caminho aberto e par
+   recíproco não virando triângulo, e o teto de 5 por pessoa aplicado **depois**
+   da ordenação por score.
+
+   **O que falta é a interface, e ela não é pintura.** Toda a tela de troca
+   deste app é escrita para duas pessoas e duas cartas — `ParDeCartas`, "você
+   recebe / você dá", o aceite de dois lados, a conclusão que espera dois
+   confirmarem. Num triângulo, quem me dá não é quem recebe de mim, e o aceite
+   precisa dos três. Ligar o motor antes disso estrearia o carro-chefe quebrado,
+   e por isso `TRIANGULAR_ATIVO` nasce falso: o cron já chama a rota, e ela
+   responde `{"desligado": 1}` sem tocar no banco — o que é diferente de
+   responder zero triângulos.
 
 **Fase C — cobrar.**
 

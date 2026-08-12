@@ -14,7 +14,7 @@ from app.core.config import settings
 from app.db.session import get_session
 from app.jobs.catalog.sync import sincronizar_sets
 from app.jobs.catalog.tcgdex import TCGdex
-from app.services import alertas, matching, propostas
+from app.services import alertas, matching, propostas, triangular
 
 router = APIRouter(prefix="/internal/jobs", tags=["internal"])
 
@@ -85,6 +85,23 @@ async def notify_wanted(
     enviadas = await matching.notificar_cartas_procuradas(session, horas=horas)
     await session.commit()
     return {"notificadas": enviadas}
+
+
+@router.post("/triangular", dependencies=[Depends(_verifica_secret)])
+async def recalcular_triangulares(
+    session: AsyncSession = Depends(get_session),
+) -> dict[str, int]:
+    """Recalcula os ciclos A→B→C→A. Diário, na janela das 06:00 BRT.
+
+    Desligado por `TRIANGULAR_ATIVO`, responde `{"desligado": 1}` sem tocar no
+    banco — o que é diferente de responder zero triângulos. Ver o serviço.
+
+    O commit é daqui, como nos outros jobs: o serviço não fecha a transação de
+    quem o chama.
+    """
+    resultado = await triangular.recalcular(session)
+    await session.commit()
+    return resultado
 
 
 @router.post("/notify-alerts", dependencies=[Depends(_verifica_secret)])

@@ -23,11 +23,12 @@ JOBS_YML = Path(__file__).resolve().parents[2] / ".github" / "workflows" / "jobs
 # Jobs que o cron já chama e a API ainda não tem — o `|| echo falhou` do workflow
 # segura o 404 até lá. Encolhe a cada fase; quando esvaziar, some com o teste.
 #
-# `notify-wanted` saiu daqui quando as notificações entraram: a rota existe e o
-# cron de 15 em 15 minutos passou a encontrá-la. Sobra `triangular`, que é a
-# Fase 5 — o enum, o limite de plano e a chamada do cron existem; o motor de
-# ciclos, não.
-PENDENTES = {"triangular"}
+# `notify-wanted` saiu daqui quando as notificações entraram, e `triangular` saiu
+# em 2026-08-12, quando o motor de ciclos ficou pronto — desligado por
+# `TRIANGULAR_ATIVO` enquanto a tela de três pontas não existe, mas a rota
+# responde. A lista está vazia, e é para ficar: rota que o cron chama e a API não
+# tem é job que nunca roda.
+PENDENTES: set[str] = set()
 
 
 class SessaoFalsa:

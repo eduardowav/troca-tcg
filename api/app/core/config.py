@@ -46,6 +46,13 @@ class Settings(BaseSettings):
     WHATSAPP_TEMPLATE_IDIOMA: str = "pt_BR"
     VERIFICACAO_TELEFONE_ATIVA: bool = False
 
+    # Match triangular (Fase B da seção 16). O motor está pronto e testado; o
+    # que falta é a tela — toda a interface de troca é escrita para duas pessoas
+    # e duas cartas, e um match de três chegaria nela torto. Ligar antes disso
+    # seria estrear o carro-chefe quebrado. O cron já chama o job; desligado,
+    # ele responde sem tocar no banco.
+    TRIANGULAR_ATIVO: bool = False
+
     # Segurança
     JOB_SECRET: str = "dev-job-secret"
     CORS_ORIGINS: str = "http://localhost:5173"
