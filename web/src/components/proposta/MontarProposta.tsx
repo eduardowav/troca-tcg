@@ -1,7 +1,9 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 
 import { CelulaBrutal, GradeBrutal } from '@/components/brutal/Cartas'
 import { Cartela } from '@/components/brutal/Pecas'
+import { CartaThumb } from '@/components/carta/CartaThumb'
 import { Button } from '@/components/ui/Button'
 import { useAcabamentoPorId } from '@/hooks/useAcabamentos'
 import { useAnuncios, useCartasPorId, usePrecosPorId } from '@/hooks/useAnuncios'
@@ -12,8 +14,21 @@ import { type ItensDaProposta, MAX_ITENS } from '@/lib/propostas'
 import { formatarMoeda, type PrecoTCGplayer } from '@/lib/types'
 
 /**
- * A mesa onde a proposta é montada: o acervo da outra pessoa de um lado, as
- * minhas cartas do outro.
+ * A mesa onde a proposta é montada, em dois passos: primeiro o que vem, depois
+ * o que vai.
+ *
+ * **Por que dois passos.** Antes as duas listas moravam na mesma página, uma
+ * embaixo da outra. No celular, com trinta cartas no acervo da outra pessoa, a
+ * segunda lista ficava a uma rolagem inteira de distância — e quem montava a
+ * proposta simplesmente não descobria que precisava oferecer algo. A barra de
+ * baixo dizia "Escolha dos dois lados", o que explica o problema para quem já
+ * sabe qual é. Relato do Eduardo testando no celular (2026-08-12): escolheu as
+ * cartas e não entendeu por que o envio não ligava.
+ *
+ * Cada passo mostra **um acervo só**, e é essa a diferença que resolve: não há
+ * segunda lista escondida abaixo da dobra, porque não há segunda lista na tela.
+ * O passo 2 abre com o resumo do que foi pedido — miniaturas, não texto —, que
+ * é ao mesmo tempo a memória do que se está negociando e o caminho de volta.
  *
  * É a mesma peça na proposta e na contraproposta — as duas fazem a mesma coisa
  * (escolher o que vem e o que vai), e o que muda é só de onde a seleção parte.
@@ -43,6 +58,14 @@ export function MontarProposta({
 }) {
   const [quero, setQuero] = useState<string[]>(inicial?.quero ?? [])
   const [ofereco, setOfereco] = useState<string[]>(inicial?.ofereco ?? [])
+  const [passo, setPasso] = useState<1 | 2>(1)
+
+  // Trocar de passo volta ao topo. A página que fica é outra, e herdar a
+  // rolagem da anterior faz a nova abrir no meio de uma grade — que é
+  // exatamente o desorientar que estes dois passos existem para acabar.
+  useEffect(() => {
+    window.scrollTo({ top: 0 })
+  }, [passo])
 
   const { data: acervo, isPending: carregandoAcervo } = useAcervo(outro)
   const { data: anuncios } = useAnuncios()
@@ -104,45 +127,72 @@ export function MontarProposta({
 
   return (
     <div className="pb-32">
-      <Lado
-        titulo={`O que você quer de @${outro}`}
-        vazio={
-          carregandoAcervo
-            ? 'Carregando o acervo…'
-            : `@${outro} não tem nenhuma carta anunciada agora.`
-        }
-        cartas={(acervo ?? []).map((c) => ({
-          listingId: c.listing_id,
-          cardId: c.card_id,
-          condicao: c.condicao,
-          finishId: c.finish_id,
-          reciproco: c.reciproco,
-        }))}
-        escolhidos={quero}
-        onAlternar={(id) => alternar(quero, setQuero, id)}
-        cartasPorId={cartas}
-        acabamentoPorId={acabamentoPorId}
-        precos={precos}
-        precosProntos={precosProntos}
-      />
+      <Passos atual={passo} />
 
-      <Lado
-        className="mt-8"
-        titulo="O que você oferece em troca"
-        vazio="Você ainda não tem cartas na lista Ofereço."
-        cartas={meus.map((a) => ({
-          listingId: a.id,
-          cardId: a.card_id,
-          condicao: a.condicao,
-          finishId: a.finish_id,
-        }))}
-        escolhidos={ofereco}
-        onAlternar={(id) => alternar(ofereco, setOfereco, id)}
-        cartasPorId={cartas}
-        acabamentoPorId={acabamentoPorId}
-        precos={precos}
-        precosProntos={precosProntos}
-      />
+      {passo === 1 ? (
+        <Lado
+          className="mt-5"
+          titulo={`O que você quer de @${outro}`}
+          vazio={
+            carregandoAcervo
+              ? 'Carregando o acervo…'
+              : `@${outro} não tem nenhuma carta anunciada agora.`
+          }
+          cartas={(acervo ?? []).map((c) => ({
+            listingId: c.listing_id,
+            cardId: c.card_id,
+            condicao: c.condicao,
+            finishId: c.finish_id,
+            reciproco: c.reciproco,
+          }))}
+          escolhidos={quero}
+          onAlternar={(id) => alternar(quero, setQuero, id)}
+          cartasPorId={cartas}
+          acabamentoPorId={acabamentoPorId}
+          precos={precos}
+          precosProntos={precosProntos}
+        />
+      ) : (
+        <>
+          <PedidoResumido
+            escolhidos={quero}
+            porListing={porListing}
+            cartasPorId={cartas}
+            outro={outro}
+            onVoltar={() => setPasso(1)}
+          />
+
+          <Lado
+            className="mt-6"
+            titulo="O que você oferece em troca"
+            vazio={
+              <>
+                Você ainda não tem cartas na lista Ofereço — e é dela que sai o
+                seu lado da troca.{' '}
+                <Link
+                  to="/minhas-cartas"
+                  className="font-medium text-azul underline underline-offset-2"
+                >
+                  Cadastrar o que você tem sobrando
+                </Link>
+                .
+              </>
+            }
+            cartas={meus.map((a) => ({
+              listingId: a.id,
+              cardId: a.card_id,
+              condicao: a.condicao,
+              finishId: a.finish_id,
+            }))}
+            escolhidos={ofereco}
+            onAlternar={(id) => alternar(ofereco, setOfereco, id)}
+            cartasPorId={cartas}
+            acabamentoPorId={acabamentoPorId}
+            precos={precos}
+            precosProntos={precosProntos}
+          />
+        </>
+      )}
 
       {/* A barra fica presa embaixo porque a escolha acontece rolando a página:
           sem ela, a pessoa monta a proposta no fim da lista e precisa voltar ao
@@ -155,10 +205,28 @@ export function MontarProposta({
               ninguém. É a mesma voz do cartão da lista. */}
           <p className="min-w-0 flex-1 font-dado text-[12px] leading-snug text-apagado">
             Recebe <span className="font-bold text-tinta">{quero.length}</span>
-            {' · dá '}
-            <span className="font-bold text-tinta">{ofereco.length}</span>
-            {quero.length === 0 || ofereco.length === 0 ? (
-              <span className="mt-0.5 block">Escolha dos dois lados.</span>
+            {passo === 2 && (
+              <>
+                {' · dá '}
+                <span className="font-bold text-tinta">{ofereco.length}</span>
+              </>
+            )}
+            {/* A frase que falta é sempre a do passo em que a pessoa está. No
+                passo 1, cobrar o lado que ainda nem apareceu na tela seria
+                repetir o erro que os dois passos vieram consertar. */}
+            {quero.length === 0 ? (
+              <span className="mt-0.5 block">Escolha ao menos uma carta.</span>
+            ) : passo === 1 ? (
+              // Na contraproposta o meu lado já vem preenchido da rodada
+              // anterior. Mandar "escolha o que você dá" para quem já escolheu
+              // é o app não estar prestando atenção.
+              <span className="mt-0.5 block">
+                {ofereco.length > 0
+                  ? `Seu lado já tem ${ofereco.length}.`
+                  : 'Agora escolha o que você dá.'}
+              </span>
+            ) : ofereco.length === 0 ? (
+              <span className="mt-0.5 block">Falta o seu lado.</span>
             ) : (
               // Os dois totais na mesma linha em que já estão as contagens: é
               // aqui que a proposta é fechada, e a soma que interessa é a que
@@ -177,20 +245,40 @@ export function MontarProposta({
             )}
           </p>
 
-          {onCancelar && (
-            <Button variant="ghost" size="sm" onClick={onCancelar}>
-              Cancelar
-            </Button>
+          {passo === 1 ? (
+            <>
+              {onCancelar && (
+                <Button variant="ghost" size="sm" onClick={onCancelar}>
+                  Cancelar
+                </Button>
+              )}
+              {/* O botão que faltava. Ele não envia nada — leva ao passo em que
+                  as minhas cartas existem, que é o que ninguém achava rolando. */}
+              <Button
+                variant="primary"
+                size="md"
+                disabled={quero.length === 0}
+                onClick={() => setPasso(2)}
+              >
+                Minhas cartas
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button variant="ghost" size="sm" onClick={() => setPasso(1)}>
+                Voltar
+              </Button>
+              <Button
+                variant="primary"
+                size="md"
+                loading={enviando}
+                disabled={!podeEnviar}
+                onClick={() => onEnviar({ quero, ofereco })}
+              >
+                {rotulo}
+              </Button>
+            </>
           )}
-          <Button
-            variant="primary"
-            size="md"
-            loading={enviando}
-            disabled={!podeEnviar}
-            onClick={() => onEnviar({ quero, ofereco })}
-          >
-            {rotulo}
-          </Button>
         </Cartela>
       </div>
     </div>
@@ -203,6 +291,97 @@ interface ItemEscolhivel {
   condicao: string
   finishId: number
   reciproco?: boolean
+}
+
+/**
+ * Onde a pessoa está, em dois traços.
+ *
+ * Dois passos sem indicador viram "a tela mudou sozinha". O trecho preenchido é
+ * o passo atual; o vazio é o que falta — e o texto ao lado diz o mesmo em
+ * palavras, porque cor e largura sozinhas não são informação para quem não as
+ * distingue.
+ */
+function Passos({ atual }: { atual: 1 | 2 }) {
+  return (
+    <div className="flex items-center gap-3">
+      <span aria-hidden className="flex items-center gap-1.5">
+        <span className="h-1.5 w-8 rounded-full border-2 border-tinta bg-azul" />
+        <span
+          className={cn(
+            'h-1.5 w-8 rounded-full border-2 border-tinta',
+            atual === 2 ? 'bg-azul' : 'bg-papel',
+          )}
+        />
+      </span>
+      <p className="font-dado text-[11px] uppercase text-apagado">
+        Passo {atual} de 2
+      </p>
+    </div>
+  )
+}
+
+/**
+ * O que já foi pedido, no topo do passo 2.
+ *
+ * Miniaturas e não texto: quem está escolhendo o que dar precisa ver **o que
+ * vai receber** enquanto decide, e "2 cartas" não sustenta essa comparação. É
+ * também o caminho de volta — a faixa inteira é o botão, porque mexer no pedido
+ * é a segunda coisa mais provável de se querer nesta tela.
+ *
+ * A tira rola de lado quando não cabe. Vinte cartas pedidas é caso raro, mas
+ * espremer vinte miniaturas na largura do celular apagaria a arte, que é
+ * justamente o que faz a lembrança funcionar.
+ */
+function PedidoResumido({
+  escolhidos,
+  porListing,
+  cartasPorId,
+  outro,
+  onVoltar,
+}: {
+  escolhidos: string[]
+  porListing: Map<string, { cardId: string; finishId: number }>
+  cartasPorId?: Map<string, import('@/lib/types').Carta>
+  outro: string
+  onVoltar: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onVoltar}
+      className={cn(
+        'mt-5 flex w-full items-center gap-3 rounded-[var(--radius-controle)]',
+        'border-2 border-tinta bg-meu p-3 text-left',
+        'shadow-[var(--shadow-duro-xs)] transition-shadow hover:shadow-[var(--shadow-duro)]',
+      )}
+    >
+      <span aria-hidden className="font-titulo text-[16px] font-black text-tinta">
+        ←
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block font-dado text-[11px] uppercase text-apagado">
+          Você pede de @{outro}
+        </span>
+        <span className="mt-1.5 flex gap-1.5 overflow-x-auto">
+          {escolhidos.map((id) => {
+            const anuncio = porListing.get(id)
+            const carta = anuncio && cartasPorId?.get(anuncio.cardId)
+            if (!carta) return null
+            return (
+              <CartaThumb
+                key={id}
+                carta={carta}
+                className="w-11 shrink-0 border-2 border-tinta"
+              />
+            )
+          })}
+        </span>
+      </span>
+      <span className="shrink-0 font-dado text-[11px] uppercase text-apagado">
+        Mudar
+      </span>
+    </button>
+  )
 }
 
 /**
@@ -260,7 +439,8 @@ function Lado({
   className,
 }: {
   titulo: string
-  vazio: string
+  /** Nó, e não texto: o vazio do meu lado leva a "cadastrar o que você tem". */
+  vazio: React.ReactNode
   cartas: ItemEscolhivel[]
   escolhidos: string[]
   onAlternar: (listingId: string) => void
