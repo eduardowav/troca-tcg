@@ -2,13 +2,19 @@ import { useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 
-import { Cartela, ParDeLotes, Selo } from '@/components/brutal/Pecas'
+import {
+  Cartela,
+  ParDeLotes,
+  Selo,
+  totalDoLote,
+} from '@/components/brutal/Pecas'
 import { paraLote } from '@/components/proposta/lote'
 import { MontarProposta } from '@/components/proposta/MontarProposta'
 import { Button, estiloBotao } from '@/components/ui/Button'
 import { useAcabamentoPorId } from '@/hooks/useAcabamentos'
-import { useCartasPorId } from '@/hooks/useAnuncios'
+import { useCartasPorId, usePrecosPorId } from '@/hooks/useAnuncios'
 import { useMarcaOculta } from '@/hooks/useMundo'
+import type { Acabamento } from '@/lib/acabamentos'
 import {
   useAceitarProposta,
   useContrapor,
@@ -34,7 +40,14 @@ import {
   rodadaTexto,
   temCartaForaDoAr,
 } from '@/lib/propostas'
-import type { Carta } from '@/lib/types'
+import {
+  type Carta,
+  desequilibrioDeValores,
+  type Desequilibrio,
+  formatarMoeda,
+  formatarRazao,
+  type PrecoTCGplayer,
+} from '@/lib/types'
 
 /**
  * A negociação inteira, rodada a rodada.
@@ -65,6 +78,8 @@ export default function PropostaDetalhe() {
     [proposta],
   )
   const { data: cartas } = useCartasPorId(ids)
+  const { data: precos } = usePrecosPorId(ids)
+  const acabamentoPorId = useAcabamentoPorId()
 
   if (isPending) {
     return (
@@ -93,6 +108,17 @@ export default function PropostaDetalhe() {
   const aberta = proposta.status === 'ABERTA'
   const prazo = prazoDaProposta(proposta)
   const foraDoAr = temCartaForaDoAr(proposta.atual)
+
+  // O desequilíbrio da rodada que está de pé, e só dela: numa proposta
+  // encerrada o aviso viraria retrospecto de uma decisão já tomada. Compara
+  // totais, não cartas — de um lado pode haver três e do outro uma.
+  const desigual = desequilibrioDaRodada(
+    proposta,
+    proposta.atual,
+    cartas,
+    precos,
+    acabamentoPorId,
+  )
   const enviando =
     aceitar.isPending ||
     recusar.isPending ||
@@ -255,11 +281,14 @@ export default function PropostaDetalhe() {
                 rodada={rodada}
                 proposta={proposta}
                 cartas={cartas}
+                precos={precos}
               />
             </li>
           ))}
         </ol>
       </section>
+
+      {aberta && desigual && <AvisoDesequilibrio dados={desigual} />}
 
       {aberta && !contrapondo && (
         <Acoes
@@ -423,18 +452,105 @@ function Acoes({
   )
 }
 
+/**
+ * Os dois lados de uma rodada, lidos sempre do meu ponto de vista.
+ *
+ * Quem jogou a rodada decide o que é meu: na que eu joguei, `ofereco` sai da
+ * minha mão; na que a outra pessoa jogou, o que sai é o que ela pediu (`quero`
+ * dela). Errar isto inverte a troca inteira, e é a mesma conta que a cartela da
+ * rodada e o aviso de desequilíbrio precisam fazer — por isso ela é uma só.
+ */
+function ladosDaRodada(
+  proposta: Proposta,
+  rodada: RodadaProposta,
+): { dou: ItemProposta[]; recebo: ItemProposta[] } {
+  const euJoguei = rodada.por !== proposta.com
+  return {
+    dou: euJoguei ? rodada.ofereco : rodada.quero,
+    recebo: euJoguei ? rodada.quero : rodada.ofereco,
+  }
+}
+
+/**
+ * O aviso de troca desigual, calculado sobre os totais dos dois lotes.
+ *
+ * Cala quando falta preço de alguma carta — e aqui isso é mais comum que na
+ * troca sugerida, porque um lote de cinco cartas só precisa de uma sem cotação
+ * para o total virar chute. Afirmar "você entrega 4x mais" com um lado
+ * incompleto seria pior que não dizer nada.
+ */
+function desequilibrioDaRodada(
+  proposta: Proposta,
+  rodada: RodadaProposta | null | undefined,
+  cartas: Map<string, Carta> | undefined,
+  precos: Map<string, PrecoTCGplayer[]> | undefined,
+  acabamentoPorId: (id: number | undefined) => Acabamento | undefined,
+): Desequilibrio | null {
+  if (!rodada || !precos) return null
+
+  const lados = ladosDaRodada(proposta, rodada)
+  const dou = totalDoLote(paraLote(lados.dou, cartas, acabamentoPorId, precos))
+  const recebo = totalDoLote(
+    paraLote(lados.recebo, cartas, acabamentoPorId, precos),
+  )
+  if (!dou.exato || !recebo.exato) return null
+
+  return desequilibrioDeValores(dou.valor, recebo.valor)
+}
+
+/**
+ * A mesma notícia do detalhe da troca, na língua da proposta.
+ *
+ * Aqui ela pesa mais do que lá: a troca sugerida foi montada pelo motor, que já
+ * pesa preço no score, e esta foi montada por uma pessoa pedindo o que quer.
+ * Não é acusação — o texto não diz que alguém está tentando levar vantagem —,
+ * mas quem vai apertar "aceitar" precisa ver os dois números antes.
+ */
+function AvisoDesequilibrio({ dados }: { dados: Desequilibrio }) {
+  const alerta = dados.euEntregoMais
+
+  return (
+    <Cartela
+      className={cn('mt-5 p-4', alerta && 'bg-meu')}
+      // `status` e não `alert`: a informação chega junto com a tela, não
+      // interrompe nada. Quem usa leitor de tela ouve na vez dela.
+      role="status"
+    >
+      <p className="font-titulo text-[15px] font-bold text-tinta">
+        {alerta
+          ? `Você entrega cerca de ${formatarRazao(dados.razao)} mais valor do que recebe.`
+          : `Você recebe cerca de ${formatarRazao(dados.razao)} mais valor do que entrega.`}
+      </p>
+      <p className="mt-2 font-corpo text-[14px] leading-relaxed text-apagado">
+        Pela referência da TCGplayer, {formatarMoeda(dados.valorDou)} de um lado
+        e {formatarMoeda(dados.valorRecebo)} do outro.{' '}
+        {alerta
+          ? 'Se não for de propósito, "trocar o que vem" resolve sem encerrar a conversa — dá para pedir mais uma carta em vez de recusar.'
+          : 'A outra pessoa pode voltar pedindo compensação, e troca muito desigual costuma furar no dia do encontro.'}
+      </p>
+      <p className="mt-2 font-corpo text-[12px] leading-relaxed text-apagado">
+        Preço é referência de mercado americano, não regra: condição, idioma e
+        vontade de cada um valem mais do que a tabela.
+      </p>
+    </Cartela>
+  )
+}
+
 function RodadaNaTela({
   rodada,
   proposta,
   cartas,
+  precos,
 }: {
   rodada: RodadaProposta
   proposta: Proposta
   cartas?: Map<string, Carta>
+  precos?: Map<string, PrecoTCGplayer[]>
 }) {
   const euJoguei = rodada.por !== proposta.com
   const atual = rodada.rodada === proposta.rodada
   const acabamentoPorId = useAcabamentoPorId()
+  const lados = ladosDaRodada(proposta, rodada)
 
   // Três tempos verbais, como no detalhe da troca: o que está de pé, o que
   // aconteceu e o que não vai acontecer. "Você dá" numa proposta recusada
@@ -479,16 +595,8 @@ function RodadaNaTela({
       <div className="mt-4">
         <ParDeLotes
           tamanho="grande"
-          dou={paraLote(
-            euJoguei ? rodada.ofereco : rodada.quero,
-            cartas,
-            acabamentoPorId,
-          )}
-          recebo={paraLote(
-            euJoguei ? rodada.quero : rodada.ofereco,
-            cartas,
-            acabamentoPorId,
-          )}
+          dou={paraLote(lados.dou, cartas, acabamentoPorId, precos)}
+          recebo={paraLote(lados.recebo, cartas, acabamentoPorId, precos)}
           rotulos={rotulos}
         />
       </div>

@@ -23,7 +23,7 @@ import {
   type PrecoEscolhido,
 } from '@/lib/acabamentos'
 import { cn } from '@/lib/cn'
-import { type Carta, formatarPreco } from '@/lib/types'
+import { type Carta, formatarMoeda, formatarPreco } from '@/lib/types'
 
 /* ------------------------------------------------------------------ ícones */
 
@@ -430,12 +430,16 @@ export function Pokebola({ className }: { className?: string }) {
 export function Cartela({
   children,
   className,
+  role,
 }: {
   children: ReactNode
   className?: string
+  /** Só quem anuncia algo passa isto — o aviso de troca desigual, hoje. */
+  role?: string
 }) {
   return (
     <div
+      role={role}
       className={cn(
         'rounded-[var(--radius-cartela)] border-2 border-tinta bg-cartela shadow-[var(--shadow-duro)]',
         className,
@@ -787,8 +791,47 @@ export interface CartaDoLote {
   carta: Carta | undefined
   condicao?: string
   acabamento?: Acabamento
+  /**
+   * Preço da linha do acabamento anunciado, como no detalhe da troca. Só o
+   * detalhe da proposta passa isto; na lista não cabe.
+   */
+  preco?: PrecoEscolhido
   /** O anúncio ainda está no ar. Falso pinta a carta de caducada. */
   disponivel?: boolean
+}
+
+/**
+ * O que um lado inteiro vale — o número que a proposta precisa e a troca não.
+ *
+ * Numa troca sugerida cada lado é uma carta e o preço dela basta. Numa proposta
+ * um lado pode ter cinco cartas, e cinco preços empilhados não respondem a
+ * pergunta que se faz antes de aceitar: quanto sai contra quanto entra.
+ *
+ * `exato` cai quando **qualquer** carta do lote não tem cotação ou tem preço de
+ * acabamento aproximado. É a mesma honestidade do `~` de uma carta só: o total
+ * ainda serve para comparar, e não pode passar por fechado.
+ */
+export function totalDoLote(itens: CartaDoLote[]): {
+  valor: number
+  exato: boolean
+  temPreco: boolean
+} {
+  let valor = 0
+  let exato = true
+  let temPreco = false
+
+  for (const item of itens) {
+    const numero = item.preco?.preco.mercado ?? item.preco?.preco.baixo
+    if (numero == null) {
+      exato = false
+      continue
+    }
+    valor += numero
+    temPreco = true
+    if (!item.preco?.exato) exato = false
+  }
+
+  return { valor, exato, temPreco }
 }
 
 /**
@@ -875,6 +918,7 @@ function LadoDoLote({
 }) {
   const visiveis = limite ? itens.slice(0, limite) : itens
   const restantes = itens.length - visiveis.length
+  const total = totalDoLote(itens)
 
   return (
     <div
@@ -908,6 +952,17 @@ function LadoDoLote({
           + {restantes} carta{restantes > 1 ? 's' : ''}
         </span>
       )}
+
+      {/* O total do lado, e só quando há mais de uma carta: com uma só, ele
+          repetiria o preço que está logo acima. Soma o lote inteiro, inclusive
+          o que ficou escondido no "+N" — um total que ignorasse as cartas não
+          mostradas seria pior que total nenhum. */}
+      {grande && itens.length > 1 && total.temPreco && (
+        <span className="mt-auto border-t-2 border-dashed border-tinta/25 pt-1.5 font-dado text-[12px] font-bold text-azul">
+          {formatarMoeda(total.valor)}
+          {!total.exato && <span aria-hidden> ~</span>}
+        </span>
+      )}
     </div>
   )
 }
@@ -919,10 +974,11 @@ function CartaDoLoteNaTela({
   item: CartaDoLote
   grande: boolean
 }) {
-  const { carta, acabamento, condicao } = item
+  const { carta, acabamento, condicao, preco } = item
   // `disponivel` ausente quer dizer "não se pergunta" — é o caso da lista, onde
   // a carta não está em negociação. Só o `false` explícito pinta a caducada.
   const foraDoAr = item.disponivel === false
+  const valor = formatarPreco(preco?.preco)
 
   const conteudo = (
     <>
@@ -963,6 +1019,17 @@ function CartaDoLoteNaTela({
             {acabamento &&
               acabamento.id !== NORMAL &&
               ` · ${acabamento.nome_curto}`}
+          </span>
+        )}
+
+        {/* O preço da carta, como no detalhe da troca e pelo mesmo motivo: é o
+            que se confere antes de topar. Aqui ele pesa mais, porque a proposta
+            é montada à mão — do outro lado não há motor nenhum equilibrando
+            nada, só uma pessoa pedindo o que quer. */}
+        {grande && valor && (
+          <span className="mt-1 font-dado text-[12px] font-bold text-azul">
+            {valor}
+            {!preco?.exato && <span aria-hidden> ~</span>}
           </span>
         )}
 

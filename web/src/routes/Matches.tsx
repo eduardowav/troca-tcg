@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { Link } from 'react-router-dom'
 
 import { CelulaBrutal, GradeBrutal } from '@/components/brutal/Cartas'
 import {
@@ -10,8 +11,9 @@ import {
   Selo,
 } from '@/components/brutal/Pecas'
 import { IconeTroca } from '@/components/ui/Icone'
-import { useCartasPorId, useProcuradas } from '@/hooks/useAnuncios'
+import { useAnuncios, useCartasPorId, useProcuradas } from '@/hooks/useAnuncios'
 import { useMatches } from '@/hooks/useMatches'
+import { useVitrine } from '@/hooks/useVitrine'
 import type { CartaProcurada } from '@/lib/anuncios'
 import { cn } from '@/lib/cn'
 import {
@@ -22,6 +24,7 @@ import {
   prazoUrgente,
   reputacaoTexto,
 } from '@/lib/matches'
+import { donosTexto, ORDEM_PADRAO } from '@/lib/vitrine'
 import { useUsuarioId } from '@/stores/auth'
 
 /**
@@ -246,45 +249,47 @@ function Esqueleto() {
 }
 
 /**
- * Tela vazia.
+ * Tela vazia — e a vitrine como destino de quem cai nela.
  *
  * Enquanto a base for pequena esta é a tela principal, não a exceção: quase todo
  * mundo que se cadastra abre o feed e não encontra troca. Sem mais nada, ela diz
  * "você fez tudo certo e não tem nada" — que é como um marketplace vazio começa
  * a morrer.
  *
- * Quando há gente procurando o que a pessoa oferece, é isso que ela vê primeiro:
- * metade da troca já existe. E o que falta é acionável — o match precisa das
- * duas pernas, então quem tem procura e não tem match precisa querer alguma
- * coisa de volta.
+ * Até aqui as três saídas apontavam para `/minhas-cartas`, ou seja, pediam mais
+ * digitação a quem acabou de digitar. O motor precisa dos dois lados declarados
+ * e boa parte das pessoas só declara um; é exatamente esse público que a vitrine
+ * existe para atender, e é para lá que esta tela manda agora — para apontar em
+ * carta que já está na base, com nome e arte, em vez de escrever no vácuo.
+ *
+ * Duas notícias diferentes disputam o primeiro lugar, e a mais forte ganha:
+ * quando há gente procurando o que a pessoa oferece, metade da troca já existe e
+ * é isso que ela vê. Sem isso, a saída é a amostra da vitrine.
  */
 function Vazio() {
   const { data: procuradas } = useProcuradas(true)
-  const ids = useMemo(
-    () => (procuradas ?? []).map((p) => p.card_id),
-    [procuradas],
-  )
-  const { data: cartas } = useCartasPorId(ids)
+  const { data: anuncios } = useAnuncios()
 
-  if (!procuradas?.length) {
-    return (
-      <div className="flex flex-col items-center py-14 text-center">
-        <span className="grid size-14 place-items-center rounded-[var(--radius-controle)] border-2 border-tinta bg-cartela text-tinta shadow-[var(--shadow-duro)]">
-          <IconeTroca className="size-6" />
-        </span>
-        <p className="mt-5 font-titulo text-[17px] font-bold text-tinta">
-          Nenhuma troca possível ainda.
-        </p>
-        <p className="mt-2 max-w-xs font-corpo text-[14px] leading-relaxed text-apagado">
-          Uma troca aparece quando alguém tem o que você procura e quer o que
-          você oferece. Quanto mais cartas nas suas listas, mais chances.
-        </p>
-        <BotaoBrutal to="/minhas-cartas" className="mt-6">
-          Ajustar minhas cartas
-        </BotaoBrutal>
-      </div>
-    )
-  }
+  // Ter Procuro é outra pergunta que "ter demanda": dá para ter as duas listas
+  // cheias e nenhum match, e dá para ter só o Ofereço. As saídas são diferentes.
+  const temProcuro = (anuncios ?? []).some(
+    (a) => a.tipo === 'PROCURA' && a.ativo,
+  )
+
+  if (procuradas?.length) return <DemandaPelasMinhas procuradas={procuradas} />
+  return <PortaDaVitrine temProcuro={temProcuro} pronto={Boolean(anuncios)} />
+}
+
+/**
+ * Tem gente de olho no que a pessoa oferece — e falta ela querer algo de volta.
+ *
+ * O caminho para querer algo de volta passa pelo acervo de quem já quer a carta
+ * dela: ali a troca fecha dos dois lados numa proposta só, sem esperar o motor.
+ * Por isso cada `@nome` é um link, e não texto.
+ */
+function DemandaPelasMinhas({ procuradas }: { procuradas: CartaProcurada[] }) {
+  const ids = useMemo(() => procuradas.map((p) => p.card_id), [procuradas])
+  const { data: cartas } = useCartasPorId(ids)
 
   return (
     <div className="pb-6">
@@ -295,7 +300,8 @@ function Vazio() {
         </p>
         <p className="mt-2 font-corpo text-[14px] leading-relaxed text-apagado">
           Falta a outra metade: a troca só aparece quando você também quer
-          alguma carta de quem procura a sua.
+          alguma carta de quem procura a sua. Toque num nome para ver o que a
+          pessoa tem.
         </p>
       </div>
 
@@ -311,8 +317,122 @@ function Vazio() {
         })}
       </GradeBrutal>
 
-      <BotaoBrutal to="/minhas-cartas" className="mt-5">
-        Adicionar cartas que eu procuro
+      <BotaoBrutal to="/vitrine" className="mt-5">
+        Ver a vitrine
+      </BotaoBrutal>
+    </div>
+  )
+}
+
+/** Quantas cartas da vitrine cabem numa amostra sem virar a segunda vitrine. */
+const AMOSTRA = 6
+
+/**
+ * A vitrine trazida para dentro da tela vazia.
+ *
+ * Amostra de verdade, com arte e com quanta gente tem cada carta, e não só um
+ * botão: um botão pede fé de que existe algo do outro lado, e quem está numa
+ * tela vazia acabou de aprender que talvez não exista.
+ *
+ * Qual amostra depende do que falta. Quem tem Procuro vê as cartas do próprio
+ * Procuro que alguém está oferecendo — são trocas que só faltam de um lado, e a
+ * proposta resolve o que o motor não fecha. Quem não tem Procuro vê o feed
+ * inteiro, porque para essa pessoa a pergunta ainda é "o que existe por aqui".
+ */
+function PortaDaVitrine({
+  temProcuro,
+  pronto,
+}: {
+  temProcuro: boolean
+  pronto: boolean
+}) {
+  const filtros = useMemo(
+    () =>
+      temProcuro
+        ? { ordem: ORDEM_PADRAO, so_procuro: true }
+        : { ordem: ORDEM_PADRAO },
+    [temProcuro],
+  )
+  // Só depois de saber se há Procuro: a resposta escolhe a consulta. A chave é
+  // a mesma que a vitrine usa com esses filtros, então chegar lá é instantâneo.
+  const { data } = useVitrine(filtros, pronto)
+
+  const amostra = useMemo(
+    () => (data?.pages ?? []).flat().slice(0, AMOSTRA),
+    [data],
+  )
+  const { data: cartas } = useCartasPorId(
+    useMemo(() => amostra.map((c) => c.card_id), [amostra]),
+  )
+
+  // Nem o Procuro tem carta na vitrine, ou a vitrine está vazia: sem amostra a
+  // tela volta a ser texto e saída — e a saída continua sendo a vitrine, onde a
+  // própria tela explica o que não achou.
+  if (!amostra.length) {
+    return (
+      <div className="flex flex-col items-center py-14 text-center">
+        <span className="grid size-14 place-items-center rounded-[var(--radius-controle)] border-2 border-tinta bg-cartela text-tinta shadow-[var(--shadow-duro)]">
+          <IconeTroca className="size-6" />
+        </span>
+        <p className="mt-5 font-titulo text-[17px] font-bold text-tinta">
+          Nenhuma troca possível ainda.
+        </p>
+        <p className="mt-2 max-w-xs font-corpo text-[14px] leading-relaxed text-apagado">
+          {temProcuro
+            ? 'Uma troca aparece quando alguém tem o que você procura e quer o que você oferece. Nada do seu Procuro está na vitrine neste momento.'
+            : 'Uma troca aparece quando alguém tem o que você procura e quer o que você oferece. Quanto mais cartas nas suas listas, mais chances.'}
+        </p>
+        <BotaoBrutal to="/vitrine" className="mt-6">
+          Ver a vitrine
+        </BotaoBrutal>
+        <Link
+          to="/minhas-cartas"
+          className="mt-4 font-corpo text-[14px] font-medium text-azul underline underline-offset-2"
+        >
+          Ajustar minhas cartas
+        </Link>
+      </div>
+    )
+  }
+
+  return (
+    <div className="pb-6">
+      <div className="w-full max-w-xl">
+        <p className="font-titulo text-[17px] font-bold text-tinta">
+          {temProcuro
+            ? 'Nenhuma troca fechada ainda — mas o que você procura está na vitrine.'
+            : 'Nenhuma troca possível ainda — e ninguém sabe o que você quer.'}
+        </p>
+        <p className="mt-2 font-corpo text-[14px] leading-relaxed text-apagado">
+          {temProcuro
+            ? 'Estas cartas do seu Procuro estão sendo oferecidas agora. O motor só fecha quando os dois lados querem; aqui você propõe direto a quem tem.'
+            : 'A troca só aparece quando você também procura alguma coisa. Estas são cartas que a base tem para trocar — escolher aqui é mais rápido que escrever a lista de memória.'}
+        </p>
+      </div>
+
+      <GradeBrutal className="mt-5">
+        {amostra.map((item) => {
+          const carta = cartas?.get(item.card_id)
+          if (!carta) return null
+          return (
+            <CelulaBrutal
+              key={item.card_id}
+              carta={carta}
+              para={`/vitrine/carta/${item.card_id}`}
+            >
+              <p className="rounded-[var(--radius-etiqueta)] border-2 border-tinta bg-meu px-2 py-1.5 font-titulo text-[11px] font-bold text-tinta">
+                {donosTexto(item)}
+              </p>
+            </CelulaBrutal>
+          )
+        })}
+      </GradeBrutal>
+
+      <BotaoBrutal
+        to={temProcuro ? '/vitrine?so_procuro=true' : '/vitrine'}
+        className="mt-5"
+      >
+        {temProcuro ? 'Ver tudo do meu Procuro' : 'Ver a vitrine'}
       </BotaoBrutal>
     </div>
   )
@@ -322,9 +442,12 @@ function Vazio() {
  * Quem procura esta carta.
  *
  * Nomeia as pessoas em vez de só contar — decisão do Eduardo: a tela fica
- * concreta com gente, e um número não dá vontade de voltar. Contato continua
- * fora: a API não manda, e quem quiser falar precisa do aceite mútuo, que é o
- * que protege os dois lados.
+ * concreta com gente, e um número não dá vontade de voltar. Cada nome leva ao
+ * acervo da pessoa, que é onde a proposta é montada: quem quer a minha carta é
+ * a pessoa com quem a troca tem mais chance de fechar hoje.
+ *
+ * Contato continua fora: a API não manda, e quem quiser falar precisa do aceite
+ * mútuo, que é o que protege os dois lados.
  */
 function QuemQuer({ procurada }: { procurada: CartaProcurada }) {
   const restantes = procurada.procurando - procurada.pessoas.length
@@ -337,7 +460,17 @@ function QuemQuer({ procurada }: { procurada: CartaProcurada }) {
           : `${procurada.procurando} pessoas procuram`}
       </p>
       <p className="mt-1 font-dado text-[10px] leading-relaxed break-words text-apagado">
-        {procurada.pessoas.map((q) => `@${q.username}`).join(', ')}
+        {procurada.pessoas.map((q, i) => (
+          <span key={q.user_id}>
+            {i > 0 && ', '}
+            <Link
+              to={`/vitrine/acervo/${q.username}`}
+              className="underline underline-offset-2 hover:text-tinta"
+            >
+              @{q.username}
+            </Link>
+          </span>
+        ))}
         {restantes > 0 && ` e mais ${restantes}`}
       </p>
     </div>

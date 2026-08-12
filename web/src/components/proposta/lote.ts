@@ -1,7 +1,7 @@
 import type { CartaDoLote } from '@/components/brutal/Pecas'
-import type { Acabamento } from '@/lib/acabamentos'
+import { type Acabamento, precoDoAcabamento } from '@/lib/acabamentos'
 import type { ItemProposta } from '@/lib/propostas'
-import type { Carta } from '@/lib/types'
+import type { Carta, PrecoTCGplayer } from '@/lib/types'
 
 /**
  * Os itens de um lado da rodada no formato que `ParDeLotes` entende.
@@ -17,14 +17,23 @@ export function paraLote(
   itens: ItemProposta[] | undefined,
   cartas: Map<string, Carta> | undefined,
   acabamentoPorId?: (id: number | undefined) => Acabamento | undefined,
+  precos?: Map<string, PrecoTCGplayer[]>,
 ): CartaDoLote[] {
-  return (itens ?? []).map((item, i) => ({
-    // O índice entra na chave porque a mesma carta pode aparecer duas vezes num
-    // lote (condições diferentes), e `listing_id` é nulo depois que o anúncio sai.
-    chave: `${item.listing_id ?? item.card_id}-${i}`,
-    carta: cartas?.get(item.card_id),
-    condicao: item.condicao,
-    acabamento: acabamentoPorId?.(item.finish_id),
-    disponivel: item.disponivel,
-  }))
+  return (itens ?? []).map((item, i) => {
+    // O acabamento do **item**, não o do anúncio de hoje: a proposta guarda
+    // cópia do que foi oferecido, e é o preço daquela impressão que vale. Sem
+    // isso uma reverse pedida em troca de uma normal apareceria pelo mesmo
+    // número, que é justamente a assimetria que a tela existe para mostrar.
+    const acabamento = acabamentoPorId?.(item.finish_id)
+    return {
+      // O índice entra na chave porque a mesma carta pode aparecer duas vezes num
+      // lote (condições diferentes), e `listing_id` é nulo depois que o anúncio sai.
+      chave: `${item.listing_id ?? item.card_id}-${i}`,
+      carta: cartas?.get(item.card_id),
+      condicao: item.condicao,
+      acabamento,
+      preco: precoDoAcabamento(precos?.get(item.card_id), acabamento),
+      disponivel: item.disponivel,
+    }
+  })
 }

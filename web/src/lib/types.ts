@@ -141,8 +141,24 @@ export function desequilibrio(
   precoDou?: PrecoTCGplayer,
   precoRecebo?: PrecoTCGplayer,
 ): Desequilibrio | null {
-  const dou = precoDou?.mercado ?? precoDou?.baixo
-  const recebo = precoRecebo?.mercado ?? precoRecebo?.baixo
+  return desequilibrioDeValores(
+    precoDou?.mercado ?? precoDou?.baixo,
+    precoRecebo?.mercado ?? precoRecebo?.baixo,
+  )
+}
+
+/**
+ * O mesmo cálculo a partir de dois números já somados.
+ *
+ * Existe para a proposta, onde cada lado pode ter mais de uma carta: ali o que
+ * se compara é o total de um lote contra o do outro, e não duas linhas de
+ * preço. A troca sugerida continua entrando pela função de cima, que é 1×1 por
+ * desenho.
+ */
+export function desequilibrioDeValores(
+  dou?: number | null,
+  recebo?: number | null,
+): Desequilibrio | null {
   if (dou == null || recebo == null || dou <= 0 || recebo <= 0) return null
 
   const maior = Math.max(dou, recebo)

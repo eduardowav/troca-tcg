@@ -25,10 +25,16 @@ const CHAVE = ['vitrine'] as const
  * `staleTime` de um minuto: a vitrine é tela de descoberta e ninguém precisa
  * dela ao segundo, mas ela também não pode envelhecer — a carta que apareceu
  * agora é justamente o que ela promete mostrar.
+ *
+ * `ativo` existe para quem chama de fora da vitrine: a tela vazia das trocas
+ * mostra uma amostra do feed, e qual amostra depende de saber antes se a pessoa
+ * tem Procuro. Perguntar as duas coisas ao mesmo tempo gastaria uma consulta
+ * para jogar fora. Na própria vitrine o padrão vale e nada muda.
  */
-export function useVitrine(filtros: FiltrosVitrine) {
+export function useVitrine(filtros: FiltrosVitrine, ativo = true) {
   return useInfiniteQuery({
     queryKey: [...CHAVE, 'feed', filtros],
+    enabled: ativo,
     staleTime: 60 * 1000,
     initialPageParam: 1,
     queryFn: ({ pageParam }) => listarVitrine({ ...filtros, page: pageParam }),
