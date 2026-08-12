@@ -19,6 +19,7 @@ from app.routers import (
     notificacoes,
     propostas,
     users,
+    verificacao,
     vitrine,
 )
 
@@ -59,6 +60,10 @@ app.include_router(vitrine.router, prefix="/v1")
 app.include_router(propostas.router, prefix="/v1")
 app.include_router(notificacoes.router, prefix="/v1")
 app.include_router(notificacoes.router_push, prefix="/v1")
+# Verificação de número: registrada e desligada por configuração
+# (`VERIFICACAO_TELEFONE_ATIVA`). Entra na tabela de rotas para poder ser
+# exercitada pelos testes; nenhuma tela do app a chama.
+app.include_router(verificacao.router, prefix="/v1")
 app.include_router(internal.router, prefix="/v1")
 
 

@@ -32,6 +32,20 @@ class Settings(BaseSettings):
     # contato que o Google e a Apple usam antes de bloquear um remetente.
     VAPID_SUBJECT: str = "mailto:contato@trocatcg.com.br"
 
+    # WhatsApp (verificação de número) — Cloud API da Meta.
+    #
+    # Vazio é o estado de hoje: sem chip registrado e sem conta na Meta, o
+    # `services/whatsapp.ativo()` devolve False e o código só vai para o log.
+    # `VERIFICACAO_TELEFONE_ATIVA` é outra coisa, e as duas são independentes de
+    # propósito: esta liga o *recurso* (o roteador para de responder 503), as de
+    # cima ligam o *envio*. Em desenvolvimento se liga a primeira e se lê o
+    # código no log, sem celular nem custo.
+    WHATSAPP_TOKEN: str = ""
+    WHATSAPP_PHONE_ID: str = ""
+    WHATSAPP_TEMPLATE: str = "codigo_trocatcg"
+    WHATSAPP_TEMPLATE_IDIOMA: str = "pt_BR"
+    VERIFICACAO_TELEFONE_ATIVA: bool = False
+
     # Segurança
     JOB_SECRET: str = "dev-job-secret"
     CORS_ORIGINS: str = "http://localhost:5173"

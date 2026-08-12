@@ -2184,6 +2184,40 @@ hoje, na ordem em que faz sentido atacar.
 7. **Medir de onde vem a troca.** O evento do aceite guarda o id da proposta;
    falta a consulta que responde se a vitrine fecha mais troca que o motor — a
    pergunta que decide se ela fica.
+8. **"Esqueci minha senha".** Não existe hoje: quem perde a senha perde a conta,
+   e não há tela, endpoint nem e-mail para isso. É `resetPasswordForEmail` do
+   Supabase, uma tela de pedido, uma de nova senha (a que o link abre, com a
+   sessão de recuperação) e a rota de retorno registrada nas Redirect URLs do
+   projeto. **Não depende de a confirmação de e-mail voltar**: o próprio clique
+   no link prova o domínio da caixa naquele momento, que é o que a recuperação
+   precisa. O que se perde sem confirmação prévia é o caso do e-mail digitado
+   errado — essa conta fica sem caminho de volta, e a saída é humana, não
+   automática. Vem antes de o app ir para os usuários de teste: até lá, senha
+   perdida é conta perdida.
+9. **Confirmação de número por WhatsApp** — o **backend ficou pronto e desligado
+   em 2026-08-12**; falta o que não é código. Estão no lugar: a migração `26`
+   (coluna `contato_verificado_em` em `profiles` e a tabela
+   `phone_verifications`, com RLS e sem grant nenhum para o navegador — nem o
+   dono lê), `services/verificacao_telefone.py` (código de 6 dígitos de
+   `secrets`, só o SHA-256 gravado, validade de 10 minutos, 60 segundos entre
+   envios, 5 mensagens por número em 24h, 5 tentativas por código, comparação
+   por `compare_digest`), `services/whatsapp.py` (Cloud API da Meta, template de
+   autenticação, número mascarado no log) e as rotas `/v1/me/telefone`,
+   registradas e respondendo 503 enquanto `VERIFICACAO_TELEFONE_ATIVA` for
+   falso. Quinze testes cobrem a regra com o recurso desligado, que é o que faz
+   o dia de ligar ser uma linha de ambiente.
+
+   **Os limites moram no serviço, não no slowapi**, de propósito: o rate limit
+   global não roda (item 1 do bloco de segurança) e, mesmo rodando, conta
+   requisição por IP — o que precisa ser contado aqui é mensagem por número,
+   porque cada uma custa dinheiro e queima cota na Meta.
+
+   O que falta, em ordem: chip dedicado (o número registrado sai do WhatsApp
+   comum), conta Meta Business com a verificação de negócio pedida — ela leva
+   dias e corre sozinha —, template de autenticação aprovado, a tela de digitar
+   o código, e ligar o pedido **no primeiro aceite de troca**, que é quando o
+   número é revelado e quando a pessoa já tem motivo para completar. O item 1 da
+   segurança continua sendo pré-requisito de ligar, não de construir.
 
 **Segurança do app** — varredura de 2026-08-11 sobre API, banco, PWA e CI.
 Decisão do Eduardo no mesmo dia: **este bloco é o último da fila, e fecha antes
@@ -2268,6 +2302,38 @@ a R$ 19,90/mês ou R$ 199,90/ano, sem destaque pago. A Fase A está commitada e
 desligada (`925fe9d`); falta a Fase B (cadastro em massa, alerta de carta,
 triangular), que é o que dá ao PRO o que vender, e só depois a Fase C (Mercado
 Pago, tela de planos, termos, queda de plano).
+
+**Cadastro sem verificação** — decisão do Eduardo em 2026-08-12. A confirmação
+de e-mail sai (interruptor "Confirm email" do painel do Supabase, fora do
+código), e **nenhuma verificação de número entra por enquanto**. O código
+aguenta os dois estados sem mudança: sem confirmação o `signUp` volta com
+sessão, o `if (data.session)` de `Entrar.tsx` manda direto para o app e a tela
+`ConfirmeEmail` fica dormente — ela volta sozinha se o interruptor for religado.
+
+O que isso custa hoje é nada: não existe fluxo de "esqueci minha senha" no app,
+então o e-mail é só o login. Quando a recuperação subir (item 8), ela funciona
+sem a confirmação de volta — o clique no link prova a caixa naquele momento. O
+que fica descoberto é só o e-mail digitado errado, que vira caso de suporte.
+
+**Estado em 2026-08-12:** o interruptor do painel **ainda está ligado** —
+provado por um cadastro descartável contra a API do Supabase, que voltou sem
+sessão e com `confirmation_sent_at` preenchido (a conta foi apagada em seguida).
+Por isso a tela `ConfirmeEmail` continua no código: tirá-la antes de desligar o
+interruptor prenderia todo cadastro novo numa tela em branco. Assim que o
+Eduardo desligar, o desvio sai do `Entrar.tsx`.
+
+A verificação de WhatsApp por código está **construída e desligada** desde
+2026-08-12 — o que existe e o que falta está no item 9. Três decisões que
+valem para quando ela for ligada: ela é da **Cloud API da
+Meta**, não de biblioteca não oficial (número que manda mensagem automática para
+desconhecido é banido, e a falha é silenciosa — o código para de chegar e o
+cadastro morre sem erro em lugar nenhum); ela exige **chip dedicado**, porque um
+número registrado na plataforma sai do WhatsApp comum; e o pedido do código não
+fica no cadastro, fica **no primeiro aceite de troca** — que é quando o número é
+revelado, quando a pessoa já tem motivo para completar, e quando se paga
+mensagem só por quem troca de verdade. O pré-requisito é o item 1 do bloco de
+segurança: endpoint que dispara mensagem paga sem rate limit é torneira aberta,
+tanto para o saldo quanto para o limite diário da Meta.
 
 **Esperando o olho do Eduardo** — três coisas subiram sem ele ter visto rodando,
 e nenhuma é bug conhecido; são julgamentos visuais:
