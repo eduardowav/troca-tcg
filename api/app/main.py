@@ -12,6 +12,7 @@ from app.core.config import settings
 from app.core.errors import RegraNegocio, regra_negocio_handler
 from app.db.session import engine
 from app.routers import (
+    alertas,
     health,
     internal,
     listings,
@@ -58,6 +59,7 @@ app.include_router(listings.router, prefix="/v1")
 app.include_router(matches.router, prefix="/v1")
 app.include_router(vitrine.router, prefix="/v1")
 app.include_router(propostas.router, prefix="/v1")
+app.include_router(alertas.router, prefix="/v1")
 app.include_router(notificacoes.router, prefix="/v1")
 app.include_router(notificacoes.router_push, prefix="/v1")
 # Verificação de número: registrada e desligada por configuração

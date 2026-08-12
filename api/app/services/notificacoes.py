@@ -45,6 +45,7 @@ TIPO_MATCH_FURADO = "MATCH_FURADO"
 TIPO_MATCH_CANCELADO = "MATCH_CANCELADO"
 TIPO_MATCH_EXPIRADO = "MATCH_EXPIRADO"
 TIPO_CARTA_PROCURADA = "CARTA_PROCURADA"
+TIPO_CARTA_DISPONIVEL = "CARTA_DISPONIVEL"
 
 #: Quais destes vibram o celular. É a coluna "Push" da matriz da seção 12: o que
 #: espera resposta de alguém, mais a carta procurada, que é a única varredura e
@@ -60,6 +61,10 @@ TIPOS_COM_PUSH = frozenset(
         TIPO_MATCH_ACEITO,
         TIPO_MATCH_CONCLUIDO,
         TIPO_CARTA_PROCURADA,
+        # A carta que a pessoa **pediu** para ser avisada. É o único aviso que
+        # ela ligou com o próprio dedo, e o que ela espera é justamente o
+        # celular vibrando — carta boa some no mesmo dia.
+        TIPO_CARTA_DISPONIVEL,
     }
 )
 
@@ -567,4 +572,40 @@ async def carta_procurada(
         corpo=f"{corpo} Abra para propor a troca.",
         link=f"/vitrine/carta/{card_id}",
         dedupe_horas=24 * 7,
+    )
+
+
+async def carta_disponivel(
+    session: AsyncSession,
+    *,
+    para: UUID | str,
+    card_id: UUID | str,
+    carta: str,
+    quantos: int,
+) -> bool:
+    """A carta que você pediu para vigiar apareceu no Ofereço de alguém.
+
+    A segunda notificação de varredura, e por isso a segunda com dedupe — mas a
+    janela é de 24 horas, não de sete dias como a da carta procurada. As duas
+    coisas não se parecem: aquela é o app puxando alguém de volta por algo que
+    ele não pediu, esta é o cumprimento de um pedido explícito, e carta boa
+    aparece e some no mesmo dia. Uma semana de silêncio depois do primeiro aviso
+    faria a pessoa perder a segunda oferta que ela estava esperando.
+
+    O link vai para a vitrine da carta: é de lá que se vê quem tem e se abre a
+    proposta, que é a única coisa que a pessoa quer fazer ao ler isto.
+    """
+    corpo = (
+        f"{quantos} pessoas anunciaram esta carta."
+        if quantos > 1
+        else "Alguém anunciou esta carta."
+    )
+    return await _notificar(
+        session,
+        para=para,
+        tipo=TIPO_CARTA_DISPONIVEL,
+        titulo=f"Apareceu: {carta}",
+        corpo=f"{corpo} Abra para ver quem tem.",
+        link=f"/vitrine/carta/{card_id}",
+        dedupe_horas=24,
     )

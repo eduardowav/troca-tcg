@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { Link, useParams } from 'react-router-dom'
 
 import { Cartela, IconeEstrela } from '@/components/brutal/Pecas'
+import { AvisarQuandoAparecer } from '@/components/carta/AvisarQuandoAparecer'
 import { CartaThumb } from '@/components/carta/CartaThumb'
 import { estiloBotao } from '@/components/ui/Button'
 import { useAcabamentoPorId } from '@/hooks/useAcabamentos'
@@ -77,12 +78,23 @@ export default function VitrineCarta() {
             <p className="font-titulo text-[17px] font-bold text-tinta">
               Ninguém está oferecendo esta carta agora.
             </p>
-            {/* Sem oferta, o caminho útil é o inverso: entrar na fila de quem a
-                procura, para o matcher avisar quando alguém anunciar. */}
+            {/* Este é o vazio de onde o alerta nasce (seção 16, Fase B).
+                ------------------------------------------------------------
+                O texto antigo mandava pôr no Procuro e prometia que "a troca
+                aparece sozinha" — o que só é verdade com reciprocidade: se
+                quem anunciar não quiser nada do que esta pessoa tem, o matcher
+                não cria match nenhum e ninguém avisa nada. O Procuro continua
+                valendo e continua recomendado, mas agora com a promessa certa,
+                e ao lado do aviso que não depende de o outro lado querer algo
+                em troca. */}
             <p className="mt-2 font-corpo text-[14px] leading-relaxed text-apagado">
-              Coloque a carta no seu Procuro: quando alguém anunciar, a troca
-              aparece sozinha nas suas trocas possíveis.
+              Coloque a carta no seu Procuro para o app cruzar as trocas
+              possíveis — e ligue o aviso abaixo para saber assim que alguém
+              anunciar, mesmo que a troca não feche dos dois lados.
             </p>
+            {carta && (
+              <AvisarQuandoAparecer cardId={carta.id} className="mt-4" />
+            )}
           </div>
         ) : (
           <ul className="flex flex-col gap-3">

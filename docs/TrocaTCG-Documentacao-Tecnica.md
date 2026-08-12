@@ -1622,6 +1622,7 @@ ele que `TIPOS_COM_PUSH` consulta para decidir se o celular vibra.
 | Desistência | `MATCH_CANCELADO` | ✅ | — | — |
 | Troca combinada venceu | `MATCH_EXPIRADO` | ✅ | — | — |
 | Procuram uma carta que você oferece | `CARTA_PROCURADA` | ✅ | ✅ | — |
+| Apareceu a carta que você pediu para vigiar | `CARTA_DISPONIVEL` | ✅ | ✅ | — |
 | Boas-vindas / senha | — | — | — | ✅ |
 
 Quatro eventos **não** notificam, e cada ausência é uma decisão:
@@ -2091,7 +2092,32 @@ limite, o que lê como pedágio. **A cobrança não liga antes desta fase termin
    Teto de 200 linhas por chamada, imposto no banco: a função é alcançável com a
    anon key, como toda leitura de catálogo, e sem limite uma chamada com dez mil
    termos seria dez mil buscas trigram numa transação só.
-5. `alerta_carta`, que nasce do vazio da busca.
+5. ✅ **Alerta de carta** — feito em 2026-08-12. "Avise quando aparecer",
+   nascido do vazio: a pessoa abre a vitrine de uma carta, ninguém a oferece, e
+   até aqui a tela só tinha a dizer "coloque no seu Procuro que a troca aparece
+   sozinha" — promessa que **só vale com reciprocidade**. Se quem anunciar não
+   quiser nada do que ela tem, o matcher não cria match e ninguém avisa nada. O
+   alerta cobre essa espera de um lado só.
+
+   Não confundir com o `CARTA_PROCURADA` que já existia: aquele corre no sentido
+   contrário (avisa **quem oferece** que passaram a procurar). Este é o sentido
+   que faltava, e são os dois lados da mesma novidade — o cron chama os dois no
+   mesmo disparo de 15 minutos.
+
+   Tabela `card_alerts` (migração `29`), um alerta por pessoa e carta, com
+   acabamento opcional: nulo é "qualquer uma", que é o caso de quem pediu no
+   vazio. Fechada para o navegador — quem escreve é a API, porque criar alerta
+   passa pelo portão de plano, e portão que mora no cliente não é portão.
+
+   **O aviso não consome o alerta.** Carta boa aparece e some no mesmo dia;
+   apagar no primeiro aviso deixaria a pessoa sem vigilância por causa de uma
+   oferta que ela não chegou a ver. Quem desliga é ela. O dedupe é de 24 horas —
+   e não os sete dias da carta procurada — pelo mesmo motivo: aquilo é o app
+   puxando alguém por algo que não pediu, isto é o cumprimento de um pedido
+   explícito. É o décimo quarto evento, e vibra o celular.
+
+   O interruptor vive em dois lugares: no detalhe da carta e no vazio da
+   vitrine, que é o mesmo momento visto de dois ângulos.
 6. `triangular` (Fase 5 do roadmap) — o carro-chefe, e o que nenhum concorrente tem.
 
 **Fase C — cobrar.**

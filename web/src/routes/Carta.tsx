@@ -4,6 +4,7 @@ import { Link, useParams } from 'react-router-dom'
 import { SeloRaridade } from '@/components/brutal/Cartas'
 import { BotaoBrutal, Cartela } from '@/components/brutal/Pecas'
 import { CartaThumb } from '@/components/carta/CartaThumb'
+import { AvisarQuandoAparecer } from '@/components/carta/AvisarQuandoAparecer'
 import { FolhaAdicionar } from '@/components/carta/FolhaAdicionar'
 import { useAcabamentosDaCarta } from '@/hooks/useAcabamentos'
 import { useAnuncios, useCartasPorId, usePrecosPorId } from '@/hooks/useAnuncios'
@@ -201,6 +202,8 @@ export default function CartaDetalhe() {
               Você escolhe condição e quantidade no passo seguinte.
             </p>
           </div>
+
+          <AvisarQuandoAparecer cardId={carta.id} className="mt-4" />
         </div>
       </div>
 

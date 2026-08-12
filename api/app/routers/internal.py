@@ -14,7 +14,7 @@ from app.core.config import settings
 from app.db.session import get_session
 from app.jobs.catalog.sync import sincronizar_sets
 from app.jobs.catalog.tcgdex import TCGdex
-from app.services import matching, propostas
+from app.services import alertas, matching, propostas
 
 router = APIRouter(prefix="/internal/jobs", tags=["internal"])
 
@@ -83,5 +83,24 @@ async def notify_wanted(
     transação de quem o chama.
     """
     enviadas = await matching.notificar_cartas_procuradas(session, horas=horas)
+    await session.commit()
+    return {"notificadas": enviadas}
+
+
+@router.post("/notify-alerts", dependencies=[Depends(_verifica_secret)])
+async def notify_alerts(
+    horas: int = 24,
+    session: AsyncSession = Depends(get_session),
+) -> dict[str, int]:
+    """Avisa quem pediu para ser avisado quando a carta aparecesse.
+
+    O irmão do `notify-wanted`, no sentido contrário: aquele avisa quem oferece
+    que passaram a procurar; este avisa quem espera que passaram a oferecer. Mesma
+    janela generosa e mesmo motivo — execução perdida não deixa buraco.
+
+    O dedupe daqui é de 24 horas, não de sete dias: é pedido explícito da pessoa,
+    e carta boa aparece e some no mesmo dia.
+    """
+    enviadas = await alertas.notificar_cartas_disponiveis(session, horas=horas)
     await session.commit()
     return {"notificadas": enviadas}
