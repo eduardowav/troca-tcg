@@ -1,0 +1,21 @@
+{
+  // O service worker é outro mundo de tipos: lá não existe `window` nem
+  // `document`, e existe `ServiceWorkerGlobalScope`. Compilá-lo junto do app,
+  // com a lib DOM, faria o TypeScript aceitar código que quebra dentro do
+  // worker — e recusar o `self` que é o objeto certo lá dentro.
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "WebWorker"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "types": ["vite-plugin-pwa/client"],
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true
+  },
+  "include": ["src/sw.ts"]
+}

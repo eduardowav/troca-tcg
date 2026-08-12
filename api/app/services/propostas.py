@@ -37,6 +37,7 @@ from app.schemas.proposta import (
     PropostaResumo,
     RodadaProposta,
 )
+from app.services import notificacoes
 
 #: Teto de rodadas, o mesmo do check em db/schema/23. Rodada 1 é a proposta; 2,
 #: 3 e 4 são contrapropostas. Duplicar aqui é de propósito: o banco é a garantia
@@ -494,6 +495,16 @@ async def abrir(
             eu=str(user_id),
             outro=destinatario["id"],
         )
+        # Dentro da mesma transação do insert: se a proposta não existir, o
+        # aviso de que ela chegou não pode existir. É esta notificação que
+        # fecha o buraco de a proposta vencer em 72h sem ninguém saber dela.
+        await notificacoes.proposta_recebida(
+            session,
+            para=destinatario["id"],
+            de=user_id,
+            quem=await notificacoes.arroba(session, user_id),
+            proposta_id=linha["id"],
+        )
         await session.commit()
     except IntegrityError as exc:
         await session.rollback()
@@ -510,6 +521,18 @@ async def abrir(
         raise
 
     return await obter(session, user_id, UUID(linha["id"]))
+
+
+def _o_outro(linha: dict, user_id: UUID) -> tuple[str, str]:
+    """(id do outro lado, @ de quem está agindo).
+
+    A linha de `_carregar` já traz os dois lados nomeados, então quem notifica
+    não precisa voltar ao banco para descobrir a quem avisar nem como assinar o
+    aviso. É sempre este par: para quem vai, e de quem veio.
+    """
+    if linha["autor_id"] == str(user_id):
+        return linha["destinatario_id"], linha["autor"]
+    return linha["autor_id"], linha["destinatario"]
 
 
 def _exigir_aberta(linha: dict) -> None:
@@ -556,6 +579,10 @@ async def recusar(
     _exigir_minha_vez(linha, user_id)
 
     await _encerrar(session, linha["id"], "RECUSADA")
+    outro, eu = _o_outro(linha, user_id)
+    await notificacoes.proposta_recusada(
+        session, para=outro, de=user_id, quem=eu, proposta_id=linha["id"]
+    )
     await session.commit()
     return await obter(session, user_id, proposta_id)
 
@@ -586,6 +613,10 @@ async def retirar(
         )
 
     await _encerrar(session, linha["id"], "RETIRADA")
+    outro, eu = _o_outro(linha, user_id)
+    await notificacoes.proposta_retirada(
+        session, para=outro, de=user_id, quem=eu, proposta_id=linha["id"]
+    )
     await session.commit()
     return await obter(session, user_id, proposta_id)
 
@@ -652,6 +683,17 @@ async def contrapropor(
         ofereco=ofereco,
         eu=str(user_id),
         outro=outro,
+    )
+    # A contraproposta é o caso em que a vez muda de mãos sem a proposta mudar
+    # de status: sem aviso, ela é indistinguível de nada ter acontecido.
+    _, eu_arroba = _o_outro(linha, user_id)
+    await notificacoes.proposta_sua_vez(
+        session,
+        para=outro,
+        de=user_id,
+        quem=eu_arroba,
+        proposta_id=linha["id"],
+        rodada=linha["rodada"] + 1,
     )
     await session.commit()
     return await obter(session, user_id, proposta_id)
@@ -769,6 +811,12 @@ async def aceitar(
         await session.rollback()
         raise _encerrada()
 
+    # O link vai para o match, não para a proposta: o que interessa a quem
+    # recebe o aviso é o contato, e ele está do outro lado.
+    outro, eu_arroba = _o_outro(linha, user_id)
+    await notificacoes.proposta_aceita(
+        session, para=outro, de=user_id, quem=eu_arroba, match_id=match_id
+    )
     await session.commit()
     return await obter(session, user_id, proposta_id)
 
@@ -790,7 +838,20 @@ async def expirar_propostas(session: AsyncSession) -> int:
         text("""
             update propostas set status = 'EXPIRADA'
             where status = 'ABERTA' and expira_em <= now()
-            returning id::text as id
+            returning id::text as id,
+                      autor_id::text as autor_id,
+                      destinatario_id::text as destinatario_id
         """)
     )
-    return len(res.mappings().all())
+    vencidas = res.mappings().all()
+
+    # Os dois lados são avisados, e não só quem tinha a vez: para quem deixou
+    # vencer é a explicação do sumiço, e para quem esperava é a notícia de que
+    # a dupla destravou — só existe uma negociação aberta por dupla.
+    for linha in vencidas:
+        for pessoa in (linha["autor_id"], linha["destinatario_id"]):
+            await notificacoes.proposta_expirada(
+                session, para=pessoa, proposta_id=linha["id"]
+            )
+
+    return len(vencidas)

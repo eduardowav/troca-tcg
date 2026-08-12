@@ -16,6 +16,7 @@ from app.routers import (
     internal,
     listings,
     matches,
+    notificacoes,
     propostas,
     users,
     vitrine,
@@ -56,6 +57,8 @@ app.include_router(listings.router, prefix="/v1")
 app.include_router(matches.router, prefix="/v1")
 app.include_router(vitrine.router, prefix="/v1")
 app.include_router(propostas.router, prefix="/v1")
+app.include_router(notificacoes.router, prefix="/v1")
+app.include_router(notificacoes.router_push, prefix="/v1")
 app.include_router(internal.router, prefix="/v1")
 
 

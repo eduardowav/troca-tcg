@@ -8,13 +8,14 @@ import Buscar from '@/routes/Buscar'
 import CartaDetalhe from '@/routes/Carta'
 import Configuracoes from '@/routes/Configuracoes'
 import EditarPerfil from '@/routes/EditarPerfil'
-import { Mensagens, Notificacoes } from '@/routes/EmBreve'
+import { Mensagens } from '@/routes/EmBreve'
 import Entrar from '@/routes/Entrar'
 import Home from '@/routes/Home'
 import LabTroca from '@/routes/LabTroca'
 import MatchDetalhe from '@/routes/Match'
 import Matches from '@/routes/Matches'
 import MinhasCartas from '@/routes/MinhasCartas'
+import Notificacoes from '@/routes/Notificacoes'
 import Onboarding from '@/routes/Onboarding'
 import Acervo from '@/routes/Acervo'
 import PerfilTela from '@/routes/Perfil'
@@ -63,8 +64,8 @@ export default function App() {
             <Route path="/vitrine/acervo/:username" element={<Acervo />} />
             <Route path="/propostas" element={<Propostas />} />
             <Route path="/propostas/:id" element={<PropostaDetalhe />} />
-            {/* Existem no Figma e ainda não no produto. A tela é honesta
-                sobre isso e diz por onde a coisa acontece hoje. */}
+            {/* Mensagens existe no Figma e ainda não no produto. A tela é
+                honesta sobre isso e diz por onde a coisa acontece hoje. */}
             <Route path="/mensagens" element={<Mensagens />} />
             <Route path="/notificacoes" element={<Notificacoes />} />
             <Route path="/perfil" element={<PerfilTela />} />

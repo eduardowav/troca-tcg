@@ -40,6 +40,7 @@ from app.schemas.match import (
     ParticipanteCompleto,
     ParticipanteResumo,
 )
+from app.services import notificacoes
 
 # Uma OFERTA atende uma PROCURA quando é a mesma carta, no mesmo idioma, em
 # condição pelo menos tão boa quanto a pedida, e com o acabamento que a pessoa
@@ -129,8 +130,34 @@ async def expirar_vencidos(session: AsyncSession) -> int:
             text("insert into match_events (match_id, evento) values (:m, 'EXPIRADO')"),
             {"m": match_id},
         )
+        # Só o que alguém chegou a responder vira EXPIRADO (ver o docstring), e
+        # é exatamente por isso que este aviso vale: houve encontro marcado, e
+        # ele não aconteceu. Sugestão ignorada não chega aqui nem incomoda.
+        for pessoa in await _participantes(session, match_id):
+            await notificacoes.match_expirado(session, para=pessoa, match_id=match_id)
 
     return len(ids)
+
+
+async def _participantes(session: AsyncSession, match_id: UUID | str) -> list[str]:
+    """Os ids de quem está num match. Usado por quem notifica os dois lados."""
+    linhas = await session.execute(
+        text("select user_id::text as id from match_participants where match_id = :m"),
+        {"m": str(match_id)},
+    )
+    return [linha["id"] for linha in linhas.mappings().all()]
+
+
+async def _outro_participante(
+    session: AsyncSession, match_id: UUID | str, user_id: UUID | str
+) -> str | None:
+    return await session.scalar(
+        text("""
+            select user_id::text from match_participants
+            where match_id = :m and user_id <> cast(:u as uuid) limit 1
+        """),
+        {"m": str(match_id), "u": str(user_id)},
+    )
 
 
 async def sincronizar_matches(session: AsyncSession, user_id: UUID) -> int:
@@ -194,7 +221,7 @@ async def _gravar_match(session: AsyncSession, eu: UUID, par: dict) -> None:
                  -- leria como o app ignorando a decisão dela. Uma semana depois
                  -- volta, porque desistir quase sempre é sobre o momento.
                  or (matches.status = 'CANCELADO' and matches.expira_em <= now())
-            returning id::text
+            returning id::text, (xmax = 0) as inedito
         """),
         {"score": par["score"], "hash": hash_grupo},
     )
@@ -203,6 +230,11 @@ async def _gravar_match(session: AsyncSession, eu: UUID, par: dict) -> None:
         return  # já existe e alguém respondeu: não é mais sugestão, deixa quieto
 
     match_id = linha["id"]
+    # `xmax = 0` separa o INSERT do UPDATE do upsert, e essa distinção é a
+    # diferença entre notificar uma vez e notificar sempre: `sincronizar_matches`
+    # roda a cada escrita de anúncio e reescreve os mesmos pares indefinidamente.
+    # Sem isto, a coisa mais útil do app viraria a mais irritante.
+    inedito = bool(linha["inedito"])
 
     # Se este match está ressuscitando de um EXPIRADO, os participantes ainda
     # carregam o aceite da rodada anterior — sem zerar, a tela mostraria uma
@@ -254,6 +286,16 @@ async def _gravar_match(session: AsyncSession, eu: UUID, par: dict) -> None:
             "fin_recebo": par["finish_recebo"],
         },
     )
+
+    if inedito:
+        # Os dois lados são avisados. Quem escreveu o anúncio está com o app
+        # aberto e verá o feed de qualquer jeito; o parceiro é quem não tem
+        # como saber que a troca dele apareceu — e é ele que a notificação
+        # existe para alcançar.
+        for pessoa in (str(eu), str(parceiro)):
+            await notificacoes.match_novo(
+                session, para=pessoa, match_id=match_id, tipo="DIRETO"
+            )
 
 
 async def listar_matches(session: AsyncSession, user_id: UUID) -> list[MatchOut]:
@@ -371,6 +413,65 @@ async def demanda_pelas_minhas_ofertas(
                 )
             )
     return list(por_carta.values())
+
+
+# Quem oferece uma carta que alguém acabou de passar a procurar.
+#
+# É a mesma regra de compatibilidade do matcher (`_COMPATIVEL`) lida da outra
+# ponta: aqui não se exige reciprocidade nenhuma. O match precisa de duas mãos
+# cheias; este aviso é para o caso de uma só — alguém quer a sua carta e você
+# não quer nada dela. É exatamente a troca que o motor nunca vai sugerir, e a
+# vitrine existe para essa pessoa conseguir dar o primeiro passo.
+#
+# A janela é sobre `p.criado_em`, a PROCURA nova. Sem ela, toda passagem do job
+# reprocessaria a base inteira; com ela, o trabalho é proporcional ao que mudou.
+# A repetição de fato é barrada pelo dedupe de sete dias em `carta_procurada` —
+# são duas travas diferentes, uma de custo e outra de incômodo.
+_QUEM_PROCURA_O_QUE_OFERECO = text(f"""
+    select o.user_id::text as dono,
+           o.card_id::text as card_id,
+           coalesce(c.nome_pt, c.nome_en) as carta,
+           count(distinct p.user_id) as quantos
+    from listings o
+    join listings p on {_COMPATIVEL}
+    join profiles dono on dono.id = o.user_id
+    join profiles quem on quem.id = p.user_id
+    join cards c on c.id = o.card_id
+    where p.user_id <> o.user_id
+      and dono.bloqueado = false
+      and quem.bloqueado = false
+      and p.criado_em > now() - make_interval(hours => :horas)
+    group by o.user_id, o.card_id, coalesce(c.nome_pt, c.nome_en)
+""")
+
+
+async def notificar_cartas_procuradas(session: AsyncSession, horas: int = 24) -> int:
+    """Avisa quem oferece uma carta que passou a ser procurada. Devolve quantos.
+
+    Roda pelo cron (`/internal/jobs/notify-wanted`) a cada quinze minutos. A
+    janela padrão de 24h é bem maior que o intervalo de propósito: uma execução
+    que falhe não deixa buraco, porque a seguinte revisita o mesmo período e o
+    dedupe descarta o que já foi avisado.
+
+    Não commita — quem chama fecha a transação, como o resto dos jobs.
+    """
+    linhas = (
+        (await session.execute(_QUEM_PROCURA_O_QUE_OFERECO, {"horas": horas}))
+        .mappings()
+        .all()
+    )
+
+    enviadas = 0
+    for r in linhas:
+        if await notificacoes.carta_procurada(
+            session,
+            para=r["dono"],
+            card_id=r["card_id"],
+            carta=r["carta"],
+            quantos=r["quantos"],
+        ):
+            enviadas += 1
+    return enviadas
 
 
 # O acervo do parceiro, menos o que já está nesta troca.
@@ -705,6 +806,24 @@ async def responder(
             "e": "ACEITO" if aceitou else "RECUSADO",
         },
     )
+
+    # Recusa não é notificada de propósito: quem recusa uma sugestão do motor
+    # não está respondendo a uma pessoa, está dispensando uma ideia do app —
+    # avisar transformaria "não quero" numa mensagem para alguém que não pediu
+    # nada. Aceite é o contrário: é o único momento em que o outro lado precisa
+    # agir, e o segundo aceite é o que revela o contato.
+    if aceitou:
+        outro = await _outro_participante(session, match_id, user_id)
+        if outro is not None:
+            await notificacoes.match_aceito(
+                session,
+                para=outro,
+                de=user_id,
+                quem=await notificacoes.arroba(session, user_id),
+                match_id=match_id,
+                combinado=novo == "ACEITO",
+            )
+
     await session.commit()
 
     return await obter_match(session, user_id, match_id)
@@ -788,6 +907,20 @@ async def confirmar_conclusao(
                 )
             """),
             {"m": str(match_id)},
+        )
+
+    # A confirmação de um lado só vale com a do outro, e é aqui que ela é
+    # cobrada — sem este aviso, a troca que aconteceu de verdade fica pendurada
+    # esperando alguém lembrar de voltar ao app.
+    outro = await _outro_participante(session, match_id, user_id)
+    if outro is not None:
+        await notificacoes.match_concluido(
+            session,
+            para=outro,
+            de=user_id,
+            quem=await notificacoes.arroba(session, user_id),
+            match_id=match_id,
+            fechou=not faltam,
         )
 
     await session.commit()
@@ -896,6 +1029,17 @@ async def registrar_desistencia(
         ),
         {"m": str(match_id), "u": str(user_id)},
     )
+
+    outro = await _outro_participante(session, match_id, user_id)
+    if outro is not None:
+        await notificacoes.match_cancelado(
+            session,
+            para=outro,
+            de=user_id,
+            quem=await notificacoes.arroba(session, user_id),
+            match_id=match_id,
+        )
+
     await session.commit()
     return await obter_match(session, user_id, match_id)
 
@@ -936,6 +1080,13 @@ async def registrar_furo(
         """),
         {"m": str(match_id), "u": str(user_id), "payload": f'{{"faltou": "{outro}"}}'},
     )
+
+    # Vai para quem faltou, e sem o @ de quem registrou — ver o texto em
+    # services/notificacoes. O número dessa pessoa acabou de mudar; ela merece
+    # saber por onde, mas nomear quem apertou o botão convida à represália
+    # antes de ela abrir a tela.
+    await notificacoes.match_furado(session, para=outro, de=user_id, match_id=match_id)
+
     await session.commit()
     return await obter_match(session, user_id, match_id)
 

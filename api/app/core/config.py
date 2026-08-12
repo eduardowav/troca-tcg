@@ -27,6 +27,10 @@ class Settings(BaseSettings):
     RESEND_API_KEY: str = ""
     VAPID_PUBLIC_KEY: str = ""
     VAPID_PRIVATE_KEY: str = ""
+    # O `sub` do VAPID: quem o serviço de push procura se algo der errado do
+    # nosso lado. Tem de ser mailto: ou https:, e não pode ser inventado — é o
+    # contato que o Google e a Apple usam antes de bloquear um remetente.
+    VAPID_SUBJECT: str = "mailto:contato@trocatcg.com.br"
 
     # Segurança
     JOB_SECRET: str = "dev-job-secret"

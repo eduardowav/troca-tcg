@@ -90,6 +90,19 @@ services:
       - key: CORS_ORIGINS
         value: https://trocatcg-web.onrender.com
 
+      # Web Push. A pública é a mesma do `VITE_VAPID_PUBLIC_KEY` do PWA e pode
+      # ficar aqui — é ela que o navegador guarda para reconhecer o remetente
+      # autorizado. A privada entra pelo painel (`sync: false`): trocar o par
+      # invalida toda inscrição existente, e cada pessoa precisaria ligar o
+      # aviso de novo. Sem as duas, o push não sai e o app segue inteiro.
+      - key: VAPID_PUBLIC_KEY
+        value: BHQHBKdi7RzxVN3qd76b6AI-JyGxXA_7Uo4tIeLfVhl6GErvWfIe1hnTAL64FRA7iRkyQgl_cOYvr-ujJqt-MSw
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+      # O contato que o FCM e a Apple procuram antes de bloquear um remetente.
+      - key: VAPID_SUBJECT
+        value: mailto:contato@trocatcg.com.br
+
       - key: ENVIRONMENT
         value: production
 
@@ -145,3 +158,9 @@ services:
       # navegador de quem usa o app não alcança.
       - key: VITE_API_URL
         value: https://trocatcg-api.onrender.com/v1
+
+      # A mesma chave pública VAPID da API. Entra no bundle de propósito: é o
+      # que o navegador precisa ter em mãos na hora de se inscrever no serviço
+      # de push. A privada não tem par aqui e nunca terá.
+      - key: VITE_VAPID_PUBLIC_KEY
+        value: BHQHBKdi7RzxVN3qd76b6AI-JyGxXA_7Uo4tIeLfVhl6GErvWfIe1hnTAL64FRA7iRkyQgl_cOYvr-ujJqt-MSw

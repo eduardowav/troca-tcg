@@ -5,8 +5,10 @@ import { toast } from 'sonner'
 
 import { usePerfil } from '@/hooks/usePerfil'
 import { useMarcaOculta } from '@/hooks/useMundo'
+import { useDesligarPush, useEstadoPush, useLigarPush } from '@/hooks/usePush'
 import { ApiError } from '@/lib/api'
 import { cn } from '@/lib/cn'
+import { estaInstalado } from '@/lib/push'
 import { excluirConta, type Perfil } from '@/lib/perfil'
 import { sair } from '@/stores/auth'
 import { definirTema, useTema } from '@/stores/tema'
@@ -16,14 +18,15 @@ import { definirTema, useTema } from '@/stores/tema'
  * título em mono e fichas de largura inteira, uma por linha.
  *
  * **O que o arquivo tem e esta tela não.** O frame lista Change Password, Dark
- * Mode, Language, Clear Cache, Notifications e Version. Destes, só o tema
- * existe: não há segundo idioma, não há cache que a pessoa precise limpar, e
- * notificação é a Fase 6. Um interruptor que não interrompe nada é pior que a
- * ausência dele — a pessoa toca, nada muda, e passa a duvidar do resto da tela.
+ * Mode, Language, Clear Cache, Notifications e Version. Destes existem dois: o
+ * tema e, desde o Web Push, os avisos no celular. Não há segundo idioma e não há
+ * cache que a pessoa precise limpar — um interruptor que não interrompe nada é
+ * pior que a ausência dele, porque a pessoa toca, nada muda, e passa a duvidar
+ * do resto da tela.
  *
- * Ficou o que existe: a aparência, editar o perfil, ler os termos, sair e apagar
- * a conta. As duas últimas vieram do fim da tela de perfil, que é onde estavam
- * soltas.
+ * Ficou o que existe: os avisos, a aparência, editar o perfil, ler os termos,
+ * sair e apagar a conta. As duas últimas vieram do fim da tela de perfil, que é
+ * onde estavam soltas.
  */
 export default function Configuracoes() {
   useMarcaOculta()
@@ -50,6 +53,7 @@ export default function Configuracoes() {
       </Grupo>
 
       <Grupo titulo="App">
+        <AvisoNoCelular />
         <ModoEscuro />
       </Grupo>
 
@@ -66,6 +70,93 @@ export default function Configuracoes() {
 
       {perfil && <ExcluirConta perfil={perfil} />}
     </div>
+  )
+}
+
+/**
+ * Avisos no celular — o interruptor do Web Push.
+ *
+ * O aviso chega com o app fechado: quem entrega é o serviço de push do sistema,
+ * e o service worker acorda para desenhá-lo. É o que resolve a proposta que
+ * vence em 72 horas sem ninguém abrir o app.
+ *
+ * **Três estados que não são "ligado e desligado".** Sem suporte, a linha vira
+ * instrução em vez de controle — e no iPhone a instrução é específica: lá o push
+ * só existe com o app instalado na tela de início, então oferecer um interruptor
+ * a quem está no Safari em aba seria prometer o que o sistema não entrega.
+ * Negado é um beco: uma permissão recusada não pode ser pedida de novo por
+ * código, só nas configurações do sistema, e dizer isso é a única coisa útil a
+ * fazer.
+ *
+ * O toque tem de partir da pessoa — os navegadores recusam o pedido de permissão
+ * fora de um gesto —, e é por isso que isto é um interruptor e não algo que o
+ * app liga sozinho na primeira abertura.
+ */
+function AvisoNoCelular() {
+  const { data: estado, isPending } = useEstadoPush()
+  const ligarPush = useLigarPush()
+  const desligarPush = useDesligarPush()
+
+  if (isPending) return null
+
+  if (estado === 'indisponivel') {
+    return (
+      <Ficha
+        valor={estaInstalado() ? 'Indisponível' : 'Instale o app'}
+        controle={<span aria-hidden />}
+      >
+        Avisos no celular
+        <span className="mt-1 block font-corpo text-[13px] leading-relaxed text-apagado">
+          {estaInstalado()
+            ? 'Este navegador não entrega avisos do sistema. A caixa de notificações do app continua funcionando.'
+            : 'No iPhone, o aviso só chega com o app na tela de início: toque em Compartilhar e em "Adicionar à Tela de Início".'}
+        </span>
+      </Ficha>
+    )
+  }
+
+  const negado = estado === 'negado'
+  const ligado = estado === 'ligado'
+  const mexendo = ligarPush.isPending || desligarPush.isPending
+
+  return (
+    <>
+      <Ficha
+        valor={negado ? 'Bloqueado' : ligado ? 'Ligado' : 'Desligado'}
+        controle={
+          <Interruptor
+            ligado={ligado}
+            rotulo="Avisos no celular"
+            desabilitado={negado || mexendo}
+            onMudar={(quer) => {
+              const acao = quer ? ligarPush : desligarPush
+              acao.mutate(undefined, {
+                onSuccess: (novo) => {
+                  if (novo === 'negado') {
+                    toast.error(
+                      'Você bloqueou os avisos para este site. Dá para liberar nas configurações do navegador.',
+                    )
+                  } else if (novo === 'ligado') {
+                    toast.success('Pronto. Os avisos chegam mesmo com o app fechado.')
+                  }
+                },
+                onError: () =>
+                  toast.error('Não foi possível mudar os avisos agora.'),
+              })
+            }}
+          />
+        }
+      >
+        Avisos no celular
+      </Ficha>
+
+      {negado && (
+        <p className="font-corpo text-[13px] leading-relaxed text-apagado">
+          Os avisos estão bloqueados para este site. Só dá para liberar nas
+          configurações do navegador — o app não pode pedir de novo.
+        </p>
+      )}
+    </>
   )
 }
 
@@ -154,10 +245,13 @@ function ModoEscuro() {
 function Interruptor({
   ligado,
   rotulo,
+  desabilitado,
   onMudar,
 }: {
   ligado: boolean
   rotulo: string
+  /** Permissão negada pelo sistema, ou uma mudança em andamento. */
+  desabilitado?: boolean
   onMudar: (ligado: boolean) => void
 }) {
   return (
@@ -166,10 +260,12 @@ function Interruptor({
       role="switch"
       aria-checked={ligado}
       aria-label={rotulo}
+      disabled={desabilitado}
       onClick={() => onMudar(!ligado)}
       className={cn(
         'relative h-8 w-14 shrink-0 rounded-[var(--radius-controle)] border-2 border-tinta transition-colors',
         ligado ? 'bg-azul' : 'bg-papel',
+        desabilitado && 'opacity-45',
       )}
     >
       <span

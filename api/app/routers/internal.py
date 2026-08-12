@@ -65,3 +65,23 @@ async def expire(session: AsyncSession = Depends(get_session)) -> dict[str, int]
     propostas_expiradas = await propostas.expirar_propostas(session)
     await session.commit()
     return {"expirados": expirados, "propostas": propostas_expiradas}
+
+
+@router.post("/notify-wanted", dependencies=[Depends(_verifica_secret)])
+async def notify_wanted(
+    horas: int = 24,
+    session: AsyncSession = Depends(get_session),
+) -> dict[str, int]:
+    """Avisa quem oferece uma carta que passou a ser procurada.
+
+    O cron chama esta rota a cada quinze minutos, e ela varre uma janela de 24h
+    — bem maior que o intervalo, de propósito: uma execução perdida não deixa
+    buraco, porque a seguinte revisita o mesmo período. Quem impede o aviso
+    repetido não é a janela e sim o dedupe de sete dias do serviço.
+
+    O commit é daqui pelo mesmo motivo do `expire`: o serviço não fecha a
+    transação de quem o chama.
+    """
+    enviadas = await matching.notificar_cartas_procuradas(session, horas=horas)
+    await session.commit()
+    return {"notificadas": enviadas}

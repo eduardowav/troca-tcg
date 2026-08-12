@@ -11,6 +11,8 @@ import {
   IconeVitrine,
   MarcaTrocaTCG,
 } from '@/components/brutal/Pecas'
+import { useAssinarNotificacoes, useNaoLidas } from '@/hooks/useNotificacoes'
+import { useNavegacaoPorNotificacao } from '@/hooks/usePush'
 import { useMinhaVez } from '@/hooks/usePropostas'
 import { cn } from '@/lib/cn'
 
@@ -43,6 +45,15 @@ const ABAS = [
 ]
 
 export function LayoutApp() {
+  // Uma assinatura para o app inteiro, montada aqui porque é o componente que
+  // envolve toda tela logada. Pô-la no sino faria a inscrição nascer e morrer
+  // junto do cabeçalho de cada rota.
+  useAssinarNotificacoes()
+  // O outro canal da mesma notificação: quando ela chega pelo sistema e a
+  // pessoa toca nela com o app já aberto, é aqui que o pedido de navegação do
+  // service worker é atendido.
+  useNavegacaoPorNotificacao()
+
   return (
     <>
       <MarcaApp />
@@ -98,26 +109,31 @@ function MarcaApp() {
 /**
  * O sino, com o ponto de aviso condicionado a existir aviso.
  *
- * Hoje `temAviso` nunca chega ligado: notificações são a Fase 6 e não há o que
- * contar. Ponto aceso sem nada atrás é uma promessa que a tela não cumpre —
- * a pessoa toca esperando novidade e encontra "ainda não mora aqui", que é
- * exatamente o contrário do que o ponto disse.
+ * O ponto ficou apagado desde o Figma porque não havia o que contar — e ponto
+ * aceso sem nada atrás é uma promessa que a tela não cumpre. Agora há: a
+ * contagem vem de `/me/notifications/nao-lidas` e sobe sozinha pelo Realtime,
+ * assinado uma vez no `LayoutApp`.
  *
- * O ponto não foi apagado, foi condicionado: quando a Fase 6 existir, é passar
- * a contagem para cá e ele volta com a mesma aparência do arquivo. Código vivo
- * atrás de uma condição envelhece melhor do que markup comentado, que ninguém
- * relê e que o linter não vigia.
+ * O número não é desenhado, só o ponto. A caixa é curta e ordenada por
+ * recência: quem toca o sino vê o que chegou em duas linhas de leitura, e
+ * "3" ali em cima não mudaria o gesto seguinte. A contagem exata vai no rótulo
+ * acessível, onde ela de fato informa alguém.
  *
  * O tom é azul, não vermelho — é o que o `alert-dot` do Figma desenha
  * (`fill="#0038FF"`): ali ele conta novidade, não erro.
  */
-function SinoApp({ temAviso = false }: { temAviso?: boolean }) {
+function SinoApp() {
+  const naoLidas = useNaoLidas()
+  const temAviso = naoLidas > 0
+
   return (
     <NavLink
       to="/notificacoes"
       // O rótulo carrega o aviso junto: quem navega por leitor de tela não vê
       // o ponto, e "Notificações" sozinho esconderia que há algo novo.
-      aria-label={temAviso ? 'Notificações — há novidades' : 'Notificações'}
+      aria-label={
+        temAviso ? `Notificações — ${naoLidas} não lidas` : 'Notificações'
+      }
       className="relative grid size-9 shrink-0 place-items-center rounded-full border-2 border-tinta bg-cartela text-tinta transition-shadow hover:shadow-[var(--shadow-duro-xs)]"
     >
       <IconeSino className="size-5" />

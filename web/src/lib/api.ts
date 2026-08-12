@@ -122,5 +122,9 @@ export const api = {
     requisitar<T>('POST', caminho, corpo ?? {}),
   patch: <T>(caminho: string, corpo: unknown) =>
     requisitar<T>('PATCH', caminho, corpo),
-  del: (caminho: string) => requisitar<void>('DELETE', caminho),
+  // DELETE com corpo é raro e proposital: desligar o push manda o endpoint do
+  // navegador, que é longo demais para caber em caminho e não identifica um
+  // recurso nosso. Quem não passa corpo continua mandando DELETE sem corpo.
+  del: (caminho: string, corpo?: unknown) =>
+    requisitar<void>('DELETE', caminho, corpo),
 }

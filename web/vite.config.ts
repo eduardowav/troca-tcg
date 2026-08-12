@@ -11,7 +11,30 @@ export default defineConfig({
     react(),
     tailwindcss(),
     VitePWA({
+      // `injectManifest`, e não o `generateSW` de antes: o service worker
+      // precisa tratar o evento `push`, e evento não se declara num arquivo
+      // gerado. O worker agora é `src/sw.ts` e o plugin só injeta ali a lista
+      // do precache — tudo o que o modo gerado fazia está escrito lá dentro.
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.ts',
       registerType: 'autoUpdate',
+      // A mesma lista que o modo gerado usava por padrão. Declarada porque no
+      // `injectManifest` o padrão é mais curto, e sem ela as artes e o ícone
+      // sairiam do precache sem ninguém decidir isso.
+      injectManifest: {
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,webmanifest}'],
+        // `iife`, e não o `es` padrão: service worker como módulo ES não é
+        // suportado em todo navegador (o Firefox não suporta até hoje), e ali
+        // a queda não é degradar — é o app ficar sem worker nenhum, ou seja,
+        // sem push e sem offline. O empacotado clássico funciona em todos.
+        rollupFormat: 'iife',
+      },
+      // O worker também roda em `npm run dev`, senão o push só daria para testar
+      // depois de publicar. Vale para `localhost`: navegador nenhum registra
+      // service worker em origem insegura, então pelo IP da rede local (http)
+      // ele continua ausente — para provar no celular, é HTTPS ou produção.
+      devOptions: { enabled: true, type: 'module', navigateFallback: 'index.html' },
       // `marca.svg` entra junto: é a marca que o cabeçalho do app exibe, e sem
       // ela em cache o app instalado abriria sem logo quando estivesse offline.
       includeAssets: ['favicon.svg', 'marca.svg', 'apple-touch-icon.png'],

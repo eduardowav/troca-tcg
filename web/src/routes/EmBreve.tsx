@@ -3,10 +3,10 @@ import { Pokebola, Selo } from '@/components/brutal/Pecas'
 /**
  * A tela que ainda não existe.
  *
- * Mensagens e Notificações estão no Figma e não estão no produto: a primeira é
- * chat próprio (tabela, realtime, moderação, mudança na política de
- * privacidade), a segunda é a Fase 6. Os dois botões existem mesmo assim, por
- * decisão do Eduardo — botão presente com destino honesto comunica o roteiro
+ * Sobrou Mensagens: chat próprio pede tabela, realtime, moderação e mudança na
+ * política de privacidade. Notificações saiu daqui quando a Fase 6 entrou —
+ * `routes/Notificacoes.tsx` é a caixa de verdade. O botão existe mesmo assim,
+ * por decisão do Eduardo: botão presente com destino honesto comunica o roteiro
  * melhor do que ausência, e evita que a pessoa procure a função achando que ela
  * está escondida em algum canto.
  *
@@ -56,11 +56,3 @@ export function Mensagens() {
   )
 }
 
-export function Notificacoes() {
-  return (
-    <EmBreve
-      titulo="Os avisos ainda não moram aqui."
-      descricao="Por enquanto nada some: toda troca possível fica na aba Trocas, e o prazo de cada uma aparece na própria linha. O aviso que chega sozinho vem depois."
-    />
-  )
-}

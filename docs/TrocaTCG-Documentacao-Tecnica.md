@@ -1296,9 +1296,20 @@ um `matches` comum e responde às rotas desta tabela.
 | `GET` | `/me` | Perfil próprio |
 | `PATCH` | `/me` | Atualiza perfil |
 | `POST` | `/me/matches/{id}/denunciar` | Denuncia a outra pessoa **desta troca**. Motivos incluem `USO_PARA_VENDA` |
-| `GET` | `/me/notifications` | Lista, com `?nao_lidas=true` |
-| `POST` | `/me/notifications/read` | Marca como lidas |
-| `POST` | `/me/push-subscription` | Registra endpoint Web Push |
+| `GET` | `/me/notifications` | Lista, com `?nao_lidas=true` e `?limite=` (teto de 100) |
+| `GET` | `/me/notifications/nao-lidas` | Só a contagem — é o que a badge lê |
+| `POST` | `/me/notifications/read` | Marca as do corpo, ou todas se vier vazio. Devolve a contagem restante |
+| `POST` | `/me/push-subscription` | Registra o endpoint Web Push deste navegador. Idempotente: o upsert é por `endpoint` |
+| `DELETE` | `/me/push-subscription` | Desliga o aviso **deste** navegador; os outros aparelhos continuam |
+
+A contagem tem rota separada da lista porque são duas perguntas com frequências
+muito diferentes: a badge pergunta em toda troca de tela e quer um inteiro; a
+caixa pergunta quando alguém a abre e quer cinquenta linhas. `POST /read`
+devolver a contagem que sobrou, em vez de quantas foram marcadas, é o que evita
+a segunda chamada que o cliente faria logo em seguida.
+
+Não há rota para **criar** notificação, e não haverá: quem cria é o evento, nos
+serviços, dentro da mesma transação que gravou a proposta ou o match.
 
 A denúncia é presa ao match, e não a `/reports` com um `denunciado_id` no corpo
 como esta seção previa. O motivo é antiabuso e vale a mudança de rota: com o id
@@ -1328,8 +1339,8 @@ atrás do `X-Job-Secret`, no padrão dos internos abaixo.
 |---|---|---|
 | `POST` | `/internal/jobs/triangular` | Recomputa triangulares |
 | `POST` | `/internal/jobs/sync-catalog` | Sincroniza catálogo Pokémon |
-| `POST` | `/internal/jobs/expire` | Expira matches vencidos |
-| `POST` | `/internal/jobs/notify-wanted` | Notifica "procuram sua carta" |
+| `POST` | `/internal/jobs/expire` | Expira matches e propostas vencidos |
+| `POST` | `/internal/jobs/notify-wanted` | Notifica "procuram sua carta". Varre uma janela de 24h (`?horas=`), e o cron a chama a cada 15 min — a janela é maior que o intervalo de propósito, para uma execução perdida não deixar buraco |
 
 ### Padrão de erro
 
@@ -1475,40 +1486,109 @@ lugar nenhum além do secret e de onde ele a guardou. Não é problema de segura
 
 Sem Telegram. Três canais, todos gratuitos:
 
-### 11.1 In-app (principal)
+### 11.1 In-app (principal) — **feito em 2026-08-11**
 
-Tabela `notifications` + badge no header. Atualização por **Supabase Realtime** (incluído no free tier) — o frontend assina mudanças na tabela filtradas por `user_id`. Zero polling, zero custo.
+Tabela `notifications` + badge no sino do cabeçalho + a caixa em `/notificacoes`.
+Atualização por **Supabase Realtime** (incluído no free tier): o frontend assina
+os INSERTs da tabela filtrados por `user_id`, em `hooks/useNotificacoes.ts`, e a
+assinatura é montada uma vez no `LayoutApp`. Zero polling, zero custo.
 
-```typescript
-// src/hooks/useNotificacoes.ts
-useEffect(() => {
-  const canal = supabase
-    .channel('notificacoes')
-    .on('postgres_changes',
-      { event: 'INSERT', schema: 'public', table: 'notifications',
-        filter: `user_id=eq.${userId}` },
-      ({ new: nova }) => {
-        queryClient.invalidateQueries({ queryKey: ['notificacoes'] })
-        toast(nova.titulo)
-      })
-    .subscribe()
+**O motivo de tudo isto é uma frase:** uma proposta vence em 72 horas e, até
+aqui, morria calada. Quem recebia só descobria abrindo o app por conta própria.
+Os outros doze eventos entraram junto porque a mesma tabela e o mesmo caminho
+servem a todos, não porque cada um valesse um sistema.
 
-  return () => { supabase.removeChannel(canal) }
-}, [userId])
-```
+Três decisões que valem mais que o código:
 
-### 11.2 Web Push (reengajamento)
+**O texto mora no backend.** A tabela guarda `titulo` e `corpo` já escritos, e
+não um par (tipo, payload) para o cliente traduzir. A linha precisa continuar
+fazendo sentido daqui a um mês, com o app já mudado — e o Web Push entrega esses
+dois campos direto ao sistema operacional, onde não existe tradução do lado do
+cliente. `services/notificacoes.py` é o catálogo inteiro.
 
-Service worker + VAPID. Funciona em Android, desktop e iOS 16.4+ (PWA instalado). Custo zero — o navegador entrega.
+**Notificação é parte da transação do evento.** Nada em `notificacoes.py`
+commita: cada função escreve na sessão de quem a chamou. Se a proposta não foi
+gravada, o aviso de que ela chegou não pode existir.
 
-Envio pelo backend com `pywebpush`. Dispare **só** para eventos de alto valor:
+**Ninguém é notificado do que fez.** O `_notificar` descarta em silêncio
+qualquer escrita para quem disparou o evento. É guarda de verdade, não zelo:
+quase toda função ali recebe os dois lados de uma troca.
 
-- Alguém colocou na lista Procuro uma carta que você oferece
-- Match novo com score acima do limiar
-- Alguém aceitou seu match
-- Lembrete de confirmação (48 h após aceite)
+O evento mais delicado é "troca nova". `sincronizar_matches` roda a cada escrita
+de anúncio e reescreve os mesmos pares indefinidamente — avisar a cada passagem
+transformaria a coisa mais útil do app na mais irritante. Quem separa o INSERT
+do UPDATE do upsert é o `xmax = 0` no `returning` de `_gravar_match`.
 
-Nunca envie push de coisa genérica. Push irrelevante gera desinstalação.
+O tipo `TRIANGULAR` já tem texto escrito e não dispara: o motor de ciclos é a
+Fase 5 e não existe. Quando existir, ele chama `match_novo` com o tipo certo e
+nada mais precisa mudar.
+
+Segurança da leitura direta: esta é a **única** tabela que o frontend lê pelo
+PostgREST (em todo o resto vale "escrita e leitura só pela API"). A migração
+`24_notificacoes.sql`, aplicada em produção em 2026-08-11, acerta as três
+pontas — policy `for select` no lugar da
+`for all` do 09, `grant select` só para `authenticated`, e a tabela entrando na
+publicação `supabase_realtime`. O filtro `user_id=eq.<id>` do cliente é para não
+receber tráfego alheio; quem garante o isolamento é a policy, que o
+`postgres_changes` aplica com o token de quem assinou.
+
+### 11.2 Web Push (reengajamento) — **feito em 2026-08-11**
+
+Service worker + VAPID, `pywebpush` no backend. Custo zero: quem entrega é o
+serviço de push do sistema — APNs no iPhone, FCM no Android —, e não há servidor
+nosso no meio. O aviso chega com o app **fechado**, que é a diferença inteira
+para o canal in-app.
+
+**O iPhone só recebe com o app instalado na tela de início** (iOS 16.4+). Em aba
+do Safari o `PushManager` não existe, e não há contorno. É o que amarra esta
+leva à página `/instalar` da fila de divulgação: sem ela, metade da base não tem
+como chegar ao estado em que o push funciona. No Android o navegador comum
+também recebe.
+
+Cinco decisões que valem mais que o código:
+
+**O push sai depois do commit, e fora da transação.** `services/notificacoes.py`
+não manda nada: o `_notificar` põe o aviso numa fila presa à sessão
+(`session.info`), e quem esvazia é o `get_session`, quando a requisição já
+terminou. Uma proposta gravada com o FCM fora do ar continua sendo uma proposta
+gravada; o contrário seria deixar a rede de terceiro derrubar a negociação. Um
+`after_rollback` limpa a fila — a proposta que bate no índice de "uma por dupla"
+faz rollback e devolve 409, e não pode avisar ninguém de algo que não existe.
+
+**Enfileirar dentro do `_notificar` é o que faz as guardas valerem para os dois
+canais.** Quem não recebe linha na caixa — porque foi quem agiu, ou porque a
+dedupe de sete dias pegou — também não recebe vibração. Se cada evento
+disparasse o push por conta própria, essa simetria dependeria de treze lugares
+lembrarem dela.
+
+**Sete dos treze eventos vibram**, e é a coluna Push da matriz abaixo: o que
+espera resposta de alguém, mais a carta procurada. O resto — recusada, retirada,
+vencida, furada, cancelada — é registro do que aconteceu e fica na caixa. Um app
+que vibra treze vezes por dia perde a permissão que levou meses para conseguir.
+
+**Inscrição morta é apagada na hora.** 404 e 410 do serviço de push querem dizer
+"esse navegador não existe mais" — desinstalou, limpou os dados, trocou de
+aparelho. `services/push.py` apaga a linha em vez de tentar de novo amanhã.
+
+**O service worker deixou de ser gerado.** O `vite-plugin-pwa` saiu de
+`generateSW` para `injectManifest`, com o worker em `web/src/sw.ts`: evento
+`push` não se declara em arquivo gerado. O que o modo automático dava — precache
+com limpeza de versões velhas e o desvio de navegação da SPA — está escrito lá
+dentro, e o pacote sai em `iife`, não em módulo ES, porque service worker como
+módulo não roda em todo navegador. Tocar na notificação reaproveita a aba aberta
+em vez de abrir uma segunda janela do mesmo PWA.
+
+O interruptor mora em **Configurações → Avisos no celular**, e tem três estados
+que não são dois: sem suporte (a linha vira instrução, e no iPhone a instrução é
+"instale o app"), negado (beco — permissão recusada não pode ser pedida de novo
+por código, só nas configurações do sistema) e ligado/desligado. O pedido de
+permissão parte de um toque porque os navegadores recusam fora de gesto.
+
+As chaves VAPID entraram em 2026-08-11: a pública vive no `render.yaml` e no
+bundle (é o que o navegador guarda para reconhecer o remetente), a privada só no
+painel do Render. **Trocar o par invalida toda inscrição existente** e obrigaria
+cada pessoa a ligar o aviso de novo. Sem as duas, `push.ativo()` é falso e o app
+segue inteiro — é assim que o ambiente de desenvolvimento roda.
 
 ### 11.3 E-mail (fallback)
 
@@ -1516,15 +1596,42 @@ Resend, free tier de 3.000/mês. Só para: confirmação de conta, recuperação
 
 ### Matriz de notificação
 
-| Evento | In-app | Push | E-mail |
-|---|:--:|:--:|:--:|
-| Alguém procura uma carta que você oferece | ✅ | ✅ | — |
-| Match novo (score alto) | ✅ | ✅ | — |
-| Match novo (score baixo) | ✅ | — | — |
-| Match aceito pelo outro | ✅ | ✅ | — |
-| Lembrete de confirmação | ✅ | ✅ | — |
-| Match expirado | ✅ | — | — |
-| Boas-vindas / senha | — | — | ✅ |
+In-app e push existem desde 2026-08-11; e-mail continua no papel. O `tipo`
+gravado é a coluna do meio — é por ele que a caixa escolhe ícone e destaque, e é
+ele que `TIPOS_COM_PUSH` consulta para decidir se o celular vibra.
+
+| Evento | Tipo | In-app | Push | E-mail |
+|---|---|:--:|:--:|:--:|
+| Proposta recebida — **é a sua vez** | `PROPOSTA_RECEBIDA` | ✅ | ✅ | — |
+| Contraproposta — a vez voltou | `PROPOSTA_SUA_VEZ` | ✅ | ✅ | — |
+| Proposta aceita (vira troca) | `PROPOSTA_ACEITA` | ✅ | ✅ | — |
+| Proposta recusada | `PROPOSTA_RECUSADA` | ✅ | — | — |
+| Proposta retirada | `PROPOSTA_RETIRADA` | ✅ | — | — |
+| Proposta vencida (72h) | `PROPOSTA_EXPIRADA` | ✅ | — | — |
+| Troca nova sugerida pelo motor | `NOVO_MATCH` | ✅ | ✅ | — |
+| Alguém aceitou a troca | `MATCH_ACEITO` | ✅ | ✅ | — |
+| Conclusão confirmada (um lado ou os dois) | `MATCH_CONCLUIDO` | ✅ | ✅ | — |
+| Troca marcada como furada | `MATCH_FURADO` | ✅ | — | — |
+| Desistência | `MATCH_CANCELADO` | ✅ | — | — |
+| Troca combinada venceu | `MATCH_EXPIRADO` | ✅ | — | — |
+| Procuram uma carta que você oferece | `CARTA_PROCURADA` | ✅ | ✅ | — |
+| Boas-vindas / senha | — | — | — | ✅ |
+
+Quatro eventos **não** notificam, e cada ausência é uma decisão:
+
+- **Recusar uma sugestão do motor.** Não é responder a uma pessoa, é dispensar
+  uma ideia do app — avisar transformaria "não quero" numa mensagem para quem
+  não pediu nada. Recusar uma *proposta* avisa, porque ali havia alguém do outro
+  lado esperando.
+- **Prorrogar o prazo.** Um toque de um lado vale pelos dois; não é notícia.
+- **Match reescrito pelo `sincronizar_matches`.** Só o inédito avisa.
+- **A mesma carta procurada de novo.** Dedupe de sete dias em
+  `carta_procurada` — é a única notificação que nasce de varredura, e o job roda
+  a cada quinze minutos.
+
+O furo é o único texto que não nomeia quem agiu: ele chega para quem acabou de
+levar um furo no número, e nomear quem apertou o botão convida à represália
+antes de a pessoa abrir a tela e ler o que aconteceu.
 
 ---
 
@@ -2034,11 +2141,28 @@ hoje, na ordem em que faz sentido atacar.
 
 **Produto**
 
-1. **Notificar "é a sua vez"** (Fase 6, antecipada). Proposta vence em 72h e
-   morre calada se ninguém abrir o app. `notifications` e `push_subscriptions`
-   estão criadas e sem uso — é a mudança que mais deve mexer na métrica-mãe.
-2. **Vitrine como destino de quem não tem match.** Quem entra sem PROCURA cai
-   num feed vazio, e é exatamente o público que a vitrine existe para atender.
+1. ✅ **Notificar "é a sua vez"** (Fase 6, antecipada) — feito em 2026-08-11.
+   Entrou o canal in-app inteiro, não só o aviso da proposta: treze eventos,
+   Realtime no sino, caixa em `/notificacoes` e o job `notify-wanted` que o
+   cron já chamava e recebia 404. Detalhes na
+   [seção 12](#12-notificações). O **Web Push** entrou logo em seguida, no mesmo
+   dia: sete dos treze eventos vibram o celular com o app fechado, o service
+   worker passou a ser escrito à mão (`web/src/sw.ts`) e o interruptor mora em
+   Configurações. No iPhone só funciona com o app instalado na tela de início,
+   o que dá urgência à página `/instalar` lá embaixo.
+2. ✅ **Vitrine como destino de quem não tem match** — feito em 2026-08-11. As
+   três saídas da tela vazia de `/matches` apontavam para `/minhas-cartas`, ou
+   seja, pediam mais digitação a quem tinha acabado de digitar. Agora a tela
+   pergunta antes o que falta e responde com a vitrine dentro dela: quem tem
+   Procuro vê uma amostra das próprias cartas procuradas que alguém está
+   oferecendo (`?so_procuro=true` — trocas que só faltam de um lado, e a
+   proposta resolve o que o motor não fecha); quem não tem Procuro vê o feed
+   inteiro, porque para essa pessoa a pergunta ainda é "o que existe por aqui".
+   Amostra com arte, e não só um botão: botão pede fé de que existe algo do
+   outro lado, e quem está numa tela vazia acabou de aprender que talvez não
+   exista. Quando há gente procurando o que a pessoa oferece, essa notícia
+   continua vindo primeiro — metade da troca já existe —, e cada `@nome` agora
+   leva ao acervo de quem quer a carta, que é onde a proposta é montada.
 3. ✅ **Login e cadastro reformulados** e **modo escuro** — feitos em 2026-08-10
    (`78f8212`). O escuro passou por um laboratório de cinco peles antes de
    escolher: linha e degrau saem do mesmo token, o degrau sai do preto (senão
@@ -2114,11 +2238,12 @@ de dados hoje, com ou sem usuário no app.
    agora, enquanto é barata.
 7. **Miúdos.** `bairro` e `avatar_url` entram sem limite de tamanho e sem
    validação, no Pydantic e no banco, e o `avatar_url` é servido a terceiros no
-   perfil público. As policies `for all` de `notifications` e
-   `push_subscriptions` não têm `with check` explícito e essas tabelas não
-   receberam o `revoke` que `profiles`, `listings` e `propostas` receberam —
-   hoje o `using` serve de check e não há buraco, mas a defesa em profundidade
-   está desigual. E o evento de furo monta JSON com f-string em
+   perfil público. (A parte das policies saiu inteira em 2026-08-11:
+   `24_notificacoes.sql` para `notifications` — `for select`, `revoke all` de
+   `anon` e `authenticated`, `grant select` só para quem está logado — e
+   `25_push_subscriptions.sql` para `push_subscriptions`, que perdeu o `for all`
+   e todos os grants: ali o frontend não lê nada, quem escreve é a API.) E o
+   evento de furo monta JSON com f-string em
    `matching.py`; o valor é um uuid vindo do banco, então não é explorável, é
    só frágil.
 
@@ -2157,7 +2282,10 @@ e nenhuma é bug conhecido; são julgamentos visuais:
    Safari → Compartilhar → "Adicionar à Tela de Início", no Android é o próprio
    Chrome oferecendo instalar. "Baixar" é a palavra que a pessoa vai procurar, e
    ela não vai achar loja nenhuma — a página precisa existir com esse nome e com
-   o passo a passo ilustrado dos dois sistemas.
+   o passo a passo ilustrado dos dois sistemas. Desde o Web Push (2026-08-11)
+   ela deixou de ser só divulgação: no iPhone, **instalar é a condição para o
+   aviso chegar**, e a tela de Configurações manda para cá quem ainda está no
+   Safari em aba.
 9. **Imagem de compartilhamento** (Open Graph, 1200×630) e `twitter:card`. O
    `index.html` não tem nenhuma das duas: hoje um link do app colado no WhatsApp
    aparece sem imagem.

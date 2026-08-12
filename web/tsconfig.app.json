@@ -24,5 +24,9 @@
     // e a opção foi depreciada (some no TS 7).
     "paths": { "@/*": ["./src/*"] }
   },
-  "include": ["src"]
+  // O service worker sai daqui e vai para o `tsconfig.worker.json`: ele roda
+  // sem DOM, e compilá-lo com esta lib esconderia justamente os erros que só
+  // aparecem lá dentro.
+  "include": ["src"],
+  "exclude": ["src/sw.ts"]
 }
