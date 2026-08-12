@@ -68,6 +68,16 @@ export const criarAnuncio = (item: AnuncioNovo) =>
 export const criarAnunciosEmLote = (itens: AnuncioNovo[]) =>
   api.post<{ cadastradas: number }>('/me/listings/bulk', { itens })
 
+/**
+ * Lote da lista colada — recurso do PRO, e rota própria por isso.
+ *
+ * Não é o `/bulk`: aquele é o onboarding, é a porta de entrada do app e não
+ * pode ser travado por plano. Este responde `RECURSO_DO_PRO` (402) quando a
+ * cobrança estiver ligada e o plano não permitir.
+ */
+export const importarAnuncios = (itens: AnuncioNovo[]) =>
+  api.post<{ cadastradas: number }>('/me/listings/importar', { itens })
+
 export const removerAnuncio = (id: string) => api.del(`/me/listings/${id}`)
 
 /** Quem procura uma carta minha. A API não manda contato aqui — só depois do aceite. */

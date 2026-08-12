@@ -210,6 +210,59 @@ async def criar_bulk(
     return len(itens)
 
 
+async def importar_lote(
+    session: AsyncSession, user_id: UUID, itens: list[AnuncioItem]
+) -> int:
+    """Cadastro em massa — a lista colada virando anúncios. Recurso do PRO.
+
+    Separado de `criar_bulk` porque as duas coisas só se parecem por fora.
+    `criar_bulk` é o onboarding: acontece uma vez, marca `onboarding_ok` e é o
+    caminho por onde toda conta nova passa — travá-lo por plano fecharia a porta
+    da frente do app. Este aqui é conveniência de quem já está dentro, acontece
+    quantas vezes a pessoa quiser e **não** mexe no onboarding.
+
+    **É o melhor portão que este app tem** (seção 16): não limita *quanto* se
+    cadastra — a mesma lista entra carta por carta no FREE —, limita o trabalho.
+    Cobrar por conveniência, nunca por participação: o teto de OFERTA continua
+    valendo aqui como em qualquer outra escrita, e é ele, não este portão, que
+    decide quantas cartas cabem.
+
+    Enquanto `COBRANCA_ATIVA` for falso, `plano_vigente` devolve PRO para todo
+    mundo e o portão está aberto para quem quiser usar — a regra fica construída
+    e testada, ligar é uma linha.
+    """
+    plano = (
+        await session.scalar(
+            text("select plano from profiles where id = :id"), {"id": str(user_id)}
+        )
+    ) or "FREE"
+
+    if not limites_de(plano_vigente(plano)).cadastro_em_massa:
+        raise RegraNegocio(
+            "RECURSO_DO_PRO",
+            "Colar a lista de uma vez é do PRO. No plano atual dá para "
+            "cadastrar carta por carta, sem limite de vezes.",
+            status_code=402,
+        )
+
+    acabamentos = await _resolver_acabamentos(
+        session, [(str(i.card_id), i.finish_id) for i in itens]
+    )
+    try:
+        for item, finish_id in zip(itens, acabamentos, strict=True):
+            await session.execute(_UPSERT, _params(user_id, item, finish_id))
+        if any(i.tipo == "OFERTA" for i in itens):
+            await _checar_teto_de_ofertas(session, user_id)
+        await session.commit()
+    except IntegrityError as exc:
+        await session.rollback()
+        raise _traduzir(exc) from exc
+    except RegraNegocio:
+        await session.rollback()
+        raise
+    return len(itens)
+
+
 async def listar_anuncios(
     session: AsyncSession, user_id: UUID, tipo: str | None
 ) -> list[AnuncioOut]:

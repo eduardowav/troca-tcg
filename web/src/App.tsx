@@ -5,6 +5,7 @@ import { ExigePerfil, ExigeSessao } from '@/components/RotaProtegida'
 import { usePerfil } from '@/hooks/usePerfil'
 import CompletarCadastro from '@/routes/CompletarCadastro'
 import Buscar from '@/routes/Buscar'
+import ColarLista from '@/routes/ColarLista'
 import CartaDetalhe from '@/routes/Carta'
 import Configuracoes from '@/routes/Configuracoes'
 import EditarPerfil from '@/routes/EditarPerfil'
@@ -57,6 +58,10 @@ export default function App() {
           <Route path="/pronto" element={<Pronto />} />
           <Route element={<LayoutApp />}>
             <Route path="/minhas-cartas" element={<MinhasCartas />} />
+            {/* Cadastro em massa (Fase B da seção 16). Rota filha de
+                "minhas-cartas" porque é de lá que se entra e para lá que se
+                volta — colar lista é uma forma de cadastrar, não um lugar. */}
+            <Route path="/minhas-cartas/colar" element={<ColarLista />} />
             <Route path="/buscar" element={<Buscar />} />
             <Route path="/carta/:id" element={<CartaDetalhe />} />
             <Route path="/matches" element={<Matches />} />

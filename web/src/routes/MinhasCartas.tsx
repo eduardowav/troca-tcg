@@ -96,6 +96,26 @@ export default function MinhasCartas() {
         </Link>
       </div>
 
+      {/* Colar lista fica ao lado da busca, e não escondido num menu: é o
+          caminho de quem tem trinta cartas para cadastrar, e essa pessoa
+          descobre a existência dele agora ou desiste cadastrando a quinta. A
+          aba aberta decide o destino da lista — quem está em Procuro cola
+          Procuro. */}
+      <Link
+        to={`/minhas-cartas/colar?tipo=${aba}`}
+        className="mt-2 flex w-full items-center justify-between gap-3 rounded-[var(--radius-controle)] border-2 border-dashed border-tinta/40 bg-papel px-4 py-2.5 font-corpo text-[14px] font-medium text-apagado transition-colors hover:border-tinta hover:text-tinta lg:max-w-xl"
+      >
+        <span>
+          Tem uma lista pronta?{' '}
+          <span className="text-azul underline underline-offset-2">
+            Cole de uma vez
+          </span>
+        </span>
+        <span aria-hidden className="font-dado text-[13px]">
+          ›
+        </span>
+      </Link>
+
       {/* Abas no celular, lado a lado no desktop.
 
           A versão anterior empilhava as duas listas no celular, e o comentário

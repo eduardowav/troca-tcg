@@ -2060,7 +2060,37 @@ preço, e é onde a regra fica construída e desligada.
 **Fase B — construir o valor do PRO.** Sem isso, R$ 19,90 compra a remoção de um
 limite, o que lê como pedágio. **A cobrança não liga antes desta fase terminar.**
 
-4. Gate e tela do cadastro em massa — menor esforço, maior retorno, a rota existe.
+4. ✅ **Cadastro em massa** — feito em 2026-08-12. Colar a lista que a pessoa já
+   tem escrita (post do grupo, bloco de notas, exportador de deck), conferir e
+   cadastrar de uma vez.
+
+   **A rota que existia não servia.** `POST /me/listings/bulk` é o onboarding:
+   marca `onboarding_ok` e é por onde toda conta nova passa — travá-la por plano
+   fecharia a porta de entrada do app. Entrou uma rota irmã,
+   `POST /me/listings/importar`, com o portão do `cadastro_em_massa` e sem tocar
+   no onboarding. O teto de OFERTA continua valendo nas duas: o portão é sobre
+   *trabalho*, o teto é sobre *quantas cartas cabem*.
+
+   **O reconhecimento mora no banco** (`resolver_lista`, migração `28`): uma
+   chamada para a lista toda em vez de uma busca por linha. Reusa a
+   `buscar_cartas` do 13 — acento, ordem das palavras, erro de digitação — e
+   acrescenta o que só a lista colada tem: **quantidade na frente** (`4x`, `4 x`,
+   `4 `) e **código do set no fim** (`OBF 125`). A sigla é validada contra a
+   tabela `sets`, e não contra um padrão de texto: sem isso, "Iron Valiant 1"
+   viraria busca pelo set "IRON". A carta apontada pelo código vem sempre como
+   primeiro candidato — quem escreveu `OBF 125` já disse qual das 87 Charizards
+   quer, e nenhuma relevância de texto sabe mais do que isso. Zero à esquerda
+   não separa: o catálogo grava `054` e o jogador escreve `54`.
+
+   **A segunda etapa é conferir, não escolher.** Cada linha já vem com um
+   candidato marcado; trocar é um toque, e só nas poucas em que a busca errou.
+   Pedir escolha em cinquenta linhas devolveria à pessoa o trabalho que ela veio
+   evitar. Linha que não casou fica à vista, com o texto original, e **não
+   entra** — nem silenciosamente nem travando o resto.
+
+   Teto de 200 linhas por chamada, imposto no banco: a função é alcançável com a
+   anon key, como toda leitura de catálogo, e sem limite uma chamada com dez mil
+   termos seria dez mil buscas trigram numa transação só.
 5. `alerta_carta`, que nasce do vazio da busca.
 6. `triangular` (Fase 5 do roadmap) — o carro-chefe, e o que nenhum concorrente tem.
 

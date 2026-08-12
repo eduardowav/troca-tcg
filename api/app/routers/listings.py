@@ -76,6 +76,24 @@ async def criar_bulk(
     return {"cadastradas": n}
 
 
+@router.post("/importar", status_code=status.HTTP_201_CREATED)
+async def importar(
+    corpo: AnuncioBulkIn,
+    user_id: UUID = Depends(usuario_atual),
+    session: AsyncSession = Depends(get_session),
+) -> dict[str, int]:
+    """A lista colada virando anúncios. Recurso do PRO — ver `importar_lote`.
+
+    Rota própria, e não um parâmetro do `/bulk`: o bulk é o onboarding e não
+    pode ser travado por plano. Declarada antes de `/{anuncio_id}` pelo motivo
+    de sempre — o FastAPI resolve na ordem, e a rota com parâmetro engoliria
+    "importar".
+    """
+    n = await listings.importar_lote(session, user_id, corpo.itens)
+    await matching.sincronizar_matches(session, user_id)
+    return {"cadastradas": n}
+
+
 @router.patch("/{anuncio_id}", response_model=AnuncioOut)
 async def atualizar(
     anuncio_id: UUID,
