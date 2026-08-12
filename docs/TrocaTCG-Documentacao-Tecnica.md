@@ -1570,6 +1570,13 @@ que vibra treze vezes por dia perde a permissão que levou meses para conseguir.
 "esse navegador não existe mais" — desinstalou, limpou os dados, trocou de
 aparelho. `services/push.py` apaga a linha em vez de tentar de novo amanhã.
 
+**O push leva só o título.** O `corpo` fica de fora do payload: na tela de
+bloqueio o aviso é uma linha, e "@fulano propôs uma troca" já diz o que
+aconteceu e o que fazer. A segunda frase — o prazo de 72 horas, o pedido de
+confirmação — continua na caixa do app, onde há espaço e onde a pessoa está
+lendo de fato. Decisão do Eduardo em 2026-08-11, vendo o primeiro push chegar no
+iPhone.
+
 **O service worker deixou de ser gerado.** O `vite-plugin-pwa` saiu de
 `generateSW` para `injectManifest`, com o worker em `web/src/sw.ts`: evento
 `push` não se declara em arquivo gerado. O que o modo automático dava — precache

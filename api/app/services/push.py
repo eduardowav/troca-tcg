@@ -154,6 +154,15 @@ async def _enviar(session: AsyncSession, fila: list[dict]) -> int:
         for resultado in await asyncio.gather(*tarefas, return_exceptions=True):
             if resultado is True:
                 enviados += 1
+            elif isinstance(resultado, BaseException):
+                # O que não é recusa do serviço de push — DNS, TLS, tempo
+                # esgotado. Sem esta linha, `return_exceptions=True` transforma
+                # a falha em "zero aparelhos" sem registro nenhum, que foi
+                # exatamente o que escondeu um erro de certificado no primeiro
+                # teste real.
+                logger.warning(
+                    "push falhou: %s: %s", type(resultado).__name__, resultado
+                )
 
     if mortas:
         await _apagar(session, mortas)
@@ -169,9 +178,15 @@ async def _um(
 ) -> bool:
     """Um push para um aparelho.
 
-    O corpo vai como JSON com os mesmos campos da tabela: o service worker não
-    traduz nada, ele desenha o que veio. É a mesma decisão do texto morar no
-    backend — o sistema operacional não tem acesso a tradução do lado de lá.
+    O texto vai pronto, como JSON: o service worker não traduz nada, ele desenha
+    o que veio. É a mesma decisão do texto morar no backend — o sistema
+    operacional não tem acesso a tradução do lado de lá.
+
+    **O `corpo` não vai.** Na tela de bloqueio o aviso é uma linha, e uma linha
+    é o que ele deve ser: "@fulano propôs uma troca" já diz o que aconteceu e o
+    que fazer. A segunda frase — o prazo, o pedido de confirmação — continua na
+    caixa do app, que é onde há espaço e onde a pessoa está lendo de fato.
+    Decisão do Eduardo, vendo chegar no celular.
     """
     try:
         await webpush_async(
@@ -183,7 +198,6 @@ async def _um(
                 {
                     "tipo": item["tipo"],
                     "titulo": item["titulo"],
-                    "corpo": item["corpo"],
                     "link": item["link"],
                 }
             ),

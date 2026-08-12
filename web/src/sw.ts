@@ -23,11 +23,15 @@ import { NavigationRoute, registerRoute } from 'workbox-routing'
 
 declare const self: ServiceWorkerGlobalScope
 
-/** O que a notificação carrega — o mesmo JSON que `services/push.py` monta. */
+/**
+ * O que a notificação carrega — o mesmo JSON que `services/push.py` monta.
+ *
+ * Não há `corpo`: na tela de bloqueio o aviso é uma linha. A segunda frase mora
+ * na caixa do app, que é onde há espaço para ela.
+ */
 interface AvisoPush {
   tipo?: string
   titulo?: string
-  corpo?: string
   link?: string | null
 }
 
@@ -70,7 +74,8 @@ self.addEventListener('push', (evento: PushEvent) => {
 
   evento.waitUntil(
     self.registration.showNotification(aviso.titulo ?? 'TrocaTCG', {
-      body: aviso.corpo ?? 'Você tem novidade no TrocaTCG.',
+      // Sem `body`: o título já diz o que aconteceu e o que fazer, e o resto do
+      // texto está na caixa do app, a um toque daqui.
       icon: '/pwa-192.png',
       badge: '/pwa-192.png',
       tag: aviso.tipo ?? 'trocatcg',
