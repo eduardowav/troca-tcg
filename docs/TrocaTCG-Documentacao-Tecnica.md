@@ -2315,12 +2315,24 @@ então o e-mail é só o login. Quando a recuperação subir (item 8), ela funci
 sem a confirmação de volta — o clique no link prova a caixa naquele momento. O
 que fica descoberto é só o e-mail digitado errado, que vira caso de suporte.
 
-**Estado em 2026-08-12:** o interruptor do painel **ainda está ligado** —
-provado por um cadastro descartável contra a API do Supabase, que voltou sem
-sessão e com `confirmation_sent_at` preenchido (a conta foi apagada em seguida).
-Por isso a tela `ConfirmeEmail` continua no código: tirá-la antes de desligar o
-interruptor prenderia todo cadastro novo numa tela em branco. Assim que o
-Eduardo desligar, o desvio sai do `Entrar.tsx`.
+**Feito em 2026-08-12.** O interruptor foi desligado no painel e a tela
+`ConfirmeEmail` saiu do `Entrar.tsx` junto — cadastrar agora devolve sessão e a
+pessoa entra direto. Verificado contra a API do Supabase com contas
+descartáveis, apagadas em seguida: antes o cadastro voltava sem sessão e com
+`confirmation_sent_at`; depois, com `access_token` no corpo.
+
+Ficou uma guarda no lugar do desvio: `signUp` sem sessão passa a virar mensagem
+("Conta criada. Confirme seu e-mail e volte para entrar.") em vez de tela
+parada. Ela existe para o dia do item 8 — se a confirmação voltar, o pior
+desfecho possível é a pessoa preencher tudo e a tela não dizer nada.
+
+Duas coisas que a operação deixou aparecendo: o remetente padrão do Supabase
+libera **2 e-mails por hora** (a cota estourou com três cadastros de teste), o
+que teria quebrado qualquer rodada de testes com usuários reais — e é motivo
+para SMTP próprio no dia em que o e-mail voltar a ser enviado. E resta uma conta
+de 2026-07-30 que nunca confirmou o e-mail: ela não tem perfil e continua sem
+conseguir entrar, porque o Supabase segue exigindo confirmação de quem já
+nasceu esperando por ela.
 
 A verificação de WhatsApp por código está **construída e desligada** desde
 2026-08-12 — o que existe e o que falta está no item 9. Três decisões que

@@ -5,7 +5,6 @@ import { z } from 'zod'
 import { Cartela, MarcaTrocaTCG } from '@/components/brutal/Pecas'
 import { Campo } from '@/components/ui/Campo'
 import { Button } from '@/components/ui/Button'
-import { IconeEnvelope } from '@/components/ui/Icone'
 import { mensagemAuth } from '@/lib/authMensagens'
 import { cn } from '@/lib/cn'
 import { usernameDisponivel } from '@/lib/perfil'
@@ -51,7 +50,6 @@ export default function Entrar() {
   const [modo, setModo] = useState<Modo>('entrar')
   const [erros, setErros] = useState<Erros>({})
   const [enviando, setEnviando] = useState(false)
-  const [confirmarEmail, setConfirmarEmail] = useState<string | null>(null)
 
   const navigate = useNavigate()
   const location = useLocation()
@@ -105,8 +103,10 @@ export default function Entrar() {
       return setErros({ username: 'Esse @ já está em uso. Escolha outro.' })
     }
 
-    // username/nome/aceite viajam no user_metadata: o perfil só nasce com um JWT
-    // em mãos, e com confirmação de e-mail isso pode ser em outro aparelho.
+    // username/nome/aceite viajam no user_metadata: o perfil não nasce aqui, e
+    // sim no primeiro `garantirPerfil` com um JWT em mãos — que é onde ele
+    // nasceria também se a confirmação de e-mail voltasse, possivelmente em
+    // outro aparelho. O metadata é o que sobrevive a esse intervalo.
     const { data, error } = await supabase.auth.signUp({
       email: dados.email,
       password: dados.senha,
@@ -122,15 +122,19 @@ export default function Entrar() {
     setEnviando(false)
 
     if (error) return setErros({ form: mensagemAuth(error.message) })
-    if (data.session) {
-      navigate(destino, { replace: true })
-      return
-    }
-    setConfirmarEmail(dados.email)
-  }
 
-  if (confirmarEmail) {
-    return <ConfirmeEmail email={confirmarEmail} />
+    // Sem confirmação de e-mail (desligada no painel do Supabase em
+    // 2026-08-12), o cadastro já volta com sessão e a pessoa entra direto. A
+    // guarda existe para o dia em que a confirmação voltar junto com o "esqueci
+    // minha senha": ali o `signUp` devolve sessão nula, e sem esta linha a tela
+    // ficaria parada sem dizer nada — que é o pior desfecho possível para quem
+    // acabou de preencher tudo.
+    if (!data.session) {
+      return setErros({
+        form: 'Conta criada. Confirme seu e-mail e volte para entrar.',
+      })
+    }
+    navigate(destino, { replace: true })
   }
 
   return (
@@ -465,31 +469,6 @@ function AceiteTermos({ erro }: { erro?: string }) {
           {erro}
         </p>
       )}
-    </div>
-  )
-}
-
-/* ---------- Confirmação de e-mail ---------- */
-
-function ConfirmeEmail({ email }: { email: string }) {
-  return (
-    <div className="mx-auto flex min-h-[100dvh] w-full max-w-sm flex-col justify-center gap-6 px-5 py-10">
-      <Lockup />
-
-      <Cartela className="p-6 text-center">
-        <div className="mx-auto grid size-14 place-items-center rounded-[var(--radius-controle)] border-2 border-tinta bg-azul text-azul-tinta shadow-[var(--shadow-duro-xs)]">
-          <IconeEnvelope className="size-7" />
-        </div>
-        <h1 className="mt-5 text-[24px] leading-[1.15]">Confirme seu e-mail</h1>
-        <p className="mt-3 text-[15px] leading-relaxed text-apagado">
-          Enviamos um link para{' '}
-          <span className="font-medium text-tinta">{email}</span>. Abra para
-          ativar a conta — depois é só voltar aqui e entrar.
-        </p>
-        <p className="mt-6 font-dado text-[11px] uppercase text-apagado">
-          Não chegou? Confira o spam ou aguarde um minuto.
-        </p>
-      </Cartela>
     </div>
   )
 }

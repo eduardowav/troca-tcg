@@ -59,7 +59,9 @@ export function IconeTroca(props: IconeProps) {
   )
 }
 
-/** Envelope — confirmação de e-mail. */
+/** Envelope. Sem uso desde que a confirmação de e-mail saiu (2026-08-12);
+ *  fica para o "esqueci minha senha", que é a próxima tela a falar de caixa de
+ *  entrada — ver item 8 da seção 17. */
 export function IconeEnvelope(props: IconeProps) {
   return (
     <Base {...props}>
