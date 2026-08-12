@@ -1729,7 +1729,35 @@ async def confirmar_conclusao(
     return await _carregar_match(session, match_id, user_id)
 ```
 
-O `_desativar_anuncios_trocados` é essencial: sem ele, a carta trocada continua gerando matches fantasma. Ele desativa tanto a OFERTA de quem entregou quanto a PROCURA de quem recebeu.
+O que este esboço chamava de `_desativar_anuncios_trocados` é essencial: sem ele, a
+carta trocada continua gerando matches fantasma. Ele nunca chegou a existir com esse
+nome, e o que subiu em 2026-08-12 é uma versão melhor — `listings.baixar_por_troca`.
+
+**Baixa por unidade, não desativação.** `quantidade` sempre esteve no cadastro e nunca
+era consumida. Desativar o anúncio inteiro na primeira troca puniria quem tem três
+cópias da mesma carta: entregou uma, sumiria com as outras duas. Agora cai **uma
+unidade** da OFERTA de quem entregou e uma da PROCURA de quem recebeu, e a desativação
+acontece só quando a contagem chega a zero. O piso zero exigiu a migração `27`, porque
+o `check` da tabela começava em 1 — não havia caminho que zerasse.
+
+A linha zerada fica, desativada, em vez de ser apagada: é ela que faz o recadastro cair
+no upsert que reativa em vez de bater no índice único de (dono, carta, tipo, condição,
+acabamento, idioma).
+
+**Na conclusão, não no aceite.** Aceitar é combinar um encontro; até ele acontecer a
+carta continua com o dono, e sumir da vitrine ali esconderia carta que ainda existe —
+inclusive quando a troca fura, que é justamente quando ela precisa voltar a aparecer. O
+preço é a janela entre aceite e conclusão, em que outra pessoa ainda pode propor pela
+mesma carta; quem cobre esse intervalo é o prazo de 7 dias e o índice de uma negociação
+aberta por dupla, não o estoque.
+
+Os dois lados casam de formas diferentes, e isso é deliberado: a OFERTA casa por
+igualdade de condição e acabamento, porque `match_items` copiou os dois do anúncio e é a
+mesma carta física; a PROCURA casa por preferência (mesmo acabamento primeiro, depois
+quem aceita qualquer um) e **ignora condição**, porque no Procuro a condição é mínimo
+aceitável e `aceita_qualquer_finish` existe exatamente para fechar troca com acabamento
+diferente. Casar por igualdade dos dois lados deixaria de baixar as trocas que o app foi
+feito para permitir.
 
 ---
 

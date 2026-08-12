@@ -40,7 +40,7 @@ from app.schemas.match import (
     ParticipanteCompleto,
     ParticipanteResumo,
 )
-from app.services import notificacoes
+from app.services import listings, notificacoes
 
 # Uma OFERTA atende uma PROCURA quando é a mesma carta, no mesmo idioma, em
 # condição pelo menos tão boa quanto a pedida, e com o acabamento que a pessoa
@@ -908,6 +908,12 @@ async def confirmar_conclusao(
             """),
             {"m": str(match_id)},
         )
+        # A carta trocada sai do estoque dos dois lados: uma unidade da OFERTA
+        # de quem deu, uma da PROCURA de quem recebeu. Aqui dentro do `if`, e
+        # não acima: enquanto falta um lado confirmar, a troca não aconteceu —
+        # e é só uma vez, porque a segunda chamada esbarra no `_exigir_aceito`,
+        # que já vai encontrar o match em CONCLUIDO.
+        await listings.baixar_por_troca(session, match_id)
 
     # A confirmação de um lado só vale com a do outro, e é aqui que ela é
     # cobrada — sem este aviso, a troca que aconteceu de verdade fica pendurada

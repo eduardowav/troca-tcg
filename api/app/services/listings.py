@@ -302,6 +302,97 @@ async def remover_anuncio(
         raise _nao_encontrado()
 
 
+# A carta que saiu da mão de quem deu. Uma linha por (dono, carta, condição,
+# acabamento), com a contagem: uma proposta pode levar duas cópias do mesmo
+# anúncio, e um `update ... from` sem o agrupamento desceria uma unidade só.
+#
+# O casamento é exato em condição e acabamento porque `match_items` copiou os
+# dois do anúncio quando a troca foi montada — é a mesma carta física, não uma
+# equivalente.
+_BAIXA_OFERTA = text("""
+    with saidas as (
+      select de_user_id, card_id, condicao, finish_id, count(*) as n
+      from match_items where match_id = :m
+      group by 1, 2, 3, 4
+    )
+    update listings l
+       set quantidade = greatest(l.quantidade - s.n, 0),
+           ativo = case when l.quantidade - s.n <= 0 then false else l.ativo end
+      from saidas s
+     where l.user_id = s.de_user_id
+       and l.card_id = s.card_id
+       and l.tipo = 'OFERTA'
+       and l.condicao = s.condicao
+       and l.finish_id = s.finish_id
+""")
+
+# A carta que entrou na mão de quem recebeu — e some da procura dele.
+#
+# Aqui o casamento **não** é exato, e não pode ser: a condição do Procuro é o
+# mínimo aceitável, não o que chegou (quem procura em NM aceita a carta que veio
+# melhor), e `aceita_qualquer_finish` existe justamente para fechar troca com
+# acabamento diferente. Por isso a linha alvo é escolhida por preferência —
+# mesmo acabamento primeiro, depois a que aceita qualquer um — e nunca por
+# igualdade. Sem Procuro cadastrado (quem trocou porque quis, não porque
+# procurava) não há o que baixar, e o `left join` implícito do subselect
+# devolve nulo sem tocar em nada.
+_BAIXA_PROCURA = text("""
+    with entradas as (
+      select para_user_id, card_id, finish_id, count(*) as n
+      from match_items where match_id = :m
+      group by 1, 2, 3
+    ),
+    alvos as (
+      select e.n,
+             (select l.id from listings l
+               where l.user_id = e.para_user_id
+                 and l.card_id = e.card_id
+                 and l.tipo = 'PROCURA'
+                 and l.ativo = true
+                 and (l.finish_id = e.finish_id or l.aceita_qualquer_finish)
+               order by (l.finish_id = e.finish_id) desc, l.criado_em
+               limit 1) as listing_id
+        from entradas e
+    )
+    update listings l
+       set quantidade = greatest(l.quantidade - a.n, 0),
+           ativo = case when l.quantidade - a.n <= 0 then false else l.ativo end
+      from alvos a
+     where l.id = a.listing_id
+""")
+
+
+async def baixar_por_troca(session: AsyncSession, match_id: UUID) -> None:
+    """Consome uma unidade de cada lado quando a troca é concluída.
+
+    A quantidade existia no cadastro desde o começo e nunca era consumida: quem
+    trocava a última cópia continuava com ela anunciada, e a próxima pessoa
+    propunha por uma carta que já tinha ido embora. Some da OFERTA de quem deu e
+    da PROCURA de quem recebeu — a segunda porque a procura foi atendida, e uma
+    lista de desejos que não encolhe deixa de ser uma lista de desejos.
+
+    **Na conclusão, não no aceite.** Aceitar é combinar um encontro; até ele
+    acontecer a carta continua com o dono, e sumir da vitrine nesse ponto
+    esconderia carta que ainda existe — inclusive quando a troca fura, que é
+    exatamente quando ela precisa voltar a aparecer. O preço dessa escolha é a
+    janela entre o aceite e a conclusão, em que outra pessoa ainda pode propor
+    pela mesma carta; quem protege esse intervalo é o prazo de 7 dias e o índice
+    de uma negociação aberta por dupla, não o estoque.
+
+    Zerou, o anúncio é desativado em vez de apagado: a linha desativada é o que
+    faz o recadastro cair no upsert que reativa (ver `_UPSERT`) em vez de bater
+    no índice único. E `greatest(…, 0)` é rede de segurança — o piso zero passou
+    a ser permitido na migração `27`, mas nada aqui deve depender de a contagem
+    do banco estar perfeita para não gravar número negativo.
+
+    Sem commit: quem chama é a conclusão do match, e a baixa tem de viver ou
+    morrer com ela. Uma troca desfeita que já tivesse consumido o estoque
+    deixaria a carta fora da vitrine sem nenhuma troca para justificar.
+    """
+    await session.execute(_BAIXA_OFERTA, {"m": str(match_id)})
+    await session.execute(_BAIXA_PROCURA, {"m": str(match_id)})
+
+
 def _nao_encontrado() -> RegraNegocio:
     return RegraNegocio(
         "ANUNCIO_NAO_ENCONTRADO", "Anúncio não encontrado.", status_code=404
