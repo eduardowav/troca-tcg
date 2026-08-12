@@ -98,7 +98,12 @@ chat, tema escuro, idioma, cache, notificação — a tela ou diz que não exist
 
 Todas. Feed, minhas cartas, carta, detalhe da troca, busca, perfil, perfil público,
 editar perfil, configurações, onboarding, entrar, completar cadastro, pronto, termos,
-home, e as duas de "em desenvolvimento".
+home, instalar, e as duas de "em desenvolvimento".
+
+`/instalar` é a única tela que desenha glifos de outros sistemas — o Compartilhar do
+iOS, os três pontos do Chrome. Eles não vêm do Figma e não moram em `Pecas.tsx`: são
+redesenhados na língua daqui (traço de 2px, `currentColor`) só para serem reconhecidos
+na tela do celular de quem está seguindo o passo a passo.
 
 A moldura do app — logo, sino e barra de baixo — vive no `LayoutApp`. Telas que têm
 cabeçalho próprio escondem o logo pelo `useMarcaOculta`: carta, troca, perfil, editar e

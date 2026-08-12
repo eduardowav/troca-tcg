@@ -2351,21 +2351,33 @@ e nenhuma é bug conhecido; são julgamentos visuais:
 
 **Divulgação e lançamento**
 
-8. **Página "Como instalar"** (`/instalar`). Não existe loja: no iPhone é
-   Safari → Compartilhar → "Adicionar à Tela de Início", no Android é o próprio
-   Chrome oferecendo instalar. "Baixar" é a palavra que a pessoa vai procurar, e
-   ela não vai achar loja nenhuma — a página precisa existir com esse nome e com
-   o passo a passo ilustrado dos dois sistemas. Desde o Web Push (2026-08-11)
-   ela deixou de ser só divulgação: no iPhone, **instalar é a condição para o
-   aviso chegar**, e a tela de Configurações manda para cá quem ainda está no
-   Safari em aba.
-9. **Imagem de compartilhamento** (Open Graph, 1200×630) e `twitter:card`. O
-   `index.html` não tem nenhuma das duas: hoje um link do app colado no WhatsApp
-   aparece sem imagem.
-10. **Capturas no manifesto** (`screenshots`, com `form_factor` estreito e
+10. ✅ **Página "Como instalar"** (`/instalar`) — feita em 2026-08-12. Pública,
+    fora do `LayoutApp`, porque é o link para colar no grupo e quem chega por
+    ele ainda não tem conta. Ela abre com a palavra que a pessoa vai procurar
+    ("Baixar o TrocaTCG") e diz na primeira linha que não há loja onde procurar.
+    Os três caminhos ficam escritos — iPhone, Android e computador —, com o
+    detectado por `navigator.userAgent` na frente e marcado como "é o seu": um
+    detector errado numa página de ajuda deixaria a pessoa sem a única instrução
+    que ela veio buscar, e metade das vezes alguém lê isto no computador para
+    dizer ao outro o que tocar no celular. Cada passo traz o **glifo** que a
+    pessoa vai procurar na tela (o quadrado com a seta do Compartilhar, os três
+    pontos do Chrome), desenhado na língua do mundo — nome de menu sem o desenho
+    obriga a caçar. No Android, quando o Chrome oferece o `beforeinstallprompt`,
+    um botão "Instalar agora" dispara o convite ali mesmo; o ouvinte mora em
+    `web/src/lib/instalacao.ts` e é carregado pelo `main.tsx`, porque o evento
+    chega uma vez só, logo na abertura, e quem assina depois não recebe nada.
+    Quem já está com o app instalado não vê passo a passo nenhum: a tela vira
+    confirmação e manda ligar os avisos. É esse o motivo de a página existir
+    agora — desde o Web Push (2026-08-11), no iPhone **instalar é a condição
+    para o aviso chegar**, e a linha "Avisos no celular" de Configurações deixou
+    de repetir a instrução apertada e virou porta para cá.
+11. **Imagem de compartilhamento** (Open Graph, 1200×630) e `twitter:card`. O
+    `index.html` não tem nenhuma das duas: hoje um link do app colado no
+    WhatsApp aparece sem imagem.
+12. **Capturas no manifesto** (`screenshots`, com `form_factor` estreito e
     largo). É o que o Chrome mostra na caixa de instalação do Android, e hoje
     está vazio.
-11. **Peças de divulgação**: a vitrine, uma troca fechando e a comparação de
+13. **Peças de divulgação**: a vitrine, uma troca fechando e a comparação de
     planos. Quando a animação estiver escolhida, um GIF da troca fechando é a
     melhor peça que este app tem para mostrar.
 

@@ -22,6 +22,8 @@ htmlcov/
 node_modules/
 dist/
 dist-ssr/
+# Service worker compilado que o vite-plugin-pwa gera ao rodar `npm run dev`.
+dev-dist/
 *.local
 .vite/
 *.tsbuildinfo

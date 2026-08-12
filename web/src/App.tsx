@@ -11,6 +11,7 @@ import EditarPerfil from '@/routes/EditarPerfil'
 import { Mensagens } from '@/routes/EmBreve'
 import Entrar from '@/routes/Entrar'
 import Home from '@/routes/Home'
+import Instalar from '@/routes/Instalar'
 import LabTroca from '@/routes/LabTroca'
 import MatchDetalhe from '@/routes/Match'
 import Matches from '@/routes/Matches'
@@ -33,6 +34,10 @@ export default function App() {
       <Route path="/" element={<Home />} />
       <Route path="/entrar" element={<Entrar />} />
       <Route path="/termos" element={<Termos />} />
+      {/* Pública, e fora do `LayoutApp`: é o link para colar no grupo, e quem
+          chega por ele ainda não tem conta. Quem já instalou e cai aqui de
+          dentro do app vê a tela de confirmação, não o passo a passo. */}
+      <Route path="/instalar" element={<Instalar />} />
 
       {/* Laboratório da animação de troca. Só existe em desenvolvimento: a
           condição é avaliada no build, então em produção a rota não entra na

@@ -127,7 +127,14 @@ export default function Home() {
         </Link>
       </section>
 
-      <footer className="mt-14 border-t-2 border-dashed border-tinta/25 pt-6 font-dado text-[11px] uppercase text-apagado">
+      {/* "Baixar" é a palavra que quem ouviu falar do app vai procurar, e não
+          existe loja para achar. O link fica no rodapé e não junto dos botões
+          de cima: instalar depois de ter conta é a ordem que funciona — o app
+          instalado sem sessão abre na mesma tela em que a pessoa já está. */}
+      <footer className="mt-14 flex flex-col gap-3 border-t-2 border-dashed border-tinta/25 pt-6 font-dado text-[11px] uppercase text-apagado">
+        <Link to="/instalar" className="text-tinta underline underline-offset-2">
+          Baixar o app no celular
+        </Link>
         <p>Feito em Belém, para quem troca em Belém</p>
       </footer>
     </div>

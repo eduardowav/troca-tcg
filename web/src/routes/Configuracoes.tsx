@@ -8,7 +8,7 @@ import { useMarcaOculta } from '@/hooks/useMundo'
 import { useDesligarPush, useEstadoPush, useLigarPush } from '@/hooks/usePush'
 import { ApiError } from '@/lib/api'
 import { cn } from '@/lib/cn'
-import { estaInstalado } from '@/lib/push'
+import { estaInstalado } from '@/lib/instalacao'
 import { excluirConta, type Perfil } from '@/lib/perfil'
 import { sair } from '@/stores/auth'
 import { definirTema, useTema } from '@/stores/tema'
@@ -100,16 +100,28 @@ function AvisoNoCelular() {
   if (isPending) return null
 
   if (estado === 'indisponivel') {
+    // Instalado e mesmo assim sem push: o navegador não entrega, e não há o que
+    // fazer nem para onde ir. A linha vira aviso, sem seta e sem controle.
+    if (estaInstalado()) {
+      return (
+        <Ficha valor="Indisponível" controle={<span aria-hidden />}>
+          Avisos no celular
+          <span className="mt-1 block font-corpo text-[13px] leading-relaxed text-apagado">
+            Este navegador não entrega avisos do sistema. A caixa de
+            notificações do app continua funcionando.
+          </span>
+        </Ficha>
+      )
+    }
+
+    // Falta instalar — e aí existe caminho. A linha vira porta para `/instalar`
+    // em vez de repetir aqui, apertado, um passo a passo que tem tela própria.
     return (
-      <Ficha
-        valor={estaInstalado() ? 'Indisponível' : 'Instale o app'}
-        controle={<span aria-hidden />}
-      >
+      <Ficha para="/instalar" valor="Instale o app">
         Avisos no celular
         <span className="mt-1 block font-corpo text-[13px] leading-relaxed text-apagado">
-          {estaInstalado()
-            ? 'Este navegador não entrega avisos do sistema. A caixa de notificações do app continua funcionando.'
-            : 'No iPhone, o aviso só chega com o app na tela de início: toque em Compartilhar e em "Adicionar à Tela de Início".'}
+          No iPhone, o aviso só chega com o app na tela de início. Veja o passo a
+          passo.
         </span>
       </Ficha>
     )

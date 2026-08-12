@@ -39,20 +39,6 @@ export function suportaPush(): boolean {
   )
 }
 
-/**
- * O app está rodando instalado (tela de início / janela própria)?
- *
- * No iPhone é a condição para o push existir. No Android não é obrigatório,
- * mas continua sendo a resposta certa para "por que não aparece?".
- */
-export function estaInstalado(): boolean {
-  return (
-    window.matchMedia('(display-mode: standalone)').matches ||
-    // O Safari do iOS não implementa `display-mode`; ele tem esta bandeira.
-    (navigator as { standalone?: boolean }).standalone === true
-  )
-}
-
 export type EstadoPush = 'indisponivel' | 'negado' | 'desligado' | 'ligado'
 
 /**

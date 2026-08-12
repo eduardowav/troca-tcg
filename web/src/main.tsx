@@ -7,6 +7,10 @@ import { Toaster } from 'sonner'
 import App from '@/App'
 import { queryClient } from '@/lib/queryClient'
 import '@/stores/auth' // assina o estado de sessão do Supabase o quanto antes
+// O convite de instalação do Chrome chega logo depois da abertura da página, e
+// só uma vez. Quem assina depois — a tela `/instalar`, quando alguém navega até
+// ela — não recebe nada: o ouvinte precisa existir desde o começo.
+import '@/lib/instalacao'
 // Importado aqui, e não só onde é usado: o módulo assina a troca de tema do
 // sistema e mantém a `theme-color` em dia. Se só a tela de Configurações o
 // carregasse, quem nunca abre Configurações ficaria sem as duas coisas.
