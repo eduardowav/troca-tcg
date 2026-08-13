@@ -1,5 +1,6 @@
-import { Link, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 
+import { LinkNoTexto } from '@/components/brutal/Pecas'
 import { FichaPerfil } from '@/components/perfil/FichaPerfil'
 import { useMarcaOculta } from '@/hooks/useMundo'
 import { usePerfilPublico } from '@/hooks/usePerfilPublico'
@@ -78,9 +79,7 @@ export default function PerfilPublicoTela() {
       {souEu && (
         <p className="mt-8 border-t-2 border-dashed border-tinta/25 pt-6 font-corpo text-[13px] leading-relaxed text-apagado">
           Este é o seu perfil, como a comunidade o vê.{' '}
-          <Link to="/perfil" className="font-medium text-azul underline underline-offset-2">
-            Editar
-          </Link>
+          <LinkNoTexto to="/perfil">Editar</LinkNoTexto>
         </p>
       )}
     </Moldura>

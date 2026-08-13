@@ -1,8 +1,13 @@
 import { useState } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { z } from 'zod'
 
-import { Cartela, MarcaTrocaTCG } from '@/components/brutal/Pecas'
+import {
+  AcaoSecundaria,
+  Cartela,
+  LinkNoTexto,
+  MarcaTrocaTCG,
+} from '@/components/brutal/Pecas'
 import { Campo } from '@/components/ui/Campo'
 import { Button } from '@/components/ui/Button'
 import { mensagemAuth } from '@/lib/authMensagens'
@@ -201,12 +206,9 @@ export default function Entrar() {
               competindo com o botão de entrar. Em "criar" não existe senha a
               esquecer ainda. */}
           {modo === 'entrar' && (
-            <Link
-              to="/recuperar"
-              className="-mt-1 self-end font-corpo text-[13px] font-medium text-azul underline underline-offset-2"
-            >
+            <AcaoSecundaria to="/recuperar" className="-mt-1 self-end">
               Esqueci minha senha
-            </Link>
+            </AcaoSecundaria>
           )}
 
           {modo === 'criar' && <AceiteTermos erro={erros.aceite} />}
@@ -467,12 +469,7 @@ function AceiteTermos({ erro }: { erro?: string }) {
         />
         <span className="text-[14px] leading-relaxed text-apagado">
           Li e aceito os{' '}
-          <Link
-            to="/termos"
-            className="font-medium text-azul underline underline-offset-2"
-          >
-            termos de uso
-          </Link>
+          <LinkNoTexto to="/termos">termos de uso</LinkNoTexto>
           . Entendo que o TrocaTCG apenas conecta pessoas — a troca acontece
           entre vocês, presencialmente, por conta e risco de cada um.
         </span>

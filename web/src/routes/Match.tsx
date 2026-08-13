@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 
-import { ParDeCartas } from '@/components/brutal/Pecas'
+import { LinkNoTexto, ParDeCartas } from '@/components/brutal/Pecas'
 import { Denunciar } from '@/components/perfil/Denunciar'
 import { Button, estiloBotao } from '@/components/ui/Button'
 import { useAcabamentoPorId } from '@/hooks/useAcabamentos'
@@ -245,12 +245,9 @@ export default function MatchDetalhe() {
           sair da tela para lê-lo. */}
       <p className="mt-2 text-[15px] leading-relaxed text-muted lg:text-[16px]">
         {outro ? (
-          <Link
-            to={`/u/${outro.username}`}
-            className="font-medium text-azul underline underline-offset-2"
-          >
+          <LinkNoTexto to={`/u/${outro.username}`}>
             @{outro.username}
-          </Link>
+          </LinkNoTexto>
         ) : (
           '@—'
         )}

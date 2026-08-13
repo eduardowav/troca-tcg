@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 
 import { CelulaBrutal, GradeBrutal } from '@/components/brutal/Cartas'
+import { AcaoSecundaria } from '@/components/brutal/Pecas'
 import { BuscaRapida } from '@/components/carta/BuscaRapida'
 import {
   Escolha,
@@ -88,12 +89,9 @@ export default function MinhasCartas() {
           grades largas lia como se pertencesse só à primeira. */}
       <div className="mt-4 flex w-full items-center gap-2">
         <BuscaRapida className="flex-1" />
-        <Link
-          to="/buscar"
-          className="shrink-0 rounded-[var(--radius-etiqueta)] px-2 py-2 font-corpo text-[14px] font-medium text-azul underline underline-offset-2"
-        >
+        <AcaoSecundaria to="/buscar" className="shrink-0">
           Explorar
-        </Link>
+        </AcaoSecundaria>
       </div>
 
       {/* Colar lista fica ao lado da busca, e não escondido num menu: é o
@@ -107,7 +105,10 @@ export default function MinhasCartas() {
       >
         <span>
           Tem uma lista pronta?{' '}
-          <span className="text-azul underline underline-offset-2">
+          {/* Um `span`, e não um link: a linha inteira já é o `Link`. Ele segue
+              o desenho de `LinkNoTexto` — tinta sublinhada — porque é a mesma
+              coisa aos olhos de quem lê, mesmo não sendo âncora. */}
+          <span className="font-medium text-tinta underline underline-offset-2">
             Cole de uma vez
           </span>
         </span>

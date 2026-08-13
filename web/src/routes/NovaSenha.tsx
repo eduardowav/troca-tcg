@@ -1,9 +1,9 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { z } from 'zod'
 
-import { Cartela } from '@/components/brutal/Pecas'
+import { AcaoSecundaria, Cartela } from '@/components/brutal/Pecas'
 import { Button } from '@/components/ui/Button'
 import { Campo } from '@/components/ui/Campo'
 import { mensagemAuth } from '@/lib/authMensagens'
@@ -112,12 +112,9 @@ export default function NovaSenha() {
           </Button>
         </Cartela>
 
-        <Link
-          to="/entrar"
-          className="text-center font-corpo text-[14px] font-medium text-azul underline underline-offset-2"
-        >
+        <AcaoSecundaria to="/entrar" className="self-center">
           Voltar para entrar
-        </Link>
+        </AcaoSecundaria>
       </Moldura>
     )
   }

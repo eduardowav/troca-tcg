@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 
+import { AcaoSecundaria } from '@/components/brutal/Pecas'
 import { CartaThumb } from '@/components/carta/CartaThumb'
 import { Button } from '@/components/ui/Button'
 import { useMarcaOculta } from '@/hooks/useMundo'
@@ -366,14 +367,13 @@ function Linha({
 
       {linha.candidatos.length > 1 && (
         <>
-          <button
-            type="button"
+          <AcaoSecundaria
             onClick={() => setAbertas((v) => !v)}
-            aria-expanded={abertas}
-            className="mt-2 font-corpo text-[13px] font-medium text-azul underline underline-offset-2"
+            expandido={abertas}
+            className="mt-2"
           >
             {abertas ? 'Fechar' : 'Não é essa carta?'}
-          </button>
+          </AcaoSecundaria>
 
           {abertas && (
             <ul className="mt-2 flex flex-col gap-1.5">

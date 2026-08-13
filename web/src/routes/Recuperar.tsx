@@ -2,7 +2,11 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { z } from 'zod'
 
-import { Cartela, MarcaTrocaTCG } from '@/components/brutal/Pecas'
+import {
+  AcaoSecundaria,
+  Cartela,
+  MarcaTrocaTCG,
+} from '@/components/brutal/Pecas'
 import { Button } from '@/components/ui/Button'
 import { Campo } from '@/components/ui/Campo'
 import { IconeEnvelope } from '@/components/ui/Icone'
@@ -78,12 +82,9 @@ export default function Recuperar() {
           </p>
         </Cartela>
 
-        <Link
-          to="/entrar"
-          className="text-center font-corpo text-[14px] font-medium text-azul underline underline-offset-2"
-        >
+        <AcaoSecundaria to="/entrar" className="self-center">
           Voltar para entrar
-        </Link>
+        </AcaoSecundaria>
       </Moldura>
     )
   }
@@ -136,12 +137,9 @@ export default function Recuperar() {
         </form>
       </Cartela>
 
-      <Link
-        to="/entrar"
-        className="text-center font-corpo text-[14px] font-medium text-azul underline underline-offset-2"
-      >
+      <AcaoSecundaria to="/entrar" className="self-center">
         Lembrei — voltar para entrar
-      </Link>
+      </AcaoSecundaria>
     </Moldura>
   )
 }

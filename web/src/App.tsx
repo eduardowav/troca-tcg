@@ -13,6 +13,7 @@ import { Mensagens } from '@/routes/EmBreve'
 import Entrar from '@/routes/Entrar'
 import Home from '@/routes/Home'
 import Instalar from '@/routes/Instalar'
+import LabAzul from '@/routes/LabAzul'
 import LabTroca from '@/routes/LabTroca'
 import MatchDetalhe from '@/routes/Match'
 import Matches from '@/routes/Matches'
@@ -56,6 +57,12 @@ export default function App() {
       {import.meta.env.DEV && (
         <Route path="/lab/troca" element={<LabTroca />} />
       )}
+
+      {/* Laboratório do azul de link, pela mesma regra: é bancada para uma
+          decisão de desenho que o DESIGN.md deixou em aberto, e morre com ela.
+          Fora do `LayoutApp` porque a barra de navegação carrega o azul da aba
+          ativa e entraria no quadro como quarta amostra sem ser convidada. */}
+      {import.meta.env.DEV && <Route path="/lab/azul" element={<LabAzul />} />}
 
       <Route element={<ExigeSessao />}>
         <Route path="/completar-cadastro" element={<CompletarCadastro />} />

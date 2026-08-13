@@ -1098,3 +1098,100 @@ export function BotaoBrutal({
     <span className={classe}>{children}</span>
   )
 }
+
+/* --------------------------------------------------- as duas formas de link
+ *
+ * O app tinha uma só — texto azul sublinhado —, e ela reprovava AA no papel
+ * escuro: `#0038FF` sobre o papel dá 2,82:1 e sobre a cartela, 2,56:1. O piso
+ * do DESIGN.md para texto é 4,5:1. Em peça com borda quem separa do fundo é a
+ * borda; em texto solto não há borda nenhuma fazendo esse trabalho.
+ *
+ * A saída escolhida (2026-08-13, no `/lab/azul`) não foi clarear o azul: foi
+ * separar dois casos que sempre foram diferentes e vinham pintados igual.
+ *
+ *   - **Link solto** — o que está sozinho numa linha, e é ação: "Esqueci minha
+ *     senha", "Voltar para entrar", "Limpar". Vira `AcaoSecundaria`, etiqueta
+ *     de borda. Botão é mais direto que texto azul, e a borda é o que o mundo
+ *     desta interface usa para dizer "isto se toca".
+ *
+ *   - **Link dentro de uma frase** — "os termos de uso", o `@nome` no título.
+ *     Vira `LinkNoTexto`, tinta sublinhada. Etiqueta ali abriria a altura da
+ *     linha em todo parágrafo, e um `@nome` em caixa alta com moldura deixa de
+ *     parecer o nome de uma pessoa.
+ *
+ * Nas duas, o azul sai e a tinta entra: 16,43:1 no escuro, 21:1 no claro. O
+ * `--color-azul` continua inteiro onde ele sempre funcionou — fundo de peça,
+ * com a tinta branca por cima.
+ */
+
+/**
+ * Ação secundária: etiqueta de borda.
+ *
+ * Aceita `to` para navegar e `onClick` para agir na própria tela; um dos dois,
+ * nunca os dois. Link que navega tem de ser âncora, pelo mesmo motivo do
+ * `BotaoBrutal`.
+ */
+export function AcaoSecundaria({
+  children,
+  to,
+  onClick,
+  expandido,
+  className,
+}: {
+  children: ReactNode
+  to?: string
+  onClick?: () => void
+  /** Vira `aria-expanded` — para o botão que abre e fecha uma lista. */
+  expandido?: boolean
+  className?: string
+}) {
+  const classe = cn(
+    'inline-flex items-center rounded-[var(--radius-etiqueta)] border-2 border-tinta bg-cartela px-3 py-1.5',
+    'font-dado text-[11px] font-bold uppercase text-tinta',
+    'shadow-[var(--shadow-duro-xs)] transition-shadow hover:shadow-[var(--shadow-duro-sm)]',
+    className,
+  )
+
+  return to ? (
+    <Link to={to} className={classe}>
+      {children}
+    </Link>
+  ) : (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-expanded={expandido}
+      className={classe}
+    >
+      {children}
+    </button>
+  )
+}
+
+/**
+ * Link dentro de um parágrafo: tinta sublinhada, sem caixa.
+ *
+ * O sublinhado é o que sobra para dizer "isto é um link" depois que a cor saiu,
+ * e por isso ele não é decoração opcional aqui — é a única marca.
+ */
+export function LinkNoTexto({
+  children,
+  to,
+  className,
+}: {
+  children: ReactNode
+  to: string
+  className?: string
+}) {
+  return (
+    <Link
+      to={to}
+      className={cn(
+        'font-medium text-tinta underline underline-offset-2',
+        className,
+      )}
+    >
+      {children}
+    </Link>
+  )
+}

@@ -7,7 +7,11 @@ import {
   CelulaBrutal,
   GradeBrutal,
 } from '@/components/brutal/Cartas'
-import { BotaoBrutal, Cartela } from '@/components/brutal/Pecas'
+import {
+  AcaoSecundaria,
+  BotaoBrutal,
+  Cartela,
+} from '@/components/brutal/Pecas'
 import { FiltroCatalogo } from '@/components/carta/FiltroCatalogo'
 import { FolhaAdicionar } from '@/components/carta/FolhaAdicionar'
 import { IconeBusca } from '@/components/ui/Icone'
@@ -144,13 +148,12 @@ export default function Buscar() {
           </button>
 
           {temFiltro(filtros) && (
-            <button
-              type="button"
+            <AcaoSecundaria
               onClick={() => setFiltros(SEM_FILTRO)}
-              className="ml-2 font-corpo text-[13px] font-medium text-azul underline underline-offset-2"
+              className="ml-2"
             >
               Limpar
-            </button>
+            </AcaoSecundaria>
           )}
 
           {filtrosAbertos && (

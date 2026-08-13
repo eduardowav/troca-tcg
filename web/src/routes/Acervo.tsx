@@ -1,6 +1,7 @@
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 
+import { LinkNoTexto } from '@/components/brutal/Pecas'
 import { MontarProposta } from '@/components/proposta/MontarProposta'
 import { useMarcaOculta } from '@/hooks/useMundo'
 import { useAbrirProposta } from '@/hooks/usePropostas'
@@ -72,12 +73,12 @@ export default function Acervo() {
       <header className="mt-5 w-full max-w-xl">
         <h1 className="titulo-pagina font-titulo text-[24px] leading-[1.15] font-black text-tinta lg:text-[30px]">
           Trocar com{' '}
-          <Link
-            to={`/u/${username}`}
-            className="text-azul underline underline-offset-2"
-          >
+          {/* Sem `font-medium`: dentro de um `h1` de peso `black`, a classe do
+              `LinkNoTexto` seria um passo para trás no peso e o nome sairia
+              mais leve que o resto do título. */}
+          <LinkNoTexto to={`/u/${username}`} className="font-black">
             @{username}
-          </Link>
+          </LinkNoTexto>
         </h1>
         <p className="mt-2 font-corpo text-[14px] leading-relaxed text-apagado lg:text-[15px]">
           Escolha o que você quer deste acervo e o que oferece em troca. A outra

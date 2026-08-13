@@ -3,7 +3,9 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 
 import {
+  AcaoSecundaria,
   Cartela,
+  LinkNoTexto,
   ParDeLotes,
   Selo,
   totalDoLote,
@@ -95,12 +97,9 @@ export default function PropostaDetalhe() {
         <p className="font-titulo text-[17px] font-bold text-tinta">
           Essa proposta não está mais disponível.
         </p>
-        <Link
-          to="/propostas"
-          className="mt-4 inline-block font-corpo text-[14px] text-azul underline underline-offset-4"
-        >
+        <AcaoSecundaria to="/propostas" className="mt-4 self-center">
           Voltar para as propostas
-        </Link>
+        </AcaoSecundaria>
       </Moldura>
     )
   }
@@ -188,12 +187,7 @@ export default function PropostaDetalhe() {
         Proposta com {proposta.com_nome || `@${proposta.com}`}.
       </h1>
       <p className="mt-2 font-corpo text-[15px] leading-relaxed text-apagado">
-        <Link
-          to={`/u/${proposta.com}`}
-          className="font-medium text-azul underline underline-offset-2"
-        >
-          @{proposta.com}
-        </Link>
+        <LinkNoTexto to={`/u/${proposta.com}`}>@{proposta.com}</LinkNoTexto>
         {' · '}
         Rodada {proposta.rodada} de {MAX_RODADAS}
         {aberta && prazo && ` · responder em ${prazo}`}

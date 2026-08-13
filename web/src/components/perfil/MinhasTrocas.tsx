@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
 
-import { ParDeCartas } from '@/components/brutal/Pecas'
+import { AcaoSecundaria, ParDeCartas } from '@/components/brutal/Pecas'
 import { useCartasPorId } from '@/hooks/useAnuncios'
 import { useHistorico } from '@/hooks/useMatches'
 import { cn } from '@/lib/cn'
@@ -197,12 +196,9 @@ function Linha({
               trocado={troca.status === 'CONCLUIDO'}
             />
           </div>
-          <Link
-            to={`/matches/${troca.id}`}
-            className="mt-3 inline-block font-corpo text-[13px] font-medium text-azul underline underline-offset-2"
-          >
+          <AcaoSecundaria to={`/matches/${troca.id}`} className="mt-3">
             Abrir a troca
-          </Link>
+          </AcaoSecundaria>
         </div>
       )}
     </li>

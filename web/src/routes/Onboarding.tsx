@@ -11,7 +11,11 @@ import {
   CelulaBrutal,
   GradeBrutal,
 } from '@/components/brutal/Cartas'
-import { BotaoBrutal, Cartela } from '@/components/brutal/Pecas'
+import {
+  AcaoSecundaria,
+  BotaoBrutal,
+  Cartela,
+} from '@/components/brutal/Pecas'
 import { CartaThumb } from '@/components/carta/CartaThumb'
 import { FiltroCatalogo } from '@/components/carta/FiltroCatalogo'
 import { useCardSearch } from '@/hooks/useCardSearch'
@@ -79,13 +83,12 @@ export default function Onboarding() {
             </span>
           </button>
           {temFiltro(filtros) && (
-            <button
-              type="button"
+            <AcaoSecundaria
               onClick={() => setFiltros(SEM_FILTRO)}
-              className="ml-2 font-corpo text-[13px] font-medium text-azul underline underline-offset-2"
+              className="ml-2"
             >
               Limpar
-            </button>
+            </AcaoSecundaria>
           )}
           {filtrosAbertos && (
             <Cartela className="mt-3 p-3">

@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
 
 import { CelulaBrutal, GradeBrutal } from '@/components/brutal/Cartas'
-import { Cartela } from '@/components/brutal/Pecas'
+import { Cartela, LinkNoTexto } from '@/components/brutal/Pecas'
 import { CartaThumb } from '@/components/carta/CartaThumb'
 import { Button } from '@/components/ui/Button'
 import { useAcabamentoPorId } from '@/hooks/useAcabamentos'
@@ -169,12 +168,9 @@ export function MontarProposta({
               <>
                 Você ainda não tem cartas na lista Ofereço — e é dela que sai o
                 seu lado da troca.{' '}
-                <Link
-                  to="/minhas-cartas"
-                  className="font-medium text-azul underline underline-offset-2"
-                >
+                <LinkNoTexto to="/minhas-cartas">
                   Cadastrar o que você tem sobrando
-                </Link>
+                </LinkNoTexto>
                 .
               </>
             }

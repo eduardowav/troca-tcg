@@ -118,17 +118,43 @@ A moldura do app — logo, sino e barra de baixo — vive no `LayoutApp`. Telas 
 cabeçalho próprio escondem o logo pelo `useMarcaOculta`: carta, troca, perfil, editar e
 configurações.
 
-## Achado em aberto: azul de link no escuro
+## As duas formas de link
 
-`text-azul` (`#0038FF`) sobre o papel escuro dá **2,82:1** — reprova o piso AA deste
-documento para texto. Em peça com borda de 2px o mesmo azul funciona, porque ali quem
-separa do fundo é a borda; em **link solto**, não. Foi pego na varredura da tela de
-falha (2026-08-12), onde a saída lateral virou etiqueta com borda em vez de link azul.
+O app tinha uma só — texto azul sublinhado —, e ela reprovava AA no papel escuro:
+`#0038FF` dá **2,82:1** sobre o papel e **2,56:1** sobre a cartela, contra o piso de
+4,5:1 deste documento para texto. Em peça com borda de 2px o mesmo azul funciona, porque
+ali quem separa do fundo é a borda; em texto solto não há borda fazendo esse trabalho.
+Foi pego na varredura da tela de falha (2026-08-12) e decidido em 2026-08-13, no
+`/lab/azul` — bancada que pôs as três versões lado a lado com as amostras reais do app.
 
-Os outros links azuis do app — rodapé da home, "Termos e privacidade", `@nome` na
-vitrine — têm o mesmo número no escuro e continuam como estão: a correção é uma passada
-própria, e a escolha entre clarear o azul de link (`#6082FF`, que é o da aba ativa) ou
-transformar todos em etiqueta é decisão do Eduardo, não mecânica.
+A saída não foi clarear o azul. Foi separar dois casos que sempre foram diferentes e
+vinham pintados igual:
+
+- **Link solto** — sozinho numa linha, e é ação: "Esqueci minha senha", "Voltar para
+  entrar", "Limpar", "Termos e privacidade". Vira `AcaoSecundaria`, a etiqueta de borda
+  que a tela de falha estreou. Botão é mais direto que texto azul, e a borda é como esta
+  interface diz "isto se toca".
+- **Link dentro de uma frase** — "os termos de uso", o `@nome` no título do acervo. Vira
+  `LinkNoTexto`, tinta sublinhada. Etiqueta ali abriria a altura da linha em todo
+  parágrafo, e um `@nome` em caixa alta com moldura deixa de parecer o nome de alguém.
+
+Nas duas o azul sai e a tinta entra: **16,43:1** no escuro, **21:1** no claro. O
+`--color-azul` continua inteiro onde sempre funcionou — fundo de peça, tinta branca por
+cima. `--color-azul-claro` (`#6082FF`) segue sendo só da aba ativa: sobre a cartela
+branca ele dá 3,42:1 e reprovaria no tema claro, então clarear o azul de link nunca
+poderia ser um token só para os dois temas.
+
+## Achado em aberto: azul como texto que não é link
+
+A passada acima cobriu os 19 links. Sobrou o azul usado como **ênfase de texto**, que
+tem o mesmo número e não foi tocado: o preço no rodapé do par de cartas
+(`Pecas.tsx`), o "· eu procuro" de `MontarProposta`, os valores grandes de `Carta`, o
+prazo urgente de `Matches` e o selo "Troca" do histórico (`border-azul bg-meu
+text-azul`, que sobre o `bg-meu` escuro cai para **2,42:1**, o pior do app).
+
+Nenhum deles é link, então a regra das duas formas não os alcança — e trocá-los por
+tinta apagaria a distinção que eles existem para fazer. É decisão de desenho própria,
+não mecânica.
 
 ## O que ficou para depois
 

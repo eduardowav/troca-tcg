@@ -1,7 +1,6 @@
 import { Component, type ReactNode, useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
 
-import { BotaoBrutal, Selo } from '@/components/brutal/Pecas'
+import { AcaoSecundaria, BotaoBrutal, Selo } from '@/components/brutal/Pecas'
 import { ApiError } from '@/lib/api'
 import { cn } from '@/lib/cn'
 
@@ -142,25 +141,14 @@ export function Falha({
             quer sair dela. Em erro de rede ela não promete nada: se a internet
             caiu, o feed também não vai carregar — por isso só aparece quando o
             problema é do app. */}
-        {/* Etiqueta com borda, e não link azul sublinhado.
-            ----------------------------------------------------------------
-            O `#0038ff` sobre o papel escuro dá 2,82:1 — reprova o piso AA que
-            o DESIGN.md fixa para todo texto. Em peça com borda de 2px o mesmo
-            azul funciona (é o que a doc registra), mas ali quem separa do fundo
-            é a borda, não a cor da tinta. Aqui é texto, então ele sai: a saída
-            vira etiqueta de borda, mesmo vocabulário do "Seguir o sistema" de
-            Configurações, e passa nos dois temas. */}
+        {/* Esta tela foi a primeira a trocar o link azul pela etiqueta de
+            borda, e por um tempo foi a única — o desenho morava aqui, escrito à
+            mão. Hoje ele é `AcaoSecundaria` e vale para todo link solto do app;
+            ver o comentário da peça em `brutal/Pecas.tsx`. */}
         {motivo === 'quebrou' && (
-          <Link
-            to="/matches"
-            className={cn(
-              'mt-5 rounded-[var(--radius-etiqueta)] border-2 border-tinta bg-cartela',
-              'px-3 py-1.5 font-dado text-[11px] font-bold uppercase text-tinta',
-              'shadow-[var(--shadow-duro-xs)] transition-shadow hover:shadow-[var(--shadow-duro-sm)]',
-            )}
-          >
+          <AcaoSecundaria to="/matches" className="mt-5">
             Ir para as trocas
-          </Link>
+          </AcaoSecundaria>
         )}
       </div>
     </div>

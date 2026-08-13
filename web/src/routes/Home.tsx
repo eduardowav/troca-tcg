@@ -1,6 +1,7 @@
 import { Link, Navigate } from 'react-router-dom'
 
 import {
+  AcaoSecundaria,
   IconeCartasBrutal,
   IconeRaio,
   IconeTrocas,
@@ -119,12 +120,9 @@ export default function Home() {
           pede seu endereço nem sua localização. Seu telefone só aparece para
           quem fechar troca com você — antes disso, ninguém vê.
         </p>
-        <Link
-          to="/termos"
-          className="mt-4 inline-block font-corpo text-[14px] font-medium text-azul underline underline-offset-2"
-        >
+        <AcaoSecundaria to="/termos" className="mt-4">
           Termos e privacidade
-        </Link>
+        </AcaoSecundaria>
       </section>
 
       {/* "Baixar" é a palavra que quem ouviu falar do app vai procurar, e não

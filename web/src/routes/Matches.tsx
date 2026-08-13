@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 
 import { CelulaBrutal, GradeBrutal } from '@/components/brutal/Cartas'
 import {
+  AcaoSecundaria,
   BotaoBrutal,
   Cartela,
   IconeEstrela,
@@ -386,12 +387,9 @@ function PortaDaVitrine({
         <BotaoBrutal to="/vitrine" className="mt-6">
           Ver a vitrine
         </BotaoBrutal>
-        <Link
-          to="/minhas-cartas"
-          className="mt-4 font-corpo text-[14px] font-medium text-azul underline underline-offset-2"
-        >
+        <AcaoSecundaria to="/minhas-cartas" className="mt-4">
           Ajustar minhas cartas
-        </Link>
+        </AcaoSecundaria>
       </div>
     )
   }
