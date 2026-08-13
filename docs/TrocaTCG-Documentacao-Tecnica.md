@@ -2284,8 +2284,10 @@ hoje, na ordem em que faz sentido atacar.
    COMBINADA no aceite; giro das cartas e selo TROCADO só na conclusão.
 5. **Filtro por bairro** na vitrine. A troca é presencial: "quem tem essa carta
    perto de mim" decide mais que preço.
-6. **Alerta de carta** ("avise quando aparecer"), que nasce do vazio da busca e
-   já está previsto como limite de plano.
+6. ✅ **Alerta de carta** ("avise quando aparecer") — feito em 2026-08-12, junto
+   da Fase B da monetização, onde está o detalhe (item 5 da
+   [seção 16](#16-preparação-para-monetização)). Nasceu do vazio da vitrine, que
+   é onde a pessoa descobre que ninguém tem a carta.
 7. **Medir de onde vem a troca.** O evento do aceite guarda o id da proposta;
    falta a consulta que responde se a vitrine fecha mais troca que o motor — a
    pergunta que decide se ela fica.
@@ -2404,9 +2406,10 @@ travado em 300 itens; e o antiabuso de propostas por dia ativo desde o começo.
 **Planos pagos** — decidido e detalhado na
 [seção 16](#16-preparação-para-monetização): FREE com 20 ofertas, PRO ilimitado
 a R$ 19,90/mês ou R$ 199,90/ano, sem destaque pago. A Fase A está commitada e
-desligada (`925fe9d`); falta a Fase B (cadastro em massa, alerta de carta,
-triangular), que é o que dá ao PRO o que vender, e só depois a Fase C (Mercado
-Pago, tela de planos, termos, queda de plano).
+desligada (`925fe9d`). A **Fase B saiu em 2026-08-12**: cadastro em massa e
+alerta de carta funcionando, e o motor triangular pronto e desligado esperando a
+tela de três pontas — que é a única coisa que falta para o PRO ter o que vender.
+Depois dela, a Fase C (Mercado Pago, tela de planos, termos, queda de plano).
 
 **Cadastro sem verificação** — decisão do Eduardo em 2026-08-12. A confirmação
 de e-mail sai (interruptor "Confirm email" do painel do Supabase, fora do
