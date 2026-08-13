@@ -2146,8 +2146,39 @@ limite, o que lê como pedágio. **A cobrança não liga antes desta fase termin
 7. **Mercado Pago**: Pix é praticamente obrigatório no Brasil e o checkout é
    pronto. O webhook que mantém `profiles.plano` é a fonte da verdade do plano —
    não a tela.
-8. **Tela de planos** (`/planos`), o estado "você é PRO" no perfil, e o convite
-   aparecendo no instante em que a pessoa esbarra num limite — não antes.
+8. ✅ **Tela de planos, estado do plano e o convite** — feito em 2026-08-13, com
+   a cobrança ainda desligada.
+
+   **Os números da tela vêm da API.** Entrou `GET /v1/planos` (pública, como o
+   health), servindo `PLANOS` e `COBRANCA_ATIVA` direto de `core/limites.py`.
+   Uma tabela de preço que promete 20 e um backend que barra em 15 é o defeito
+   que só aparece **depois** de alguém pagar; com a rota existe uma fonte só, e
+   mudar um teto continua sendo mudar uma linha. Cinco testes cobrem isso — e
+   comparam contra `PLANOS`, nunca contra números escritos à mão, senão
+   recriariam a divergência que a rota existe para evitar. O preço fica fora:
+   não é regra de negócio hoje, e na Fase C quem manda nele é o Mercado Pago.
+
+   **A tela diz na primeira linha que ninguém está sendo cobrado.** Enquanto
+   `cobranca_ativa` for falso, `plano_vigente()` devolve PRO para todo mundo:
+   uma tela vendendo assinatura nesse estado cobraria pelo que já está na mão.
+   Ela existe agora para ser julgada e para o convite ter destino. Sem botão de
+   assinar — ele chega com o Mercado Pago.
+
+   **O convite mora no `useAvisoDeErro`**, que substituiu o
+   `toast.error(erro.message)` repetido em seis telas. Quando o código do erro é
+   de plano (`LIMITE_DE_ANUNCIOS`, `RECURSO_DO_PRO`, `LIMITE_DE_PROPOSTAS`), o
+   mesmo aviso ganha um botão "Ver planos" e mais tempo na tela. A mensagem
+   continua sendo a da API, que já explica a regra em português — o que faltava
+   era ter para onde ir com ela. Faixa fixa dizendo "assine" é anúncio; a mesma
+   frase no instante em que a pessoa quis fazer algo e não pôde é resposta.
+
+   **O estado do plano vive em Configurações**, e o rótulo é "Liberado" — não
+   "Free" — enquanto a cobrança estiver desligada: mostrar Free num app que não
+   limita nada seria a tela contradizendo o produto. O selo PRO no perfil, que a
+   tabela lista, ainda não existe: é cosmético e entra com a cobrança.
+
+   **A linha do match triangular é a única marcada "em breve"** na comparação.
+   Ver a decisão de 2026-08-13 na fila.
 9. **Termos**: falta a cláusula da assinatura, com renovação automática,
    cancelamento a qualquer tempo e o direito de arrependimento de 7 dias do CDC.
    Mexer nos termos exige nova `VERSAO` e novo aceite (seção 4).
@@ -2429,8 +2460,23 @@ travado em 300 itens; e o antiabuso de propostas por dia ativo desde o começo.
 a R$ 19,90/mês ou R$ 199,90/ano, sem destaque pago. A Fase A está commitada e
 desligada (`925fe9d`). A **Fase B saiu em 2026-08-12**: cadastro em massa e
 alerta de carta funcionando, e o motor triangular pronto e desligado esperando a
-tela de três pontas — que é a única coisa que falta para o PRO ter o que vender.
-Depois dela, a Fase C (Mercado Pago, tela de planos, termos, queda de plano).
+tela de três pontas.
+
+**A ordem mudou em 2026-08-13, por decisão do Eduardo: a triangulação sai da
+frente da cobrança e vai para depois da abertura aos usuários.** A Fase C começou
+sem ela — a tela de planos, o estado do plano e o convite estão no ar (item 8 da
+seção 16), com `COBRANCA_ATIVA` ainda falso.
+
+Isso muda uma coisa que a doc afirmava: a Fase B deixou de ser pré-requisito de
+*construir* a Fase C, mas continua sendo pré-requisito de **ligar** a cobrança. A
+tabela do PRO vende "match triangular", e cobrar por ele antes de a tela de três
+pontas existir seria vender o que não se entrega. Por isso a linha aparece como
+**"em breve"** na comparação, e a virada de `COBRANCA_ATIVA` continua depois da
+triangulação — não antes.
+
+Falta da Fase C: Mercado Pago e o webhook (item 7), a cláusula de assinatura nos
+termos (item 9, que exige nova `VERSAO` e novo aceite), e a queda de plano (item
+10).
 
 **Cadastro sem verificação** — decisão do Eduardo em 2026-08-12. A confirmação
 de e-mail sai (interruptor "Confirm email" do painel do Supabase, fora do

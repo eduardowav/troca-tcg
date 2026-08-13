@@ -18,6 +18,7 @@ from app.routers import (
     listings,
     matches,
     notificacoes,
+    planos,
     propostas,
     users,
     verificacao,
@@ -60,6 +61,8 @@ app.include_router(matches.router, prefix="/v1")
 app.include_router(vitrine.router, prefix="/v1")
 app.include_router(propostas.router, prefix="/v1")
 app.include_router(alertas.router, prefix="/v1")
+# Pública como o health: é tabela de preço, e quem ainda não tem conta olha.
+app.include_router(planos.router, prefix="/v1")
 app.include_router(notificacoes.router, prefix="/v1")
 app.include_router(notificacoes.router_push, prefix="/v1")
 # Verificação de número: registrada e desligada por configuração

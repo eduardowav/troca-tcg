@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 
 import { usePerfil } from '@/hooks/usePerfil'
 import { useMarcaOculta } from '@/hooks/useMundo'
+import { usePlanos } from '@/hooks/usePlanos'
 import { useDesligarPush, useEstadoPush, useLigarPush } from '@/hooks/usePush'
 import { ApiError } from '@/lib/api'
 import { cn } from '@/lib/cn'
@@ -50,6 +51,7 @@ export default function Configuracoes() {
 
       <Grupo titulo="Conta">
         <Ficha para="/perfil/editar">Editar perfil</Ficha>
+        <Plano perfil={perfil} />
       </Grupo>
 
       <Grupo titulo="App">
@@ -290,6 +292,34 @@ function Interruptor({
         )}
       />
     </button>
+  )
+}
+
+/**
+ * O plano da conta — e é aqui que mora o estado "você é PRO" (item 8 da Fase C).
+ *
+ * **O valor da direita conta a verdade do dia, não a coluna do banco.** Enquanto
+ * `cobranca_ativa` for falso, `plano_vigente()` devolve PRO para todo mundo e o
+ * `profiles.plano` de quase todos diz FREE — mostrar "Free" nesse estado seria a
+ * tela contradizendo o app, que não está limitando nada. Por isso o rótulo é
+ * "Liberado" até a cobrança ligar: é o que está valendo, sem prometer assinatura
+ * que ninguém tem.
+ */
+function Plano({ perfil }: { perfil?: Perfil | null }) {
+  const { data } = usePlanos()
+
+  const valor = !data
+    ? undefined
+    : !data.cobranca_ativa
+      ? 'Liberado'
+      : perfil?.plano === 'PRO'
+        ? 'Pro'
+        : 'Free'
+
+  return (
+    <Ficha para="/planos" valor={valor}>
+      Plano
+    </Ficha>
   )
 }
 

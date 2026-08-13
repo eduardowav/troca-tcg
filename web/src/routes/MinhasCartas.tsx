@@ -20,7 +20,6 @@ import {
   type Condicao,
   PRIORIDADES,
 } from '@/lib/anuncios'
-import { ApiError } from '@/lib/api'
 import { cn } from '@/lib/cn'
 import {
   type Carta,
@@ -41,6 +40,7 @@ import {
   useEditarAnuncio,
   useRemoverAnuncio,
 } from '@/hooks/useAnuncios'
+import { useAvisoDeErro } from '@/hooks/usePlanos'
 
 export default function MinhasCartas() {
 
@@ -473,16 +473,15 @@ function EditorAnuncio({
     }
   }, [aberto, onFechar])
 
+  const avisar = useAvisoDeErro()
+
   function aplicar(dados: Parameters<typeof editar.mutate>[0]['dados']) {
     editar.mutate(
       { id: anuncio.id, dados },
       {
-        onError: (erro) =>
-          toast.error(
-            erro instanceof ApiError
-              ? erro.message
-              : 'Não foi possível salvar a alteração.',
-          ),
+        // Reativar uma carta desativada é escrita de OFERTA, então o teto
+        // do plano vale aqui como em qualquer outra.
+        onError: (erro) => avisar(erro, 'Não foi possível salvar a alteração.'),
       },
     )
   }

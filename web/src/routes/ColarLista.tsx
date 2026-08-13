@@ -7,8 +7,8 @@ import { AcaoSecundaria } from '@/components/brutal/Pecas'
 import { CartaThumb } from '@/components/carta/CartaThumb'
 import { Button } from '@/components/ui/Button'
 import { useMarcaOculta } from '@/hooks/useMundo'
+import { useAvisoDeErro } from '@/hooks/usePlanos'
 import { importarAnuncios } from '@/lib/anuncios'
-import { ApiError } from '@/lib/api'
 import { cn } from '@/lib/cn'
 import {
   emLinhas,
@@ -53,6 +53,7 @@ export default function ColarLista() {
   )
   const [texto, setTexto] = useState('')
   const [linhas, setLinhas] = useState<LinhaResolvida[] | null>(null)
+  const avisar = useAvisoDeErro()
 
   const reconhecer = useMutation({
     mutationFn: () => resolverLista(emLinhas(texto)),
@@ -81,12 +82,11 @@ export default function ColarLista() {
       )
       navegar('/minhas-cartas', { replace: true })
     },
-    onError: (erro) =>
-      toast.error(
-        erro instanceof ApiError
-          ? erro.message
-          : 'Não foi possível cadastrar a lista agora.',
-      ),
+    // Os dois erros de plano desta tela caem aqui: colar a lista é do PRO
+    // (`RECURSO_DO_PRO`), e a lista inteira pode estourar o teto de ofertas
+    // (`LIMITE_DE_ANUNCIOS`). É o lugar do app onde o convite mais faz sentido —
+    // a pessoa acabou de colar cinquenta linhas.
+    onError: (erro) => avisar(erro, 'Não foi possível cadastrar a lista agora.'),
   })
 
   const total = emLinhas(texto).length

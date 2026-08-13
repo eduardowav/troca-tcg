@@ -2,10 +2,10 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 
 import { LinkNoTexto } from '@/components/brutal/Pecas'
+import { useAvisoDeErro } from '@/hooks/usePlanos'
 import { MontarProposta } from '@/components/proposta/MontarProposta'
 import { useMarcaOculta } from '@/hooks/useMundo'
 import { useAbrirProposta } from '@/hooks/usePropostas'
-import { ApiError } from '@/lib/api'
 import type { ItensDaProposta } from '@/lib/propostas'
 
 /**
@@ -26,6 +26,7 @@ export default function Acervo() {
   const [params] = useSearchParams()
   const navegar = useNavigate()
   const abrir = useAbrirProposta()
+  const avisar = useAvisoDeErro()
 
   const inicial: ItensDaProposta = {
     quero: params.getAll('quero'),
@@ -40,17 +41,12 @@ export default function Acervo() {
           toast.success(`Proposta enviada para @${username}.`)
           navegar(`/propostas/${proposta.id}`, { replace: true })
         },
-        onError: (erro) => {
-          // As mensagens da API já vêm em português e prontas para exibir —
-          // inclusive as que explicam uma regra ("já existe uma negociação
-          // aberta com essa pessoa"), que é justamente onde uma frase genérica
-          // deixaria a pessoa sem saber o que fazer.
-          toast.error(
-            erro instanceof ApiError
-              ? erro.message
-              : 'Não foi possível enviar a proposta agora.',
-          )
-        },
+        // As mensagens da API já vêm em português e prontas para exibir —
+        // inclusive as que explicam uma regra ("já existe uma negociação aberta
+        // com essa pessoa"), que é justamente onde uma frase genérica deixaria
+        // a pessoa sem saber o que fazer. O teto de propostas por dia é uma
+        // delas, e é a que ganha o botão para os planos.
+        onError: (erro) => avisar(erro, 'Não foi possível enviar a proposta agora.'),
       },
     )
   }

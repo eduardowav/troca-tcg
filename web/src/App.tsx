@@ -24,6 +24,7 @@ import Recuperar from '@/routes/Recuperar'
 import Onboarding from '@/routes/Onboarding'
 import Acervo from '@/routes/Acervo'
 import PerfilTela from '@/routes/Perfil'
+import Planos from '@/routes/Planos'
 import PerfilPublicoTela from '@/routes/PerfilPublico'
 import Pronto from '@/routes/Pronto'
 import PropostaDetalhe from '@/routes/Proposta'
@@ -98,6 +99,11 @@ export default function App() {
                 aba mostra quem você é; mexer é outra tarefa. */}
             <Route path="/perfil/editar" element={<EditarPerfil />} />
             <Route path="/configuracoes" element={<Configuracoes />} />
+            {/* Planos fica dentro do app, e não em rota pública: o destino do
+                convite é quem já esbarrou num limite, e o estado "você é PRO"
+                depende do perfil. Vira pública no dia em que a assinatura for
+                argumento de divulgação — hoje ela nem cobra. */}
+            <Route path="/planos" element={<Planos />} />
             {/* Depois de "/perfil" e com prefixo próprio: um "/:username" solto
                 na raiz engoliria toda rota nova que viesse depois dele. */}
             <Route path="/u/:username" element={<PerfilPublicoTela />} />

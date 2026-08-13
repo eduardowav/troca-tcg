@@ -11,7 +11,7 @@ import { useAcabamentosDaCarta } from '@/hooks/useAcabamentos'
 import { useAdicionarAnuncio } from '@/hooks/useAnuncios'
 import { NORMAL } from '@/lib/acabamentos'
 import { CONDICOES, type Condicao, PRIORIDADES } from '@/lib/anuncios'
-import { ApiError } from '@/lib/api'
+import { useAvisoDeErro } from '@/hooks/usePlanos'
 import { type Carta, type ListingKind, nomeCarta } from '@/lib/types'
 
 /**
@@ -43,6 +43,7 @@ export function FolhaAdicionar({
   onFechar: () => void
 }) {
   const adicionar = useAdicionarAnuncio()
+  const avisar = useAvisoDeErro()
   const [quantidade, setQuantidade] = useState(1)
   const [condicao, setCondicao] = useState<Condicao>('NM')
   const [acabamento, setAcabamento] = useState(NORMAL)
@@ -98,12 +99,8 @@ export function FolhaAdicionar({
           toast.success(`${nomeCarta(carta)} entrou em ${lista}.`)
           onFechar()
         },
-        onError: (erro) =>
-          toast.error(
-            erro instanceof ApiError
-              ? erro.message
-              : 'Não foi possível adicionar agora.',
-          ),
+        // O teto de ofertas bate aqui: é a tela de cadastrar uma carta.
+        onError: (erro) => avisar(erro, 'Não foi possível adicionar agora.'),
       },
     )
   }

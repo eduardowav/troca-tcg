@@ -5,8 +5,8 @@ import {
   useDesligarAlerta,
   useLigarAlerta,
 } from '@/hooks/useAlertas'
-import { ApiError } from '@/lib/api'
 import { cn } from '@/lib/cn'
+import { useAvisoDeErro } from '@/hooks/usePlanos'
 
 /**
  * "Avise quando aparecer" — o alerta de carta (Fase B da seção 16).
@@ -37,6 +37,7 @@ export function AvisarQuandoAparecer({
   const ligado = useAlertaDaCarta(cardId)
   const ligar = useLigarAlerta()
   const desligar = useDesligarAlerta()
+  const avisar = useAvisoDeErro()
 
   if (ligado === undefined) return null
 
@@ -56,12 +57,9 @@ export function AvisarQuandoAparecer({
                 ? 'Você não será mais avisado desta carta.'
                 : 'Pronto. Avisamos assim que alguém anunciar esta carta.',
             ),
-          onError: (erro) =>
-            toast.error(
-              erro instanceof ApiError
-                ? erro.message
-                : 'Não foi possível mudar o aviso agora.',
-            ),
+          // Ligar o alerta é do PRO (`RECURSO_DO_PRO`); desligar nunca é
+          // barrado — quem já tem alerta pode sempre sair dele.
+          onError: (erro) => avisar(erro, 'Não foi possível mudar o aviso agora.'),
         })
       }}
       className={cn(
