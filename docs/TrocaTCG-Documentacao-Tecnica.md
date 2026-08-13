@@ -2291,16 +2291,37 @@ hoje, na ordem em que faz sentido atacar.
 7. **Medir de onde vem a troca.** O evento do aceite guarda o id da proposta;
    falta a consulta que responde se a vitrine fecha mais troca que o motor — a
    pergunta que decide se ela fica.
-8. **"Esqueci minha senha".** Não existe hoje: quem perde a senha perde a conta,
-   e não há tela, endpoint nem e-mail para isso. É `resetPasswordForEmail` do
-   Supabase, uma tela de pedido, uma de nova senha (a que o link abre, com a
-   sessão de recuperação) e a rota de retorno registrada nas Redirect URLs do
-   projeto. **Não depende de a confirmação de e-mail voltar**: o próprio clique
-   no link prova o domínio da caixa naquele momento, que é o que a recuperação
-   precisa. O que se perde sem confirmação prévia é o caso do e-mail digitado
-   errado — essa conta fica sem caminho de volta, e a saída é humana, não
-   automática. Vem antes de o app ir para os usuários de teste: até lá, senha
-   perdida é conta perdida.
+8. ✅ **"Esqueci minha senha"** — feito em 2026-08-12. Era o único defeito do app
+   sem contorno nenhum do lado de quem usa: senha perdida era conta perdida.
+
+   Duas telas públicas. `/recuperar` pede o e-mail e dispara o
+   `resetPasswordForEmail` com `redirectTo` montado a partir da **origem atual**
+   — não fixo no build, porque o mesmo app roda em `localhost`, no IP da rede
+   local durante os testes e no domínio de produção, e um endereço fixo mandaria
+   quem pediu do celular cair no computador de quem programou. `/nova-senha` é o
+   destino do link.
+
+   **A tela de sucesso não confirma que a conta existe** ("se houver uma conta
+   com esse e-mail…"), e e-mail desconhecido é tratado como sucesso: a mensagem
+   honesta transformaria a tela num verificador de quem tem conta no TrocaTCG.
+
+   **A `/nova-senha` confere a sessão antes de mostrar o formulário.** Link
+   vencido, já usado ou aberto noutro navegador chega sem sessão; pedir a senha
+   para só então dizer "esse link não vale" cobraria o trabalho antes de
+   conferir se ele serve. É também a única tela do app com senha repetida — um
+   erro de digitação ali tranca a pessoa de novo, e desta vez com o link gasto.
+
+   Não depende de a confirmação de e-mail voltar: o clique no link prova o
+   domínio da caixa naquele momento. O que fica descoberto é o e-mail digitado
+   errado no cadastro, que continua sem caminho automático de volta.
+
+   **Depende de configuração no painel**, e é o que falta para funcionar em
+   produção: as URLs de retorno (`/nova-senha` em cada origem) precisam estar nas
+   **Redirect URLs** do projeto, senão o Supabase ignora o parâmetro e usa a Site
+   URL. E o remetente padrão libera poucos e-mails por hora — o mesmo teto que
+   estourou nos testes de cadastro —, o que torna **SMTP próprio um pré-requisito
+   de verdade** para abrir aos usuários de teste, já que agora existe um segundo
+   e-mail transacional disputando a mesma cota.
 9. **Confirmação de número por WhatsApp** — o **backend ficou pronto e desligado
    em 2026-08-12**; falta o que não é código. Estão no lugar: a migração `26`
    (coluna `contato_verificado_em` em `profiles` e a tabela

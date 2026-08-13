@@ -196,6 +196,19 @@ export default function Entrar() {
             erro={erros.senha}
           />
 
+          {/* Só em "entrar", e alinhado à direita, embaixo do campo de senha:
+              é a saída de quem acabou de errar a senha, e ela não pode estar
+              competindo com o botão de entrar. Em "criar" não existe senha a
+              esquecer ainda. */}
+          {modo === 'entrar' && (
+            <Link
+              to="/recuperar"
+              className="-mt-1 self-end font-corpo text-[13px] font-medium text-azul underline underline-offset-2"
+            >
+              Esqueci minha senha
+            </Link>
+          )}
+
           {modo === 'criar' && <AceiteTermos erro={erros.aceite} />}
 
           {erros.form && (

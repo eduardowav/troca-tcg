@@ -18,6 +18,8 @@ import MatchDetalhe from '@/routes/Match'
 import Matches from '@/routes/Matches'
 import MinhasCartas from '@/routes/MinhasCartas'
 import Notificacoes from '@/routes/Notificacoes'
+import NovaSenha from '@/routes/NovaSenha'
+import Recuperar from '@/routes/Recuperar'
 import Onboarding from '@/routes/Onboarding'
 import Acervo from '@/routes/Acervo'
 import PerfilTela from '@/routes/Perfil'
@@ -35,6 +37,12 @@ export default function App() {
       <Route path="/" element={<Home />} />
       <Route path="/entrar" element={<Entrar />} />
       <Route path="/termos" element={<Termos />} />
+      {/* Recuperação de senha. As duas são públicas por definição: quem chega
+          aqui não consegue entrar. `/nova-senha` é o destino do link do e-mail,
+          e ela mesma confere se a sessão de recuperação existe — sem isso, um
+          link vencido cairia numa tela pedindo senha que nunca ia salvar. */}
+      <Route path="/recuperar" element={<Recuperar />} />
+      <Route path="/nova-senha" element={<NovaSenha />} />
       {/* Pública, e fora do `LayoutApp`: é o link para colar no grupo, e quem
           chega por ele ainda não tem conta. Quem já instalou e cai aqui de
           dentro do app vê a tela de confirmação, não o passo a passo. */}
