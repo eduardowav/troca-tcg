@@ -7,6 +7,7 @@ import { paraLote } from '@/components/proposta/lote'
 import { useCartasPorId } from '@/hooks/useAnuncios'
 import { usePropostas } from '@/hooks/usePropostas'
 import { estiloBotao } from '@/components/ui/Button'
+import { Falha, motivoDoErro } from '@/components/Falha'
 import { cn } from '@/lib/cn'
 import {
   type Caixa,
@@ -52,7 +53,8 @@ export default function Propostas() {
   const [params, setParams] = useSearchParams()
   const caixa = caixaDaUrl(params.get('caixa'))
 
-  const { data: propostas, isPending, isError, refetch } = usePropostas(caixa)
+  const { data: propostas, isPending, isError, error, refetch } =
+    usePropostas(caixa)
 
   const ids = useMemo(
     () =>
@@ -116,14 +118,7 @@ export default function Propostas() {
             Carregando…
           </p>
         ) : isError ? (
-          <div className="flex flex-col items-center py-14 text-center">
-            <p className="font-titulo text-[17px] font-bold text-tinta">
-              Não deu para carregar as propostas.
-            </p>
-            <button onClick={() => refetch()} className="mt-5">
-              <BotaoBrutal>Tentar de novo</BotaoBrutal>
-            </button>
-          </div>
+          <Falha motivo={motivoDoErro(error)} onTentar={() => refetch()} compacta />
         ) : !propostas?.length ? (
           <Vazio caixa={caixa} />
         ) : (

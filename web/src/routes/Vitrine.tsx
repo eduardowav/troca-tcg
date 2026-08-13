@@ -6,6 +6,7 @@ import { BotaoBrutal, Cartela } from '@/components/brutal/Pecas'
 import { FiltroCatalogo } from '@/components/carta/FiltroCatalogo'
 import { AbasDaVitrine } from '@/components/proposta/AbasDaVitrine'
 import { IconeBusca } from '@/components/ui/Icone'
+import { Falha, motivoDoErro } from '@/components/Falha'
 import { useCartasPorId } from '@/hooks/useAnuncios'
 import { useDebounced } from '@/hooks/useDebounced'
 import { useVitrine } from '@/hooks/useVitrine'
@@ -65,7 +66,7 @@ export default function Vitrine() {
     }),
     [busca, catalogo, ordem, soProcuro],
   )
-  const { data, isPending, isError, refetch, fetchNextPage, hasNextPage, isFetchingNextPage } =
+  const { data, isPending, isError, error, refetch, fetchNextPage, hasNextPage, isFetchingNextPage } =
     useVitrine(filtros)
 
   const cartasDaVitrine = useMemo(
@@ -202,14 +203,7 @@ export default function Vitrine() {
             Carregando a vitrine…
           </p>
         ) : isError ? (
-          <div className="flex flex-col items-center py-14 text-center">
-            <p className="font-titulo text-[17px] font-bold text-tinta">
-              Não deu para carregar a vitrine.
-            </p>
-            <button onClick={() => refetch()} className="mt-5">
-              <BotaoBrutal>Tentar de novo</BotaoBrutal>
-            </button>
-          </div>
+          <Falha motivo={motivoDoErro(error)} onTentar={() => refetch()} compacta />
         ) : !cartasDaVitrine.length ? (
           <Vazio
             buscando={Boolean(busca)}

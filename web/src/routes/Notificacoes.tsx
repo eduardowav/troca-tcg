@@ -1,7 +1,6 @@
 import { Link } from 'react-router-dom'
 
 import {
-  BotaoBrutal,
   Cartela,
   IconeCartasBrutal,
   IconeSino,
@@ -12,6 +11,7 @@ import {
 } from '@/components/brutal/Pecas'
 import { useMarcarLidas, useNotificacoes } from '@/hooks/useNotificacoes'
 import { cn } from '@/lib/cn'
+import { Falha, motivoDoErro } from '@/components/Falha'
 import {
   iconeDe,
   type Notificacao,
@@ -39,7 +39,8 @@ import {
  * está no topo para quem quiser zerar de uma vez.
  */
 export default function Notificacoes() {
-  const { data: notificacoes, isPending, isError, refetch } = useNotificacoes()
+  const { data: notificacoes, isPending, isError, error, refetch } =
+    useNotificacoes()
   const marcar = useMarcarLidas()
 
   const naoLidas = (notificacoes ?? []).filter((n) => !n.lida).length
@@ -75,14 +76,7 @@ export default function Notificacoes() {
             Carregando…
           </p>
         ) : isError ? (
-          <div className="flex flex-col items-center py-14 text-center">
-            <p className="font-titulo text-[17px] font-bold text-tinta">
-              Não deu para carregar seus avisos.
-            </p>
-            <button onClick={() => refetch()} className="mt-5">
-              <BotaoBrutal>Tentar de novo</BotaoBrutal>
-            </button>
-          </div>
+          <Falha motivo={motivoDoErro(error)} onTentar={() => refetch()} compacta />
         ) : !notificacoes?.length ? (
           <Vazio />
         ) : (

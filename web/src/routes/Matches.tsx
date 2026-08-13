@@ -11,6 +11,7 @@ import {
   Selo,
 } from '@/components/brutal/Pecas'
 import { IconeTroca } from '@/components/ui/Icone'
+import { Falha, motivoDoErro } from '@/components/Falha'
 import { useAnuncios, useCartasPorId, useProcuradas } from '@/hooks/useAnuncios'
 import { useMatches } from '@/hooks/useMatches'
 import { useVitrine } from '@/hooks/useVitrine'
@@ -44,7 +45,7 @@ import { useUsuarioId } from '@/stores/auth'
 export default function Matches() {
 
   const meuId = useUsuarioId()
-  const { data: matches, isPending, isError, refetch } = useMatches()
+  const { data: matches, isPending, isError, error, refetch } = useMatches()
 
   const ids = useMemo(
     () => (matches ?? []).flatMap((m) => m.itens.map((i) => i.card_id)),
@@ -73,7 +74,7 @@ export default function Matches() {
         {isPending ? (
           <Esqueleto />
         ) : isError ? (
-          <Recuperavel onTentar={() => refetch()} />
+          <Falha motivo={motivoDoErro(error)} onTentar={() => refetch()} compacta />
         ) : !matches?.length ? (
           <Vazio />
         ) : (
@@ -477,15 +478,3 @@ function QuemQuer({ procurada }: { procurada: CartaProcurada }) {
   )
 }
 
-function Recuperavel({ onTentar }: { onTentar: () => void }) {
-  return (
-    <div className="flex flex-col items-center py-14 text-center">
-      <p className="font-titulo text-[17px] font-bold text-tinta">
-        Não deu para carregar as trocas.
-      </p>
-      <button onClick={onTentar} className="group mt-5">
-        <BotaoBrutal>Tentar de novo</BotaoBrutal>
-      </button>
-    </div>
-  )
-}

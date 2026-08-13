@@ -5,6 +5,7 @@ import { BrowserRouter } from 'react-router-dom'
 import { Toaster } from 'sonner'
 
 import App from '@/App'
+import { LimiteDeErro } from '@/components/Falha'
 import { queryClient } from '@/lib/queryClient'
 import '@/stores/auth' // assina o estado de sessão do Supabase o quanto antes
 // O convite de instalação do Chrome chega logo depois da abertura da página, e
@@ -20,8 +21,12 @@ import './index.css'
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
+      {/* Dentro do BrowserRouter, e não fora: a tela de falha tem um link de
+          saída, e link sem roteador estoura outro erro em cima do primeiro. */}
       <BrowserRouter>
-        <App />
+        <LimiteDeErro>
+          <App />
+        </LimiteDeErro>
       </BrowserRouter>
       {/* O aviso segue os tokens do mundo novo, e por isso acompanha o tema
           sozinho. Antes ele era fixo em `dark` com as cores do playmat: uma

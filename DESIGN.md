@@ -98,7 +98,16 @@ chat, tema escuro, idioma, cache, notificação — a tela ou diz que não exist
 
 Todas. Feed, minhas cartas, carta, detalhe da troca, busca, perfil, perfil público,
 editar perfil, configurações, onboarding, entrar, completar cadastro, pronto, termos,
-home, instalar, e as duas de "em desenvolvimento".
+home, instalar, recuperar senha, nova senha, falha, e as duas de "em desenvolvimento".
+
+**A falha** (`components/Falha.tsx`) é a superfície que faltava: até 2026-08-12 cada
+tela improvisava um `<p>` cinza dizendo "não deu para carregar", e o `RotaProtegida`
+ainda usava tokens do playmat. São três motivos com desenho próprio — sem internet,
+servidor fora do ar, app quebrado —, porque a diferença entre eles é a única coisa que
+a pessoa quer saber: uma ela resolve no wi-fi, outra ela espera, a terceira ela
+recarrega. Vermelho só no terceiro: neste mundo o vermelho é o que não tem volta, e
+ficar sem sinal tem volta. Duas alturas: a de tela cheia e a `compacta`, que ocupa o vão
+de uma lista sem empurrar o cabeçalho para fora da vista.
 
 `/instalar` é a única tela que desenha glifos de outros sistemas — o Compartilhar do
 iOS, os três pontos do Chrome. Eles não vêm do Figma e não moram em `Pecas.tsx`: são
@@ -108,6 +117,18 @@ na tela do celular de quem está seguindo o passo a passo.
 A moldura do app — logo, sino e barra de baixo — vive no `LayoutApp`. Telas que têm
 cabeçalho próprio escondem o logo pelo `useMarcaOculta`: carta, troca, perfil, editar e
 configurações.
+
+## Achado em aberto: azul de link no escuro
+
+`text-azul` (`#0038FF`) sobre o papel escuro dá **2,82:1** — reprova o piso AA deste
+documento para texto. Em peça com borda de 2px o mesmo azul funciona, porque ali quem
+separa do fundo é a borda; em **link solto**, não. Foi pego na varredura da tela de
+falha (2026-08-12), onde a saída lateral virou etiqueta com borda em vez de link azul.
+
+Os outros links azuis do app — rodapé da home, "Termos e privacidade", `@nome` na
+vitrine — têm o mesmo número no escuro e continuam como estão: a correção é uma passada
+própria, e a escolha entre clarear o azul de link (`#6082FF`, que é o da aba ativa) ou
+transformar todos em etiqueta é decisão do Eduardo, não mecânica.
 
 ## O que ficou para depois
 

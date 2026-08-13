@@ -1,5 +1,6 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 
+import { Falha, motivoDoErro } from '@/components/Falha'
 import { usePerfil } from '@/hooks/usePerfil'
 import { useAuth } from '@/stores/auth'
 
@@ -28,7 +29,15 @@ export function ExigePerfil() {
   const { data: perfil, isPending, error, refetch } = usePerfil()
 
   if (isPending) return <Carregando />
-  if (error) return <FalhaAoCarregar aoTentar={() => void refetch()} />
+  // A primeira coisa que o app faz depois de entrar é carregar o perfil, então
+  // este é o lugar onde uma queda de servidor aparece antes de qualquer outro —
+  // e onde ela precisa dizer de quem é a culpa. `motivoDoErro` separa aparelho
+  // sem rede de servidor fora do ar; a tela dá a resposta certa para cada um.
+  if (error) {
+    return (
+      <Falha motivo={motivoDoErro(error)} onTentar={() => void refetch()} />
+    )
+  }
   if (!perfil) return <Navigate to="/completar-cadastro" replace />
   return <Outlet />
 }
@@ -45,19 +54,3 @@ function Carregando() {
   )
 }
 
-function FalhaAoCarregar({ aoTentar }: { aoTentar: () => void }) {
-  return (
-    <div className="mx-auto flex min-h-[100dvh] max-w-sm flex-col justify-center px-5 text-center">
-      <h1 className="text-[22px] leading-tight">Não conseguimos te carregar.</h1>
-      <p className="mt-2 text-[15px] leading-relaxed text-muted">
-        Pode ser a conexão ou o servidor fora do ar por um instante.
-      </p>
-      <button
-        onClick={aoTentar}
-        className="mx-auto mt-6 h-11 rounded-[var(--radius-control)] border border-edge bg-surface-2 px-5 text-[15px] font-medium text-paper hover:border-faint"
-      >
-        Tentar de novo
-      </button>
-    </div>
-  )
-}

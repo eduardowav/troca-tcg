@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 
 import { CelulaBrutal, GradeBrutal } from '@/components/brutal/Cartas'
-import { BotaoBrutal } from '@/components/brutal/Pecas'
 import { BuscaRapida } from '@/components/carta/BuscaRapida'
 import {
   Escolha,
@@ -11,6 +10,7 @@ import {
   Quantidade,
 } from '@/components/carta/ControlesAnuncio'
 import { Button } from '@/components/ui/Button'
+import { Falha, motivoDoErro } from '@/components/Falha'
 import { IconeBusca, IconeCartas } from '@/components/ui/Icone'
 import { type Acabamento, NORMAL, precoDoAcabamento } from '@/lib/acabamentos'
 import {
@@ -47,7 +47,7 @@ export default function MinhasCartas() {
   // acontecer, e a que costuma estar mais vazia (média 4, contra 7 de Procuro).
   const [aba, setAba] = useState<ListingKind>('OFERTA')
 
-  const { data: anuncios, isPending, isError, refetch } = useAnuncios()
+  const { data: anuncios, isPending, isError, error, refetch } = useAnuncios()
   // A remoção mora aqui, e não na célula, por um motivo que só aparece testando:
   // ela é otimista, então a célula desmonta assim que o cache é atualizado — e o
   // React Query não chama os callbacks passados no `mutate()` de um componente
@@ -143,7 +143,7 @@ export default function MinhasCartas() {
       <div className="mt-5 w-full flex-1 pb-6">
         {isError ? (
           <div className="max-w-xl">
-            <Recuperavel onTentar={() => refetch()} />
+            <Falha motivo={motivoDoErro(error)} onTentar={() => refetch()} compacta />
           </div>
         ) : (
           <div className="grid gap-x-8 gap-y-10 lg:grid-cols-2 lg:gap-x-0">
@@ -690,18 +690,3 @@ function Vazio({ tipo }: { tipo: ListingKind }) {
   )
 }
 
-function Recuperavel({ onTentar }: { onTentar: () => void }) {
-  return (
-    <div className="flex flex-col items-center py-14 text-center">
-      <p className="font-titulo text-[17px] font-bold text-tinta">
-        Não deu para carregar suas cartas.
-      </p>
-      <p className="mt-2 font-corpo text-[14px] text-apagado">
-        Pode ser a conexão. Tente de novo.
-      </p>
-      <button onClick={onTentar} className="mt-5">
-        <BotaoBrutal>Tentar de novo</BotaoBrutal>
-      </button>
-    </div>
-  )
-}
