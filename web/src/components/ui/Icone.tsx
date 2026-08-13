@@ -29,6 +29,30 @@ function Base({
   )
 }
 
+/** Olho — mostrar a senha que está sendo digitada. */
+export function IconeOlho(props: IconeProps) {
+  return (
+    <Base {...props}>
+      <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z" />
+      <circle cx="12" cy="12" r="3" />
+    </Base>
+  )
+}
+
+/** Olho cortado — esconder de volta. A barra é o que se lê como "não". */
+export function IconeOlhoFechado(props: IconeProps) {
+  return (
+    <Base {...props}>
+      <path d="M3 3.5 21 20.5" />
+      {/* Metades do olho, interrompidas onde a barra passa: um olho inteiro com
+          risco por cima vira rabisco no tamanho em que este ícone é lido. */}
+      <path d="M9.9 6c.7-.2 1.4-.3 2.1-.3 6 0 9.5 6.3 9.5 6.3s-1 1.9-2.9 3.5" />
+      <path d="M6.2 8.2C3.8 9.9 2.5 12 2.5 12S6 18.3 12 18.3c1.3 0 2.4-.3 3.4-.7" />
+      <path d="M10 10a3 3 0 0 0 4 4" />
+    </Base>
+  )
+}
+
 /** Duas cartas sobrepostas — a lista Ofereço. */
 export function IconeCartas(props: IconeProps) {
   return (
