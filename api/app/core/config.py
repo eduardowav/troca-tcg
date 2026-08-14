@@ -77,8 +77,11 @@ class Settings(BaseSettings):
     JOB_SECRET: str = "dev-job-secret"
     CORS_ORIGINS: str = "http://localhost:5173"
 
-    # Termos
-    TERMOS_VERSAO: str = "2026-07-01"
+    # Termos. **Precisa bater com a `VERSAO` de `web/src/routes/Termos.tsx`** —
+    # é este valor que vai para `term_acceptances`, e um default defasado grava
+    # o aceite de uma versão que ninguém leu. Subiu em 2026-08-14 com a cláusula
+    # da assinatura (item 9 da seção 16).
+    TERMOS_VERSAO: str = "2026-08-14"
 
     # Ambiente
     ENVIRONMENT: str = Field(default="development")

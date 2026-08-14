@@ -8,7 +8,7 @@ import { Link } from 'react-router-dom'
  * conteúdo — não de vírgula — suba a data: quem aceitou a versão anterior não
  * aceitou esta, e o registro de aceite existe justamente para provar o quê.
  */
-const VERSAO = '2026-07-28'
+const VERSAO = '2026-08-14'
 
 /**
  * Canal do controlador para pedidos de LGPD. Caixa pessoal por enquanto: o
@@ -90,14 +90,40 @@ export default function Termos() {
           com antecedência para você salvar suas listas.
         </Secao>
 
-        <Secao titulo="8. Mudanças">
+        <Secao titulo="8. Assinatura do PRO">
+          O PRO é opcional. O TrocaTCG funciona de graça, e o que a assinatura
+          compra é limite maior — nunca acesso a quem trocar com você.
+          <Lista
+            itens={[
+              'A cobrança é feita pelo Mercado Pago. Seus dados de pagamento ficam com eles; o TrocaTCG não vê nem guarda número de cartão.',
+              'A assinatura se renova sozinha ao fim de cada ciclo, mensal ou anual, até você cancelar.',
+              'Você cancela quando quiser, pelo próprio app, sem multa. O PRO continua valendo até o fim do período já pago.',
+              'Nos primeiros 7 dias você pode desistir e receber o valor de volta, por inteiro (art. 49 do Código de Defesa do Consumidor).',
+              'Se o preço mudar, avisamos antes, e o valor novo só vale a partir do ciclo seguinte.',
+            ]}
+          />
+          Se o pagamento falhar, você tem 7 dias com os limites do PRO para
+          resolver. Passados eles, a conta volta ao plano FREE e{' '}
+          <strong className="text-paper">nada é apagado</strong>: as ofertas que
+          passam do limite saem do ar, continuam no seu acervo e você escolhe
+          quais reativar.
+        </Secao>
+
+        <Secao titulo="9. A assinatura não tem relação com as trocas">
+          O que você paga é o uso da plataforma, e o pagamento é entre você e o
+          TrocaTCG. As trocas continuam sendo entre as pessoas, do jeito que a
+          seção 3 descreve: assinar não garante troca, não dá prioridade sobre
+          ninguém e não nos coloca dentro da negociação.
+        </Secao>
+
+        <Secao titulo="10. Mudanças">
           Se estes termos mudarem de forma relevante, a versão sobe e pediremos
           seu aceite de novo antes de continuar usando.
         </Secao>
 
         <Titulo>Política de privacidade</Titulo>
 
-        <Secao titulo="9. Quem é o responsável">
+        <Secao titulo="11. Quem é o responsável">
           O TrocaTCG é o controlador dos seus dados. Para qualquer pedido sobre
           privacidade, fale com{' '}
           <a
@@ -109,7 +135,7 @@ export default function Termos() {
           .
         </Secao>
 
-        <Secao titulo="10. Que dados guardamos">
+        <Secao titulo="12. Que dados guardamos">
           <Lista
             itens={[
               'E-mail — para você entrar na conta.',
@@ -118,19 +144,20 @@ export default function Termos() {
               'Suas listas de Ofereço e Procuro, com condição e acabamento.',
               'Histórico de trocas e o resultado delas, que alimenta a reputação.',
               'Data e IP do aceite destes termos, como comprovação legal.',
+              'Se você assinar o PRO: o identificador da assinatura no Mercado Pago, a situação dela e a data da próxima cobrança. Nada de cartão, conta ou CPF.',
             ]}
           />
           Não pedimos CPF, endereço, bairro nem localização, e não usamos
           rastreadores de publicidade.
         </Secao>
 
-        <Secao titulo="11. Por que podemos tratar esses dados">
+        <Secao titulo="13. Por que podemos tratar esses dados">
           Para executar o serviço que você contratou ao criar a conta (art. 7º,
           V da LGPD) e, no caso do registro de aceite, para cumprir obrigação
           legal e exercer direitos (art. 7º, II e VI).
         </Secao>
 
-        <Secao titulo="12. Quem vê o quê">
+        <Secao titulo="14. Quem vê o quê">
           Seu nome, @ e reputação são públicos, assim como suas listas — é o que
           torna a troca possível. <strong className="text-paper">
             Seu telefone não é público
@@ -139,19 +166,22 @@ export default function Termos() {
           troca. Não vendemos nem cedemos seus dados a terceiros.
         </Secao>
 
-        <Secao titulo="13. Onde os dados ficam">
-          Em servidores da Supabase, na região de São Paulo (Brasil). O envio de
+        <Secao titulo="15. Onde os dados ficam">
+          Em servidores da Supabase, na região de São Paulo (Brasil). Quem
+          processa o pagamento da assinatura é o Mercado Pago, sob a política de
+          privacidade deles — o que sai daqui para lá é o seu e-mail, e o que
+          volta é a situação da assinatura. O envio de
           e-mails de confirmação usa serviço de terceiro apenas para esse fim.
         </Secao>
 
-        <Secao titulo="14. Por quanto tempo">
+        <Secao titulo="16. Por quanto tempo">
           Enquanto sua conta existir. Ao apagar a conta, tudo que é seu vai
           junto: perfil, listas, trocas em aberto, inscrições de notificação e o
           registro do seu aceite. Quem já trocou com você mantém a contagem de
           trocas concluídas dele, que não guarda nenhum dado seu.
         </Secao>
 
-        <Secao titulo="15. Seus direitos">
+        <Secao titulo="17. Seus direitos">
           A LGPD te dá direito a confirmar o tratamento, acessar, corrigir,
           anonimizar, portar e apagar seus dados, além de revogar o
           consentimento. Nome, @ e telefone você edita direto no app. Para os
@@ -165,7 +195,7 @@ export default function Termos() {
           — respondemos em até 15 dias.
         </Secao>
 
-        <Secao titulo="16. Como apagar sua conta">
+        <Secao titulo="18. Como apagar sua conta">
           No próprio app, em Perfil → “Apagar minha conta”. A remoção é imediata
           e não pode ser desfeita — não precisa pedir para ninguém nem esperar.
         </Secao>

@@ -25,6 +25,8 @@ export type TipoNotificacao =
   | 'MATCH_CANCELADO'
   | 'MATCH_EXPIRADO'
   | 'CARTA_PROCURADA'
+  | 'CARTA_DISPONIVEL'
+  | 'PLANO_EXPIROU'
 
 export interface Notificacao {
   id: string
@@ -66,12 +68,15 @@ export function marcarLidas(ids?: string[]) {
  * O ícone de cada tipo, do mesmo conjunto que o resto do app usa.
  *
  * Agrupado por família e não por tipo: proposta é conversa, match é troca,
- * carta procurada é descoberta. Quem lê a caixa não precisa distinguir treze
- * ícones — precisa saber, de relance, de que assunto cada linha trata.
+ * carta é o acervo. Quem lê a caixa não precisa distinguir quinze ícones —
+ * precisa saber, de relance, de que assunto cada linha trata.
+ *
+ * `PLANO_EXPIROU` entra em 'carta' e não numa família própria: o que mudou para
+ * quem lê são as ofertas que saíram do ar, não uma abstração chamada plano.
  */
 export function iconeDe(tipo: TipoNotificacao): 'proposta' | 'troca' | 'carta' {
   if (tipo.startsWith('PROPOSTA_')) return 'proposta'
-  if (tipo === 'CARTA_PROCURADA') return 'carta'
+  if (tipo.startsWith('CARTA_') || tipo === 'PLANO_EXPIROU') return 'carta'
   return 'troca'
 }
 

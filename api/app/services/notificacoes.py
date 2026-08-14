@@ -46,6 +46,7 @@ TIPO_MATCH_CANCELADO = "MATCH_CANCELADO"
 TIPO_MATCH_EXPIRADO = "MATCH_EXPIRADO"
 TIPO_CARTA_PROCURADA = "CARTA_PROCURADA"
 TIPO_CARTA_DISPONIVEL = "CARTA_DISPONIVEL"
+TIPO_PLANO_EXPIROU = "PLANO_EXPIROU"
 
 #: Quais destes vibram o celular. É a coluna "Push" da matriz da seção 12: o que
 #: espera resposta de alguém, mais a carta procurada, que é a única varredura e
@@ -65,6 +66,12 @@ TIPOS_COM_PUSH = frozenset(
         # ela ligou com o próprio dedo, e o que ela espera é justamente o
         # celular vibrando — carta boa some no mesmo dia.
         TIPO_CARTA_DISPONIVEL,
+        # A queda de plano. Não espera resposta de ninguém, o que a colocaria
+        # fora desta lista, mas é o único aviso do app que descreve algo que já
+        # mudou na vitrine da pessoa sem ela ter feito nada — e o que ela precisa
+        # fazer a respeito tem prazo. Descobrir dias depois, ao abrir o app por
+        # outro motivo, é descobrir tarde.
+        TIPO_PLANO_EXPIROU,
     }
 )
 
@@ -608,4 +615,42 @@ async def carta_disponivel(
         corpo=f"{corpo} Abra para ver quem tem.",
         link=f"/vitrine/carta/{card_id}",
         dedupe_horas=24,
+    )
+
+
+async def plano_expirou(
+    session: AsyncSession,
+    *,
+    para: UUID | str,
+    desativados: int,
+    teto: int,
+) -> bool:
+    """A carência acabou: o plano caiu para FREE e as ofertas excedentes saíram.
+
+    **Diz o número.** "Seu plano mudou" é a versão do aviso que não deixa a
+    pessoa fazer nada — ela abriria o acervo para descobrir o tamanho do estrago.
+    Dizer quantas ofertas saíram e quantas ficaram é o que transforma a
+    notificação em decisão: reativar as que importam, ou assinar de novo.
+
+    **Nada foi apagado**, e o texto precisa dizer isso na primeira linha. Quem lê
+    "180 ofertas desativadas" sem essa palavra entende que perdeu o cadastro de
+    180 cartas, e é o susto que faz alguém abandonar o app antes de olhar.
+
+    O link vai para o acervo, que é onde se reativa — não para a tela de planos.
+    Mandar quem acabou de perder o plano direto para a página de preço é cobrar
+    antes de consertar; o caminho para assinar de novo está no acervo, junto do
+    aviso de teto, e é lá que a pessoa decide qual dos dois caminhos quer.
+    """
+    return await _notificar(
+        session,
+        para=para,
+        tipo=TIPO_PLANO_EXPIROU,
+        titulo="Seu PRO terminou",
+        corpo=(
+            f"Nada foi apagado. {desativados} "
+            f"{'ofertas saíram' if desativados > 1 else 'oferta saiu'} do ar "
+            f"para caber no limite de {teto} do plano FREE — "
+            "abra o acervo para escolher quais reativar."
+        ),
+        link="/minhas-cartas",
     )

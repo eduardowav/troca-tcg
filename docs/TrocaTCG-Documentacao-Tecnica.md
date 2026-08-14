@@ -1558,13 +1558,14 @@ faz rollback e devolve 409, e não pode avisar ninguém de algo que não existe.
 **Enfileirar dentro do `_notificar` é o que faz as guardas valerem para os dois
 canais.** Quem não recebe linha na caixa — porque foi quem agiu, ou porque a
 dedupe de sete dias pegou — também não recebe vibração. Se cada evento
-disparasse o push por conta própria, essa simetria dependeria de treze lugares
+disparasse o push por conta própria, essa simetria dependeria de quinze lugares
 lembrarem dela.
 
-**Sete dos treze eventos vibram**, e é a coluna Push da matriz abaixo: o que
-espera resposta de alguém, mais a carta procurada. O resto — recusada, retirada,
-vencida, furada, cancelada — é registro do que aconteceu e fica na caixa. Um app
-que vibra treze vezes por dia perde a permissão que levou meses para conseguir.
+**Nove dos quinze eventos vibram**, e é a coluna Push da matriz abaixo: o que
+espera resposta de alguém, mais as duas cartas e a queda de plano. O resto —
+recusada, retirada, vencida, furada, cancelada — é registro do que aconteceu e
+fica na caixa. Um app que vibra quinze vezes por dia perde a permissão que levou
+meses para conseguir.
 
 **Inscrição morta é apagada na hora.** 404 e 410 do serviço de push querem dizer
 "esse navegador não existe mais" — desinstalou, limpou os dados, trocou de
@@ -1623,7 +1624,15 @@ ele que `TIPOS_COM_PUSH` consulta para decidir se o celular vibra.
 | Troca combinada venceu | `MATCH_EXPIRADO` | ✅ | — | — |
 | Procuram uma carta que você oferece | `CARTA_PROCURADA` | ✅ | ✅ | — |
 | Apareceu a carta que você pediu para vigiar | `CARTA_DISPONIVEL` | ✅ | ✅ | — |
+| A carência acabou e as ofertas excedentes saíram do ar | `PLANO_EXPIROU` | ✅ | ✅ | — |
 | Boas-vindas / senha | — | — | — | ✅ |
+
+O `PLANO_EXPIROU` entrou em 2026-08-14 com o item 10 da seção 16, e é a única
+linha da coluna Push que não espera resposta de ninguém. A regra que a colocou
+lá não é "quem espera resposta vibra", é o que essa regra protegia: o aviso
+descreve algo que **já mudou** na vitrine da pessoa sem ela ter feito nada, e o
+que ela precisa fazer a respeito tem prazo. Descobrir dias depois, ao abrir o app
+por outro motivo, é descobrir tarde.
 
 Quatro eventos **não** notificam, e cada ausência é uma decisão:
 
@@ -2254,14 +2263,65 @@ limite, o que lê como pedágio. **A cobrança não liga antes desta fase termin
 
    **A linha do match triangular é a única marcada "em breve"** na comparação.
    Ver a decisão de 2026-08-13 na fila.
-9. **Termos**: falta a cláusula da assinatura, com renovação automática,
-   cancelamento a qualquer tempo e o direito de arrependimento de 7 dias do CDC.
-   Mexer nos termos exige nova `VERSAO` e novo aceite (seção 4).
-10. **Queda de plano.** Nada é apagado, nunca. São 7 dias de carência com os
-    limites do PRO — tempo de resolver o pagamento; depois disso os excedentes
-    são **desativados** (`ativo = false`), do mais recente para o mais antigo,
-    e a pessoa escolhe quais 20 reativar. Congelar tudo ativo faria o teto virar
-    decoração para todo ex-assinante.
+9. ✅ **Termos** — feito em 2026-08-14. Entraram duas seções: a **8**, com a
+   assinatura (renovação automática, cancelamento a qualquer tempo sem multa e
+   valendo até o fim do ciclo pago, arrependimento de 7 dias do art. 49 do CDC,
+   mudança de preço só no ciclo seguinte, e o que acontece quando o pagamento
+   falha), e a **9**, que separa o pagamento da troca — assinar não garante
+   troca, não dá prioridade e não coloca o TrocaTCG dentro da negociação. A
+   privacidade ganhou o dado da assinatura na lista do que se guarda e o Mercado
+   Pago como operador de pagamento; a numeração da política andou duas casas.
+
+   A `VERSAO` subiu para `2026-08-14` nos três lugares que precisam concordar:
+   `Termos.tsx`, `render.yaml` e o default do `config.py` — que estava defasado
+   em `2026-07-01` e registraria em `term_acceptances` o aceite de um texto que
+   nunca existiu.
+
+   **O novo aceite não entrou**, por decisão do Eduardo no mesmo dia: hoje o
+   aceite só acontece no cadastro, e construir o re-aceite (rota que diz se a
+   pessoa aceitou a versão vigente, tela bloqueante, contexto `REACEITE`) não se
+   paga enquanto a base é de testadores e nenhum cliente pagante aceitou nada.
+   Fica devendo à seção 8 do próprio texto, que promete pedir o aceite de novo —
+   e vira pré-requisito no dia em que houver alguém pagando.
+
+   **A conta apagada agora cancela a assinatura.** Não estava previsto aqui e
+   apareceu ao escrever a cláusula: o `on delete cascade` de `subscriptions`
+   apagava o lastro local sem falar com o Mercado Pago, e a pessoa seguiria sendo
+   cobrada por um app onde não tem mais conta — com o `preapproval_id`, única
+   chave para desfazer, apagado junto. `excluir_conta` cancela antes de apagar, e
+   falha do provedor não interrompe a exclusão: apagar a conta é direito da LGPD
+   e não pode depender de o Mercado Pago estar de pé. O que fica é o log com o
+   id, que é o que permite cancelar na mão.
+10. ✅ **Queda de plano** — feita em 2026-08-14, fechando a metade que faltava.
+    Nada é apagado, nunca. São 7 dias de carência com os limites do PRO — tempo
+    de resolver o pagamento; depois disso o job `encerrar_carencias` derruba para
+    FREE e **desativa** os excedentes (`ativo = false`), da oferta mais recente
+    para a mais antiga, e a pessoa escolhe quais 20 reativar. Congelar tudo ativo
+    faria o teto virar decoração para todo ex-assinante.
+
+    **As mais antigas é que ficam de pé**, e o `row_number` sobre `criado_em`
+    crescente é o que garante isso: são as que a pessoa carrega desde sempre, e
+    derrubar essas para manter as de ontem seria desfazer o acervo em vez de
+    aparar o excesso. O corte é por pessoa — um `offset` numa consulta que mistura
+    várias pularia as primeiras linhas da lista inteira.
+
+    **O teto passa por `plano_vigente`, não por `limites_de` direto.** Enquanto
+    `COBRANCA_ATIVA` for falso o vigente é PRO, o teto é `None` e nada é
+    desativado: ninguém está pagando, e derrubar oferta de quem nunca foi cobrado
+    seria punir pelo que o app ainda não vende. Mesmo portão de
+    `_checar_teto_de_ofertas`, pelo mesmo motivo — e um teste quebra de propósito
+    no dia da virada.
+
+    **A queda avisa.** Entrou o tipo `PLANO_EXPIROU`, o décimo quinto da caixa e
+    o nono com push. Ele não espera resposta de ninguém, o que normalmente o
+    deixaria fora do push, mas é o único aviso do app que descreve algo que já
+    mudou na vitrine da pessoa sem ela ter feito nada — e o que ela precisa fazer
+    a respeito tem prazo. O texto diz o número ("3 ofertas saíram do ar") porque
+    "seu plano mudou" obrigaria a abrir o acervo para descobrir o tamanho do
+    estrago, e abre com **"nada foi apagado"**, que é a palavra que evita a
+    leitura de que se perdeu o cadastro de 180 cartas. O link vai para o acervo,
+    onde se reativa, e não para a tela de preço: mandar quem acabou de perder o
+    plano direto para a página de assinatura é cobrar antes de consertar.
 
 **Decisão ainda em aberto:** se o lançamento é só Belém ou aberto. Ela muda o
 texto da vitrine e a expectativa de match de quem entra de fora.
@@ -2549,18 +2609,24 @@ pontas existir seria vender o que não se entrega. Por isso a linha aparece como
 **"em breve"** na comparação, e a virada de `COBRANCA_ATIVA` continua depois da
 triangulação — não antes.
 
-Falta da Fase C: a cláusula de assinatura nos termos (item 9, que exige nova
-`VERSAO` e novo aceite) e a queda de plano (item 10). O **item 7 saiu em
+**A Fase C está fechada em código desde 2026-08-14.** O **item 7 saiu em
 2026-08-13** — o backend do Mercado Pago inteiro, construído e desligado: rotas
 de assinatura, receptor de webhook com validação HMAC, carência de 7 dias e job
-diário de reconciliação. Em **2026-08-14** ele entrou em produção: migração
-aplicada, código no ar e webhook cadastrado e validando de verdade. O que falta
-ali não é código, é painel: credenciais de produção, os dois planos criados com
-elas e as três variáveis que sobraram no Render.
+diário de reconciliação. Em **2026-08-14** ele entrou em produção (migração
+aplicada, código no ar, webhook cadastrado e validando de verdade), e no mesmo
+dia entraram os itens 9 e 10: a cláusula da assinatura nos termos, com a `VERSAO`
+subida nos três lugares, e a segunda metade da queda de plano — a desativação dos
+excedentes, da oferta mais recente para a mais antiga, com aviso na caixa.
 
-Meia carência do item 10 já veio junto com o item 7 (o prazo de 7 dias e a queda
-para FREE quando ele vence). Falta a outra metade: desativar os excedentes do
-mais recente para o mais antigo.
+O que falta para **cobrar** não é código, é painel: ativar as credenciais de
+produção, criar os dois planos com elas e preencher as três variáveis que
+sobraram no Render. E a virada de `COBRANCA_ATIVA`, que continua atrás da
+triangulação.
+
+Duas dívidas conhecidas ficaram registradas em vez de escondidas: o **novo
+aceite** dos termos, que a seção 8 do próprio texto promete e que só se paga
+quando houver cliente pagante, e o **rate limit** (item 1 da segurança), que é
+pré-requisito de expor o receptor do webhook a sério.
 
 **Cadastro sem verificação** — decisão do Eduardo em 2026-08-12. A confirmação
 de e-mail sai (interruptor "Confirm email" do painel do Supabase, fora do

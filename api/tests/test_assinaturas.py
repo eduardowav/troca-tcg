@@ -23,6 +23,7 @@ from uuid import uuid4
 import pytest
 from fastapi.testclient import TestClient
 
+from app.core import limites
 from app.core.config import settings
 from app.core.errors import RegraNegocio
 from app.core.limites import COBRANCA_ATIVA
@@ -393,3 +394,120 @@ async def test_reconciliar_desligado_nao_toca_no_banco(monkeypatch):
     sessao = SessaoFalsa()
     assert await assinaturas.reconciliar(sessao) == {"desligado": 1}  # type: ignore[arg-type]
     assert sessao.sqls == []
+
+
+# ------------------------------------------------------------------ a queda
+
+
+async def test_carencia_vencida_derruba_e_apara(monkeypatch):
+    """O item 10 inteiro: cai para FREE e as ofertas que não cabem saem do ar.
+
+    A ordem importa e está no SQL: `criado_em` crescente com `posicao > teto`
+    deixa de pé as **mais antigas**. Derrubar essas para manter as de ontem seria
+    desfazer o acervo em vez de aparar o excesso.
+    """
+    monkeypatch.setattr(limites, "COBRANCA_ATIVA", True)
+    caido = str(uuid4())
+
+    sessao = SessaoFalsa(lista=[caido], linha={"user_id": caido, "quantas": 180})
+    resultado = await assinaturas.encerrar_carencias(sessao)  # type: ignore[arg-type]
+
+    assert resultado == {"caidos": 1, "ofertas_desativadas": 180}
+
+    apara = [s for s in sessao.sqls if "update listings" in s][0]
+    assert "ativo = false" in apara
+    assert "tipo = 'OFERTA'" in apara
+    assert "order by criado_em" in apara
+    assert "posicao > :teto" in apara
+    # Nada é apagado, nunca.
+    assert not any("delete from listings" in s for s in sessao.sqls)
+
+    teto = limites.PLANOS["FREE"].max_ofertas
+    assert [p for p in sessao.params if "teto" in p][0]["teto"] == teto
+
+
+async def test_a_queda_avisa_quem_perdeu_oferta(monkeypatch):
+    """Descobrir dias depois, ao abrir o app por outro motivo, é descobrir tarde.
+
+    O aviso diz o número e a palavra que evita o susto: nada foi apagado.
+    """
+    monkeypatch.setattr(limites, "COBRANCA_ATIVA", True)
+    caido = str(uuid4())
+
+    sessao = SessaoFalsa(lista=[caido], linha={"user_id": caido, "quantas": 3})
+    await assinaturas.encerrar_carencias(sessao)  # type: ignore[arg-type]
+
+    aviso = [p for p in sessao.params if p.get("tipo") == "PLANO_EXPIROU"]
+    assert len(aviso) == 1
+    assert "Nada foi apagado" in aviso[0]["corpo"]
+    assert "3 ofertas" in aviso[0]["corpo"]
+    # O link leva ao acervo, que é onde se reativa — não à tela de preço.
+    assert aviso[0]["link"] == "/minhas-cartas"
+
+
+async def test_cobranca_desligada_nao_desativa_oferta_nenhuma(monkeypatch):
+    """Mesmo portão de `_checar_teto_de_ofertas`, pelo mesmo motivo: ninguém está
+    pagando, e derrubar oferta de quem nunca foi cobrado seria punir pelo que o
+    app ainda não vende. Este teste quebra de propósito no dia da virada."""
+    monkeypatch.setattr(limites, "COBRANCA_ATIVA", False)
+
+    sessao = SessaoFalsa(lista=[str(uuid4())], linha={"user_id": "x", "quantas": 9})
+    resultado = await assinaturas.encerrar_carencias(sessao)  # type: ignore[arg-type]
+
+    assert resultado == {"caidos": 1, "ofertas_desativadas": 0}
+    assert not any("update listings" in s for s in sessao.sqls)
+
+
+async def test_apagar_conta_cancela_a_assinatura(monkeypatch):
+    """O cascade apaga o lastro local e não fala com o Mercado Pago. Sem esta
+    passada, quem apaga a conta segue sendo cobrado — e o `preapproval_id`, única
+    chave para desfazer, some junto."""
+    monkeypatch.setattr(settings, "MERCADO_PAGO_ACCESS_TOKEN", "APP_USR-qualquer")
+    cancelados = []
+
+    async def falso_cancelar(preapproval_id):
+        cancelados.append(preapproval_id)
+
+    monkeypatch.setattr(mercado_pago, "cancelar_assinatura", falso_cancelar)
+
+    sessao = SessaoFalsa(retornos=["preapproval-viva"])
+    assert await assinaturas.cancelar_ao_sair(sessao, uuid4()) is True  # type: ignore[arg-type]
+    assert cancelados == ["preapproval-viva"]
+
+
+async def test_provedor_fora_do_ar_nao_impede_apagar_a_conta(monkeypatch):
+    """Apagar a conta é direito da LGPD e não pode depender de o Mercado Pago
+    estar de pé. O que fica é o log com o id, que é o que permite cancelar na
+    mão."""
+    monkeypatch.setattr(settings, "MERCADO_PAGO_ACCESS_TOKEN", "APP_USR-qualquer")
+
+    async def explode(_):
+        raise RuntimeError("502 do provedor")
+
+    monkeypatch.setattr(mercado_pago, "cancelar_assinatura", explode)
+
+    sessao = SessaoFalsa(retornos=["preapproval-viva"])
+    assert await assinaturas.cancelar_ao_sair(sessao, uuid4()) is False  # type: ignore[arg-type]
+
+
+async def test_apagar_conta_sem_assinatura_nao_chama_o_provedor(monkeypatch):
+    """O caso de quase todo mundo: nada a cancelar, nenhuma chamada de rede."""
+    monkeypatch.setattr(settings, "MERCADO_PAGO_ACCESS_TOKEN", "APP_USR-qualquer")
+
+    async def nao_deveria(_):
+        raise AssertionError("não havia assinatura para cancelar")
+
+    monkeypatch.setattr(mercado_pago, "cancelar_assinatura", nao_deveria)
+
+    assert await assinaturas.cancelar_ao_sair(SessaoFalsa(), uuid4()) is False  # type: ignore[arg-type]
+
+
+async def test_sem_carencia_vencida_nao_toca_em_listings(monkeypatch):
+    """Dia comum: ninguém venceu, e o job não abre a segunda consulta."""
+    monkeypatch.setattr(limites, "COBRANCA_ATIVA", True)
+
+    sessao = SessaoFalsa(lista=[])
+    resultado = await assinaturas.encerrar_carencias(sessao)  # type: ignore[arg-type]
+
+    assert resultado == {"caidos": 0, "ofertas_desativadas": 0}
+    assert not any("update listings" in s for s in sessao.sqls)

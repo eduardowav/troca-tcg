@@ -81,10 +81,10 @@ services:
 
       # Precisa bater com a constante VERSAO em web/src/routes/Termos.tsx: é
       # este valor que vai para term_acceptances e prova qual texto a pessoa
-      # aceitou. O default do config.py é outro (2026-07-01) e registraria uma
-      # versão que não existe.
+      # aceitou. O default do config.py acompanha os dois desde 2026-08-14 —
+      # antes ele estava defasado e registraria uma versão que não existe.
       - key: TERMOS_VERSAO
-        value: '2026-07-28'
+        value: '2026-08-14'
 
       # A origem do PWA. Some o domínio próprio aqui quando ele existir.
       - key: CORS_ORIGINS

@@ -18,6 +18,7 @@ from app.schemas.profile import (
     PerfilOut,
     PerfilPublicoOut,
 )
+from app.services import assinaturas
 
 # O que qualquer pessoa logada pode ver. Sem contato_visivel, sem plano e sem
 # onboarding_ok: contato tem regra própria (só após aceite mútuo), e os outros
@@ -190,7 +191,13 @@ async def excluir_conta(session: AsyncSession, user_id: UUID) -> None:
 
     Por fim removemos a linha em `auth.users`; o ON DELETE CASCADE dela leva
     junto o perfil, os anúncios, o aceite dos termos e as inscrições de push.
+
+    **A assinatura é cancelada antes de tudo**, e a ordem não é estética: o
+    cascade apaga `subscriptions` e não fala com o Mercado Pago, então apagar
+    primeiro deixaria a cobrança rodando lá sem o `preapproval_id` para desfazê-la
+    aqui. Falha no provedor não interrompe a exclusão — ver `cancelar_ao_sair`.
     """
+    await assinaturas.cancelar_ao_sair(session, user_id)
     await session.execute(
         text("""
             delete from matches

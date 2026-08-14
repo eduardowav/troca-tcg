@@ -21,7 +21,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.errors import RegraNegocio
-from app.services import mercado_pago
+from app.core.limites import limites_de, plano_vigente
+from app.services import mercado_pago, notificacoes
 
 logger = logging.getLogger(__name__)
 
@@ -158,6 +159,43 @@ async def cancelar(session: AsyncSession, user_id: UUID) -> None:
     await mercado_pago.cancelar_assinatura(preapproval_id)
     await _registrar(session, preapproval_id, "cancelled", None)
     await session.commit()
+
+
+async def cancelar_ao_sair(session: AsyncSession, user_id: UUID) -> bool:
+    """Cancela a assinatura de quem está apagando a conta. Devolve se cancelou.
+
+    **Existe porque a cobrança não mora aqui.** O `on delete cascade` de
+    `subscriptions` apaga o lastro local e não toca no Mercado Pago: sem esta
+    passada, quem apaga a conta continua sendo cobrado todo mês por um app onde
+    não tem mais conta — e o `preapproval_id`, que é a única chave para cancelar,
+    sai do banco junto. O estrago é silencioso dos dois lados e só aparece na
+    fatura.
+
+    **Não commita e não levanta.** A exclusão da conta é o pedido da pessoa e um
+    direito da LGPD; ela não pode falhar porque o provedor de pagamento está fora
+    do ar. Quando a chamada falha, fica o log com o `preapproval_id` — que é o
+    que permite cancelar na mão — e a conta some do mesmo jeito.
+    """
+    preapproval_id = await session.scalar(
+        text("""
+            select preapproval_id from subscriptions
+            where user_id = :u and status <> 'cancelled'
+            order by criado_em desc limit 1
+        """),
+        {"u": str(user_id)},
+    )
+    if not preapproval_id or not mercado_pago.ativo():
+        return False
+
+    try:
+        await mercado_pago.cancelar_assinatura(preapproval_id)
+    except Exception:
+        logger.exception(
+            "[assinaturas] conta apagada com assinatura viva — cancelar na mão: %s",
+            preapproval_id,
+        )
+        return False
+    return True
 
 
 async def aplicar_notificacao(
@@ -299,30 +337,97 @@ async def _registrar(
     )
 
 
-async def encerrar_carencias(session: AsyncSession) -> int:
-    """Derruba para FREE quem passou dos 7 dias. Devolve quantos caíram.
+#: As ofertas excedentes que sobram além do teto, da mais recente para a mais
+#: antiga. As mais **antigas** é que ficam de pé: são as que a pessoa cadastrou
+#: quando ainda era FREE, ou as que ela carrega desde sempre, e derrubar essas
+#: para manter as de ontem seria desfazer o acervo em vez de aparar o excesso.
+#:
+#: `row_number` e não `offset`: o corte é por pessoa, e um `offset` numa consulta
+#: que mistura várias pessoas pularia as primeiras linhas da lista inteira.
+_DESATIVAR_EXCEDENTES = text("""
+    with ordenadas as (
+        select id,
+               user_id,
+               row_number() over (
+                   partition by user_id order by criado_em, id
+               ) as posicao
+          from listings
+         where user_id = any(cast(:ids as uuid[]))
+           and tipo = 'OFERTA'
+           and ativo = true
+    ),
+    desativadas as (
+        update listings
+           set ativo = false
+         where id in (select id from ordenadas where posicao > :teto)
+     returning user_id::text
+    )
+    select user_id, count(*) as quantas
+      from desativadas
+     group by user_id
+""")
 
-    Roda pelo cron. **Não desativa anúncio nenhum** — a desativação dos
-    excedentes, do mais recente para o mais antigo, é o item 10 da seção 16 e
-    ainda não existe. Até ela entrar, um ex-assinante com 200 ofertas fica FREE
-    com 200 ofertas ativas, e só esbarra no teto ao tentar cadastrar a próxima.
+
+async def encerrar_carencias(session: AsyncSession) -> dict[str, int]:
+    """Derruba para FREE quem passou dos 7 dias e apara o que não cabe mais.
+
+    Roda pelo cron. Fecha o item 10 da seção 16 inteiro: a queda de plano e a
+    desativação das ofertas excedentes, da mais recente para a mais antiga.
+
+    **Nada é apagado, nunca.** `ativo = false` é o mesmo soft delete que o resto
+    do app usa: a carta continua no acervo, com condição, acabamento e idioma
+    intactos, e reativá-la é um clique. O que sai é a *vitrine*, não o cadastro —
+    e a pessoa escolhe quais 20 voltam.
+
+    **O teto sai de `plano_vigente`, não de `limites_de` direto.** Enquanto
+    `COBRANCA_ATIVA` for falso o vigente é PRO, o teto é `None` e nada é
+    desativado: ninguém está pagando, e derrubar oferta de quem nunca foi cobrado
+    seria punir pelo que o app ainda não vende. É o mesmo portão de
+    `_checar_teto_de_ofertas`, pelo mesmo motivo.
 
     Não commita: quem chama fecha a transação, como o resto dos jobs.
     """
-    return (
-        await session.scalar(
-            text("""
-                with caidos as (
+    caidos = (
+        (
+            await session.execute(
+                text("""
                     update profiles
                        set plano = 'FREE', plano_expira_em = null
                      where plano_expira_em is not null
                        and plano_expira_em < now()
-                 returning id
-                )
-                select count(*) from caidos
-            """)
+                 returning id::text
+                """)
+            )
         )
-    ) or 0
+        .scalars()
+        .all()
+    )
+    if not caidos:
+        return {"caidos": 0, "ofertas_desativadas": 0}
+
+    teto = limites_de(plano_vigente("FREE")).max_ofertas
+    if teto is None:
+        return {"caidos": len(caidos), "ofertas_desativadas": 0}
+
+    aparados = (
+        (
+            await session.execute(
+                _DESATIVAR_EXCEDENTES, {"ids": list(caidos), "teto": teto}
+            )
+        )
+        .mappings()
+        .all()
+    )
+
+    for linha in aparados:
+        await notificacoes.plano_expirou(
+            session, para=linha["user_id"], desativados=linha["quantas"], teto=teto
+        )
+
+    return {
+        "caidos": len(caidos),
+        "ofertas_desativadas": sum(linha["quantas"] for linha in aparados),
+    }
 
 
 async def reconciliar(session: AsyncSession) -> dict[str, int]:
@@ -375,4 +480,4 @@ async def reconciliar(session: AsyncSession) -> dict[str, int]:
         )
         conferidas += 1
 
-    return {"conferidas": conferidas, "caidos": await encerrar_carencias(session)}
+    return {"conferidas": conferidas, **await encerrar_carencias(session)}
