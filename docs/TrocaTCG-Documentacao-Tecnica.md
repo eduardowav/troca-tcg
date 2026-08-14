@@ -2544,6 +2544,30 @@ hoje, na ordem em que faz sentido atacar.
    estourou nos testes de cadastro —, o que torna **SMTP próprio um pré-requisito
    de verdade** para abrir aos usuários de teste, já que agora existe um segundo
    e-mail transacional disputando a mesma cota.
+
+   **O plano do SMTP mudou em 2026-08-14, e o motivo é que o domínio não é
+   nosso.** `trocatcg.com.br` está registrado por outra pessoa desde março de
+   2025 (consultado no RDAP do registro.br) — o Resend com domínio verificado,
+   que a seção 11.3 supunha, não é possível sem registrar outro nome. O caminho
+   escolhido foi **remetente verificado por endereço**, sem domínio: a Brevo (ou
+   a SendGrid) confirma um e-mail individual e passa a enviar por ele, com 300
+   e-mails por dia no plano gratuito.
+
+   O endereço importa, e a escolha é medida, não preferência. O `icloud.com`
+   publica `p=quarantine` no DMARC: mensagem que se diga @icloud.com e não venha
+   dos servidores da Apple cai no spam do destinatário — e quem perdeu a senha é
+   quem menos vai procurar lá. `gmail.com` e `outlook.com` publicam `p=none` e
+   passam. Daí um Gmail dedicado ao projeto ser o remetente, e não a caixa
+   pessoal.
+
+   Um passo some fácil e vale escrito: **ligar o SMTP não levanta o teto**. Em
+   Authentication → Rate Limits, "Emails per hour" continua em 2 até ser
+   aumentado à mão.
+
+   Fica registrado que isto é uma solução de rodada de testes, não de
+   lançamento: sem SPF e DKIM alinhados a um domínio próprio, a entregabilidade é
+   pior do que seria. O dia de registrar um domínio resolve isso, o `VAPID_SUBJECT`
+   e o endereço público dos termos de uma vez.
 9. **Confirmação de número por WhatsApp** — o **backend ficou pronto e desligado
    em 2026-08-12**; falta o que não é código. Estão no lugar: a migração `26`
    (coluna `contato_verificado_em` em `profiles` e a tabela

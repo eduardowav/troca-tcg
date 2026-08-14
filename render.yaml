@@ -100,8 +100,10 @@ services:
       - key: VAPID_PRIVATE_KEY
         sync: false
       # O contato que o FCM e a Apple procuram antes de bloquear um remetente.
+      # Precisa ser uma caixa que alguém leia: era `contato@trocatcg.com.br`, e
+      # esse domínio não é do projeto — está registrado por outra pessoa.
       - key: VAPID_SUBJECT
-        value: mailto:contato@trocatcg.com.br
+        value: mailto:eduardowav@icloud.com
 
       # Mercado Pago — assinatura do PRO (Fase C da seção 16).
       #

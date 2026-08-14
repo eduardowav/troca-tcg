@@ -30,7 +30,13 @@ class Settings(BaseSettings):
     # O `sub` do VAPID: quem o serviço de push procura se algo der errado do
     # nosso lado. Tem de ser mailto: ou https:, e não pode ser inventado — é o
     # contato que o Google e a Apple usam antes de bloquear um remetente.
-    VAPID_SUBJECT: str = "mailto:contato@trocatcg.com.br"
+    #
+    # Era `contato@trocatcg.com.br` até 2026-08-14, e esse endereço falhava na
+    # própria regra acima: o domínio **não é do projeto** — está registrado por
+    # outra pessoa desde março de 2025. Uma caixa de terceiro é pior que nenhuma
+    # aqui, porque o aviso chega em quem não pode agir. Passa a ser a caixa do
+    # Eduardo, a mesma que os termos publicam, até o projeto ter endereço próprio.
+    VAPID_SUBJECT: str = "mailto:eduardowav@icloud.com"
 
     # WhatsApp (verificação de número) — Cloud API da Meta.
     #
