@@ -103,6 +103,30 @@ services:
       - key: VAPID_SUBJECT
         value: mailto:contato@trocatcg.com.br
 
+      # Mercado Pago — assinatura do PRO (Fase C da seção 16).
+      #
+      # O access token e o segredo do webhook entram pelo painel (`sync: false`):
+      # o token move dinheiro e o segredo é o que separa uma notificação do
+      # Mercado Pago de um POST qualquer na rota pública. Vazios, as rotas de
+      # assinatura respondem 503 e o receptor recusa tudo — que é o estado certo
+      # de um ambiente sem credencial.
+      #
+      # Os ids dos planos ficam aqui porque não são segredo: são o "qual plano",
+      # não o "quem pode". Mas atenção, eles são **de produção** — os que estão
+      # no `api/.env` foram criados com credencial de teste e não valem aqui.
+      # Preencher com os de produção no dia em que a aplicação for ativada.
+      - key: MERCADO_PAGO_ACCESS_TOKEN
+        sync: false
+      - key: MERCADO_PAGO_WEBHOOK_SECRET
+        sync: false
+      - key: MERCADO_PAGO_PLANO_MENSAL
+        sync: false
+      - key: MERCADO_PAGO_PLANO_ANUAL
+        sync: false
+      # Para onde o Mercado Pago devolve quem terminou o checkout.
+      - key: MERCADO_PAGO_BACK_URL
+        value: https://trocatcg-web.onrender.com/planos
+
       - key: ENVIRONMENT
         value: production
 

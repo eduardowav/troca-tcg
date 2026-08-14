@@ -2143,9 +2143,67 @@ limite, o que lê como pedágio. **A cobrança não liga antes desta fase termin
 
 **Fase C — cobrar.**
 
-7. **Mercado Pago**: Pix é praticamente obrigatório no Brasil e o checkout é
-   pronto. O webhook que mantém `profiles.plano` é a fonte da verdade do plano —
-   não a tela.
+7. **Mercado Pago** — o **backend saiu em 2026-08-13, construído e desligado**.
+   O interruptor continua sendo `COBRANCA_ATIVA`; enquanto ele for falso, as
+   rotas de assinatura respondem 503 e nenhuma tela as chama.
+
+   **O que entrou.** A migração `30` (`profiles.plano_expira_em`, tabela
+   `subscriptions`, tabela `webhook_events`), `services/mercado_pago.py` (o
+   provedor inteiro atrás de um arquivo só), `services/assinaturas.py` (a
+   regra), `routers/assinaturas.py` (`/v1/me/assinatura`, GET, POST e DELETE),
+   `routers/webhooks.py` (`/v1/webhooks/mercadopago`) e o job diário
+   `/internal/jobs/reconciliar-assinaturas`, já no cron. Vinte testes cobrem a
+   decisão com a cobrança desligada.
+
+   **`profiles.plano` é a verdade, e quem a escreve é o webhook.** Nenhuma regra
+   pergunta ao Mercado Pago se alguém é PRO: `plano_vigente()` lê a coluna.
+   Consultar o provedor a cada chamada amarraria o app à disponibilidade dele —
+   uma instabilidade de um lado viraria queda de plano do outro. Pelo mesmo
+   motivo a tela não promove ninguém: quem chega à tela de sucesso antes de a
+   notificação chegar continua FREE por alguns segundos, e isso é correto. É o
+   dinheiro que promove, não o redirecionamento.
+
+   **O receptor tem três regras, e nenhuma é opcional.** Valida o `x-signature`
+   por HMAC-SHA256 sobre `id:<data.id>;request-id:<x-request-id>;ts:<ts>;`,
+   comparado por `compare_digest` — e **sem segredo configurado nada passa**,
+   porque uma rota pública que aceitasse qualquer corpo seria um botão de virar
+   PRO. Não confia no corpo: dele sai só o id, e o estado vem de uma consulta à
+   API deles, o que torna inútil forjar corpo. E deduplica pelo id da
+   *notificação*, não do recurso: o Mercado Pago reenvia quando não recebe 200 a
+   tempo, e a mesma assinatura gera muitos avisos legítimos ao longo da vida —
+   deduplicar por recurso engoliria mudança de estado de verdade.
+
+   **O job de reconciliação existe porque webhook se perde.** Uma notificação
+   que não chega deixa alguém PRO de graça, ou tira o PRO de quem pagou, e
+   nenhum dos dois aparece como erro em lugar nenhum: o app fica errado em
+   silêncio. A varredura diária confere no Mercado Pago toda assinatura viva
+   cuja próxima cobrança já passou — recorte que mantém o trabalho proporcional
+   ao que mudou, e não ao tamanho da base.
+
+   **A queda passa pela carência**, conforme o item 10: assinatura que deixa de
+   estar autorizada abre 7 dias com os limites do PRO, e a carência **não
+   reinicia** a cada notificação do mesmo problema (uma assinatura que falha todo
+   dia daria PRO para sempre). O que ainda não existe é a segunda metade do item
+   10 — desativar os excedentes do mais recente para o mais antigo. Até ela
+   entrar, um ex-assinante com 200 ofertas fica FREE com 200 ofertas ativas e só
+   esbarra no teto ao cadastrar a próxima.
+
+   **Sobre o Pix.** A documentação oficial lista, para assinaturas no Brasil, os
+   meios `credit, mercadopago, boleto, pix`. O que ela **não** mostra é Pix
+   Automático dentro de `preapproval`, e a API ignora em silêncio o
+   `payment_methods_allowed` enviado na criação do plano — mandar `pix` ali é
+   aceito e devolvido vazio. A leitura provável é que Pix e boleto funcionam como
+   boleto sempre funcionou: a assinatura gera a cobrança a cada ciclo e a pessoa
+   paga na mão, o que muda churn mas não muda uma linha do backend. Confirmar
+   exige um pagador de teste — a conta dona do plano não assina o próprio plano.
+
+   **O que falta para ligar**, e nada disso é código: ativar as credenciais de
+   produção no painel, criar os dois planos com elas (plano de teste e de
+   produção são objetos diferentes; os ids do `api/.env` não valem lá), cadastrar
+   a URL do webhook e guardar o segredo que ela gera, e preencher as quatro
+   variáveis `sync: false` do `render.yaml`. O item 1 do bloco de segurança (o
+   rate limit que não roda) passa a valer de verdade aqui: o receptor é a rota
+   pública que mais precisa dele.
 8. ✅ **Tela de planos, estado do plano e o convite** — feito em 2026-08-13, com
    a cobrança ainda desligada.
 
@@ -2474,9 +2532,17 @@ pontas existir seria vender o que não se entrega. Por isso a linha aparece como
 **"em breve"** na comparação, e a virada de `COBRANCA_ATIVA` continua depois da
 triangulação — não antes.
 
-Falta da Fase C: Mercado Pago e o webhook (item 7), a cláusula de assinatura nos
-termos (item 9, que exige nova `VERSAO` e novo aceite), e a queda de plano (item
-10).
+Falta da Fase C: a cláusula de assinatura nos termos (item 9, que exige nova
+`VERSAO` e novo aceite) e a queda de plano (item 10). O **item 7 saiu em
+2026-08-13** — o backend do Mercado Pago inteiro, construído e desligado: rotas
+de assinatura, receptor de webhook com validação HMAC, carência de 7 dias e job
+diário de reconciliação. O que falta ali não é código, é painel: credenciais de
+produção, planos criados com elas, URL do webhook cadastrada e as quatro
+variáveis do `render.yaml` preenchidas.
+
+Meia carência do item 10 já veio junto com o item 7 (o prazo de 7 dias e a queda
+para FREE quando ele vence). Falta a outra metade: desativar os excedentes do
+mais recente para o mais antigo.
 
 **Cadastro sem verificação** — decisão do Eduardo em 2026-08-12. A confirmação
 de e-mail sai (interruptor "Confirm email" do painel do Supabase, fora do

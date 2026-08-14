@@ -35,4 +35,9 @@ jobs:
           if [ "$(date -u +%H:%M)" = "09:00" ]; then
             chamar triangular || echo "triangular falhou"
             chamar expire || echo "expire falhou"
+            # Assinaturas: webhook se perde, e quando se perde ninguém percebe —
+            # o app fica errado em silêncio, cobrando de quem caiu ou liberando
+            # quem parou de pagar. Esta passada confere no Mercado Pago e encerra
+            # as carências vencidas. Diário porque assinatura muda em dias.
+            chamar reconciliar-assinaturas || echo "reconciliar-assinaturas falhou"
           fi

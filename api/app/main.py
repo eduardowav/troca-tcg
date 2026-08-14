@@ -13,6 +13,7 @@ from app.core.errors import RegraNegocio, regra_negocio_handler
 from app.db.session import engine
 from app.routers import (
     alertas,
+    assinaturas,
     health,
     internal,
     listings,
@@ -23,6 +24,7 @@ from app.routers import (
     users,
     verificacao,
     vitrine,
+    webhooks,
 )
 
 limiter = Limiter(key_func=get_remote_address, default_limits=["100/minute"])
@@ -63,6 +65,12 @@ app.include_router(propostas.router, prefix="/v1")
 app.include_router(alertas.router, prefix="/v1")
 # Pública como o health: é tabela de preço, e quem ainda não tem conta olha.
 app.include_router(planos.router, prefix="/v1")
+# Assinatura: registrada e desligada por `COBRANCA_ATIVA`, como a verificação de
+# número. Nenhuma tela do app a chama enquanto a cobrança não ligar.
+app.include_router(assinaturas.router, prefix="/v1")
+# Receptor do Mercado Pago. Público por natureza — quem chama é o servidor deles,
+# que não tem sessão aqui. Quem prova a origem é o HMAC do `x-signature`.
+app.include_router(webhooks.router, prefix="/v1")
 app.include_router(notificacoes.router, prefix="/v1")
 app.include_router(notificacoes.router_push, prefix="/v1")
 # Verificação de número: registrada e desligada por configuração

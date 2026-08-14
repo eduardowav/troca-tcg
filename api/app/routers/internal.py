@@ -14,7 +14,7 @@ from app.core.config import settings
 from app.db.session import get_session
 from app.jobs.catalog.sync import sincronizar_sets
 from app.jobs.catalog.tcgdex import TCGdex
-from app.services import alertas, matching, propostas, triangular
+from app.services import alertas, assinaturas, matching, propostas, triangular
 
 router = APIRouter(prefix="/internal/jobs", tags=["internal"])
 
@@ -121,3 +121,24 @@ async def notify_alerts(
     enviadas = await alertas.notificar_cartas_disponiveis(session, horas=horas)
     await session.commit()
     return {"notificadas": enviadas}
+
+
+@router.post("/reconciliar-assinaturas", dependencies=[Depends(_verifica_secret)])
+async def reconciliar_assinaturas(
+    session: AsyncSession = Depends(get_session),
+) -> dict[str, int]:
+    """Confere as assinaturas no Mercado Pago e encerra as carências vencidas.
+
+    Existe porque **webhook se perde**. Uma notificação que não chega deixa
+    alguém PRO de graça ou tira o PRO de quem pagou, e nenhum dos dois aparece
+    como erro em lugar nenhum — o app simplesmente fica errado em silêncio. Esta
+    passada é o que fecha o buraco.
+
+    Diário, e não a cada quinze minutos: assinatura muda de estado em escala de
+    dias, e cada linha aqui custa uma chamada de rede ao provedor.
+
+    Desligada sem credencial, responde `{"desligado": 1}` sem tocar no banco.
+    """
+    resultado = await assinaturas.reconciliar(session)
+    await session.commit()
+    return resultado

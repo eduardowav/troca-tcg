@@ -53,6 +53,26 @@ class Settings(BaseSettings):
     # ele responde sem tocar no banco.
     TRIANGULAR_ATIVO: bool = False
 
+    # Mercado Pago — assinatura do PRO (Fase C da seção 16).
+    #
+    # Vazio é o estado de hoje, e nesse estado `mercado_pago.ativo()` é falso: as
+    # rotas de assinatura respondem 503 e nada sai daqui. Mesmo padrão do push
+    # sem chave VAPID e do WhatsApp sem chip.
+    #
+    # O token de teste começa com `TEST-`, o de produção com `APP_USR-`. Os ids
+    # de plano **não** são os mesmos nos dois ambientes: plano de teste e plano
+    # de produção são objetos diferentes, criados com credenciais diferentes.
+    MERCADO_PAGO_ACCESS_TOKEN: str = ""
+    MERCADO_PAGO_PLANO_MENSAL: str = ""
+    MERCADO_PAGO_PLANO_ANUAL: str = ""
+    # O segredo da assinatura do webhook, gerado no painel junto com a URL. Sem
+    # ele o receptor recusa tudo, de propósito: webhook de pagamento sem
+    # validação é uma rota pública que promove qualquer um a PRO.
+    MERCADO_PAGO_WEBHOOK_SECRET: str = ""
+    # Para onde o Mercado Pago devolve a pessoa depois do checkout. Não é o mesmo
+    # que a origem do CORS: aqui é uma tela específica, e ela precisa existir.
+    MERCADO_PAGO_BACK_URL: str = "http://localhost:5173/planos"
+
     # Segurança
     JOB_SECRET: str = "dev-job-secret"
     CORS_ORIGINS: str = "http://localhost:5173"
