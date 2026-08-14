@@ -1606,11 +1606,41 @@ segue inteiro — é assim que o ambiente de desenvolvimento roda.
 
 ### 11.3 E-mail (fallback)
 
-Resend, free tier de 3.000/mês. Só para: confirmação de conta, recuperação de senha e resumo semanal opcional. Nada mais.
+**Funcionando desde 2026-08-14, pelo SMTP do próprio Gmail.** O plano original
+era Resend com domínio verificado, e ele caiu junto com uma descoberta: o
+`trocatcg.com.br` **não é do projeto** — está registrado por outra pessoa desde
+março de 2025. Sem domínio, o Resend só entrega para o dono da conta.
+
+O caminho é uma conta Gmail dedicada ao projeto, com verificação em duas etapas e
+uma senha de app, ligada em Custom SMTP do Supabase (`smtp.gmail.com`, porta
+465). São 500 e-mails por dia, de graça.
+
+**A escolha é de entregabilidade, não de preço.** Um relay externo (Brevo,
+SendGrid) enviando *como* `@gmail.com` não alinha SPF nem DKIM — passa só porque
+o Gmail publica `p=none` no DMARC. Saindo do próprio Google, os três alinham, que
+é o melhor possível sem domínio. E não use `@icloud.com` como remetente em
+esquema nenhum: a Apple publica `p=quarantine`, e o e-mail de recuperação cairia
+no spam de quem perdeu a senha — a pessoa que menos vai procurar lá.
+
+Dois detalhes que custaram tempo e ficam escritos:
+
+- **O *Sender email* tem de ser igual ao *Username*.** Diferente, o Gmail
+  reescreve o remetente e a mensagem chega assinada por outro endereço.
+- **Ligar o SMTP não levanta o teto.** Em Authentication → Rate Limits, "Emails
+  per hour" continua em 2 até ser mudado à mão. Está em 30.
+
+Serve a um caso só hoje: **recuperação de senha**. A confirmação de conta está
+desligada e as notificações vivem em in-app e push. Isso é decisão, não
+provisório — ver a coluna E-mail da matriz abaixo.
+
+Sem domínio próprio a entregabilidade é boa, não ótima. O dia de registrar um
+domínio resolve isto, o `VAPID_SUBJECT` e o endereço público dos termos de uma
+vez — e aí vale voltar ao Resend.
 
 ### Matriz de notificação
 
-In-app e push existem desde 2026-08-11; e-mail continua no papel. O `tipo`
+In-app e push existem desde 2026-08-11; o e-mail entrou em 2026-08-14, só para
+recuperação de senha. O `tipo`
 gravado é a coluna do meio — é por ele que a caixa escolhe ícone e destaque, e é
 ele que `TIPOS_COM_PUSH` consulta para decidir se o celular vibra.
 
@@ -2484,8 +2514,12 @@ hoje, na ordem em que faz sentido atacar.
    comparar os dois caminhos, e uma decisão futura sobre qual deles priorizar
    será tomada no olho. É aceitável agora porque a base é pequena demais para o
    número significar alguma coisa — com oito perfis, qualquer proporção é ruído.
-8. ✅ **"Esqueci minha senha"** — feito em 2026-08-12. Era o único defeito do app
-   sem contorno nenhum do lado de quem usa: senha perdida era conta perdida.
+8. ✅ **"Esqueci minha senha"** — código em 2026-08-12, **funcionando em produção
+   desde 2026-08-14**, quando a configuração que faltava entrou e o fluxo foi
+   percorrido inteiro: e-mail recebido em menos de um minuto, link abrindo o
+   formulário e a senha trocada com a pessoa caindo logada no app. Era o único
+   defeito do app sem contorno nenhum do lado de quem usa: senha perdida era
+   conta perdida.
 
    Duas telas públicas. `/recuperar` pede o e-mail e dispara o
    `resetPasswordForEmail` com `redirectTo` montado a partir da **origem atual**
@@ -2534,11 +2568,23 @@ hoje, na ordem em que faz sentido atacar.
 
    Não aparece em teste local justamente porque `localhost:5173` funciona.
 
-   **O que falta no painel**, em Authentication → URL Configuration: trocar a
-   Site URL por `https://trocatcg-web.onrender.com` e acrescentar às Redirect
-   URLs `https://trocatcg-web.onrender.com/**`, `http://192.168.100.6:5173/**`
-   (é como o celular alcança o app nos testes) e `https://trocatcg.com.br/**`
-   quando o domínio subir. Depois de mexer, a mesma medição confere.
+   **Consertado e provado ponta a ponta no mesmo dia.** A Site URL passou a ser
+   `https://trocatcg-web.onrender.com` e as Redirect URLs ganharam
+   `https://trocatcg-web.onrender.com/**`; medindo de novo, o pedido feito em
+   produção resolve para `/nova-senha`, e a troca de senha foi feita até o fim —
+   a pessoa cai logada no app, como a tela promete. Falta só
+   `http://192.168.100.6:5173/**`, que é conveniência para testar do celular na
+   rede local e não afeta ninguém de fora.
+
+   Duas coisas que confundem no teste e não são defeito:
+
+   - **O link vale uma vez.** Clicar de novo num e-mail antigo devolve
+     `One-time token not found` no `auth_logs`, que se lê como falha do fluxo
+     quando é o contrário — é o uso único funcionando. Pedido novo, e-mail novo.
+   - **Abrir no navegador do celular está certo.** O token viaja no fragmento do
+     endereço (`#access_token=`), então o link não depende de ter sido pedido
+     naquele navegador. Um PWA instalado não recebe o link, e não precisa: o que
+     muda é a senha da conta, não o aparelho.
 
    E o remetente padrão libera poucos e-mails por hora — o mesmo teto que
    estourou nos testes de cadastro —, o que torna **SMTP próprio um pré-requisito
