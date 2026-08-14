@@ -1626,8 +1626,12 @@ Dois detalhes que custaram tempo e ficam escritos:
 
 - **O *Sender email* tem de ser igual ao *Username*.** Diferente, o Gmail
   reescreve o remetente e a mensagem chega assinada por outro endereço.
-- **Ligar o SMTP não levanta o teto.** Em Authentication → Rate Limits, "Emails
-  per hour" continua em 2 até ser mudado à mão. Está em 30.
+- **O teto de envio muda de lugar quando o SMTP entra.** Com o remetente interno
+  do Supabase são 2 e-mails por hora, fixos — a cota que estourou com três
+  cadastros de teste. Com Custom SMTP o campo passa a ser editável em
+  Authentication → Rate Limits, com 30 por hora de padrão. Vale conferir o valor
+  ao configurar, em vez de supor: ele não aparece em nenhuma API pública, só no
+  painel.
 
 Serve a um caso só hoje: **recuperação de senha**. A confirmação de conta está
 desligada e as notificações vivem em in-app e push. Isso é decisão, não
