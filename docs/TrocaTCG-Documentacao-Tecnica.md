@@ -2450,12 +2450,73 @@ Priorize as regras dos sets que a comunidade local realmente joga e troca hoje. 
 - Testes de carga
 - README de portfólio com decisões de arquitetura documentadas
 
+### Ordem de execução até o lançamento (2026-08-14)
+
+Decidida pelo Eduardo em 2026-08-14, e ela reordena o que a fila abaixo lista por
+assunto: **a segurança sai da frente e vai para imediatamente antes de abrir**, e
+**a triangulação vai para depois do lançamento**. O que está escrito adiante
+continua valendo como descrição de cada item; isto aqui é a sequência.
+
+**Fase 1 — começar já, porque depende de terceiros e demora.** Corre em paralelo
+com todo o resto.
+
+1. Conta Meta Business e chip dedicado para o WhatsApp. A verificação de negócio
+   leva dias e corre sozinha — adiar isto é criar o gargalo do fim.
+2. Credenciais de produção do Mercado Pago e os dois planos criados com elas.
+
+**Fase 2 — o que falta para poder abrir.** Tudo código ou texto, nada bloqueado.
+
+3. **Modal de disclaimer antes de revelar o contato**, com registro em
+   `term_acceptances`. A seção 4.2 chama este de "o terceiro é o crítico" — o
+   instante em que a pessoa sai da plataforma e entra numa negociação pessoal. Não
+   existe hoje, e é a maior lacuna jurídica aberta.
+4. **Disclaimer de não-afiliação** com Nintendo, Creatures, GAME FREAK e The
+   Pokémon Company. Não existe em lugar nenhum do app.
+5. **Tela do código do WhatsApp** e o pedido no primeiro aceite. O backend está
+   pronto e desligado desde 2026-08-12; a tela pode ser construída antes de o
+   item 1 ficar de pé.
+6. **Open Graph (1200×630), `twitter:card`** e os **screenshots do manifesto**. É
+   o que aparece quando alguém cola o link no grupo, e o lançamento é por grupo.
+7. **Seletor de acabamento limitado ao que existe** para cada carta. O catálogo
+   já está populado; falta a tela usá-lo.
+
+**Fase 3 — segurança, imediatamente antes de abrir.** Na ordem de gravidade da
+varredura de 2026-08-11, detalhada no bloco "Segurança do app" abaixo.
+
+8. Rate limit — o `SlowAPIMiddleware` que nunca foi adicionado.
+9. Bloqueado continua agindo.
+10. `/docs` e `/openapi.json` fechados em produção.
+11. `JOB_SECRET` sem default publicado, comparado com `compare_digest`.
+12. CSP no PWA.
+13. Miúdos: `bairro`, `avatar_url` e a f-string de `matching.py`.
+
+**Fase 4 — lançar.**
+
+14. Provar a restauração do backup num banco descartável. É a única linha do
+    backup que nunca foi exercitada, e o dia de descobrir não pode ser o dia ruim.
+15. Sentry recebendo eventos.
+16. PWA instalada testada em Android e iOS.
+17. 30+ usuários pré-cadastrados, com o lançamento tratado como evento e não como
+    deploy — ver "O risco número um" na seção 21.
+
+**Fase 5 — depois de lançar.**
+
+18. Tela de três pontas da triangulação. O motor está pronto e desligado.
+19. Virar `COBRANCA_ATIVA`, que depende do 18: a tabela do PRO vende match
+    triangular.
+20. README de portfólio, que serve ao Eduardo e não ao app.
+
+Duas ressalvas sobre a própria ordem. O **rate limit (8)** sobe para antes do
+item 5 se o WhatsApp ficar pronto cedo — cada mensagem custa dinheiro e queima
+cota na Meta, e é ele que segura o abuso. E o **item 3 não desce**: é barato, e é
+a exposição que menos se quer ter no primeiro dia com gente de verdade usando.
+
 ### Fila atual (agosto de 2026)
 
 O roadmap acima é o plano original, e ele foi cumprido até a Fase 4 — com a
 vitrine e as propostas (seção 22) entrando fora de ordem, porque o matcher
-sozinho não atende quem só declarou um lado. Isto aqui é o que está na frente
-hoje, na ordem em que faz sentido atacar.
+sozinho não atende quem só declarou um lado. Isto aqui descreve cada item; a
+sequência de execução está logo acima.
 
 **Produto**
 
@@ -3498,24 +3559,27 @@ async def sincronizar_set(client: httpx.AsyncClient, set_id: str) -> None:
 
 ## Apêndice C — Checklist de lançamento
 
-- [ ] Termos de uso com isenção de responsabilidade publicados e versionados
-- [ ] Política de privacidade publicada (LGPD)
-- [ ] Aceite de termos obrigatório no cadastro, com registro em `term_acceptances`
-- [ ] Modal de disclaimer bloqueante antes de revelar contato, com registro
-- [ ] Disclaimer de não-afiliação com Nintendo / Creatures / GAME FREAK / The Pokémon Company
-- [ ] Fluxo de exclusão de conta funcionando (exigência da LGPD)
-- [ ] Denúncia de usuário funcionando, com motivo `USO_PARA_VENDA`
-- [ ] Rate limit ativo
-- [ ] Sentry recebendo eventos
-- [ ] **Keep-alive rodando** (API + banco) e verificado por 2 dias seguidos
-- [ ] **Backup diário do banco** rodando e restauração testada uma vez
-- [ ] Endpoint `/health` consultando o banco de verdade, não só retornando 200
-- [ ] Domínio com HTTPS e HSTS
+Conferido item a item no código em 2026-08-14. O que está marcado foi verificado,
+não presumido; o que tem ressalva está escrito por quê.
+
+- [x] Termos de uso com isenção de responsabilidade publicados e versionados — `web/src/routes/Termos.tsx`, versão `2026-08-14`
+- [x] Política de privacidade publicada (LGPD) — no mesmo documento, seções 11 a 18
+- [x] Aceite de termos obrigatório no cadastro, com registro em `term_acceptances` — contexto `CADASTRO`, com IP
+- [ ] Modal de disclaimer bloqueante antes de revelar contato, com registro — **não existe.** A seção 22.6 o descreve como se existisse ("nada é novo daí para frente"), mas não há nada no código. Item 3 da ordem de execução
+- [ ] Disclaimer de não-afiliação com Nintendo / Creatures / GAME FREAK / The Pokémon Company — não aparece em lugar nenhum do app
+- [x] Fluxo de exclusão de conta funcionando (exigência da LGPD) — `profiles.excluir_conta`, e desde 2026-08-14 ele cancela a assinatura antes de apagar
+- [x] Denúncia de usuário funcionando, com motivo `USO_PARA_VENDA`
+- [ ] Rate limit ativo — **o `Limiter` existe e não limita nada**; falta o `SlowAPIMiddleware`. Item 8
+- [ ] Sentry recebendo eventos — não há dependência de Sentry no projeto
+- [x] **Keep-alive rodando** (API + banco) — a cada ~50 min pelo Actions, devolvendo `{"status":"ok","db":"ok"}`. Verificado em 2026-08-14
+- [ ] **Backup diário do banco** rodando e restauração testada uma vez — o backup roda e é cifrado desde `9ef33e1`; **a restauração nunca foi exercitada**. Item 14
+- [x] Endpoint `/health` consultando o banco de verdade, não só retornando 200 — faz `select 1`
+- [ ] Domínio com HTTPS e HSTS — não haverá domínio próprio (decisão de custo zero em 2026-08-14). O `onrender.com` serve por HTTPS; o HSTS é dele, não nosso
 - [ ] PWA instalável testada em Android e iOS
-- [ ] Página "Como instalar" publicada, com o passo a passo dos dois sistemas — não existe loja, e "baixar" é o que a pessoa vai procurar
-- [ ] Imagem de compartilhamento (Open Graph 1200×630) e `twitter:card` no `index.html`
+- [x] Página "Como instalar" publicada, com o passo a passo dos dois sistemas — `/instalar`, desde 2026-08-12
+- [ ] Imagem de compartilhamento (Open Graph 1200×630) e `twitter:card` no `index.html` — nenhuma meta tag social existe. Item 6
 - [ ] `screenshots` no manifesto (estreito e largo) — é o que o Chrome mostra na caixa de instalação
-- [ ] Catálogo de acabamentos populado para os sets em circulação
-- [ ] Seletor de acabamento limitado ao que existe para cada carta
+- [x] Catálogo de acabamentos populado para os sets em circulação — 14 acabamentos e 24.813 vínculos em `card_finishes`
+- [ ] Seletor de acabamento limitado ao que existe para cada carta — o dado está lá, a tela não o usa. Item 7
 - [ ] 30+ usuários pré-cadastrados
 - [ ] README de portfólio com diagrama de arquitetura e decisões justificadas
