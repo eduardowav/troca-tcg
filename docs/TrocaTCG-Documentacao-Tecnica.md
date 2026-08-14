@@ -2508,10 +2508,39 @@ hoje, na ordem em que faz sentido atacar.
    domínio da caixa naquele momento. O que fica descoberto é o e-mail digitado
    errado no cadastro, que continua sem caminho automático de volta.
 
-   **Depende de configuração no painel**, e é o que falta para funcionar em
-   produção: as URLs de retorno (`/nova-senha` em cada origem) precisam estar nas
-   **Redirect URLs** do projeto, senão o Supabase ignora o parâmetro e usa a Site
-   URL. E o remetente padrão libera poucos e-mails por hora — o mesmo teto que
+   **O fluxo está quebrado em produção, e a medição é de 2026-08-14.** O Supabase
+   não recusa um `redirect_to` fora da lista: ele responde 200 e usa a Site URL no
+   lugar, calado. Dá para descobrir qual URL ele resolveu de fato no
+   `auth_logs` — o campo `referer` da linha de `/recover` guarda a decisão —, e
+   foi assim que se mediu, disparando `POST /auth/v1/recover` para um e-mail
+   inexistente (não envia nada, não gasta cota) com uma origem diferente a cada
+   vez:
+
+   | `redirect_to` enviado | O que o Supabase usou |
+   |---|---|
+   | `https://trocatcg-web.onrender.com/nova-senha` | `http://localhost:3000` |
+   | `https://trocatcg-web.onrender.com` | `http://localhost:3000` |
+   | `http://localhost:5173/nova-senha` | ele mesmo |
+   | `http://localhost:5173/qualquer` | ele mesmo |
+   | `http://192.168.100.6:5173/nova-senha` | `http://localhost:3000` |
+   | `https://trocatcg.com.br/nova-senha` | `http://localhost:3000` |
+
+   Duas coisas, e a segunda é pior. Só `localhost:5173` está nas **Redirect
+   URLs** — produção e o IP da rede local ficaram de fora. E a **Site URL do
+   projeto continua sendo `http://localhost:3000`**, o default de fábrica que
+   nunca foi trocado: hoje, quem pedir a recuperação em produção recebe um link
+   apontando para uma porta que não existe na máquina dela. Vale para todo e-mail
+   com retorno, não só este.
+
+   Não aparece em teste local justamente porque `localhost:5173` funciona.
+
+   **O que falta no painel**, em Authentication → URL Configuration: trocar a
+   Site URL por `https://trocatcg-web.onrender.com` e acrescentar às Redirect
+   URLs `https://trocatcg-web.onrender.com/**`, `http://192.168.100.6:5173/**`
+   (é como o celular alcança o app nos testes) e `https://trocatcg.com.br/**`
+   quando o domínio subir. Depois de mexer, a mesma medição confere.
+
+   E o remetente padrão libera poucos e-mails por hora — o mesmo teto que
    estourou nos testes de cadastro —, o que torna **SMTP próprio um pré-requisito
    de verdade** para abrir aos usuários de teste, já que agora existe um segundo
    e-mail transacional disputando a mesma cota.
