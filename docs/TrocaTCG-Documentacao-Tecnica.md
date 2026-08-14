@@ -2715,6 +2715,27 @@ de 2026-07-30 que nunca confirmou o e-mail: ela não tem perfil e continua sem
 conseguir entrar, porque o Supabase segue exigindo confirmação de quem já
 nasceu esperando por ela.
 
+**O login continua sendo e-mail e senha.** A troca por número de celular foi
+levantada em 2026-08-14 — o número já é o que importa no app, e o e-mail é
+burocracia — e descartada no mesmo dia, por três razões que só aparecem no
+código:
+
+- **A cobrança quebraria.** O `preapproval` do Mercado Pago exige `payer_email`,
+  e ele sai de `auth.users.email` (`services/assinaturas.py`). Sem e-mail no
+  cadastro não há o que mandar, e o e-mail voltaria pela porta dos fundos na
+  tela de assinar.
+- **O Supabase não fala com o WhatsApp que este projeto tem.** Login por
+  telefone exige provedor de SMS (Twilio, MessageBird, Vonage); a Cloud API da
+  Meta em `services/whatsapp.py` verifica contato, não autentica. O login
+  passaria a depender do chip, da conta Meta verificada e do template aprovado —
+  a lista inteira do item 9.
+- **Cada entrada custaria dinheiro.** OTP por SMS no Brasil sai por volta de
+  R$ 0,10–0,30; e-mail é grátis e ilimitado na prática.
+
+O que fica: o número segue sendo o que o app entrega — revelado no aceite mútuo
+— e a verificação por WhatsApp entra quando o chip existir. A decisão pode ser
+reaberta depois disso, quando der para medir se vale.
+
 A verificação de WhatsApp por código está **construída e desligada** desde
 2026-08-12 — o que existe e o que falta está no item 9. Três decisões que
 valem para quando ela for ligada: ela é da **Cloud API da
