@@ -2197,13 +2197,30 @@ limite, o que lê como pedágio. **A cobrança não liga antes desta fase termin
    paga na mão, o que muda churn mas não muda uma linha do backend. Confirmar
    exige um pagador de teste — a conta dona do plano não assina o próprio plano.
 
+   **A infraestrutura entrou em produção em 2026-08-14.** A migração `30` foi
+   aplicada no Supabase, o código subiu no Render, e o webhook foi cadastrado no
+   app TrocaTCG com a mesma URL em produção e sandbox, assinando exatamente os
+   dois tópicos que `TOPICOS` trata (`subscription_preapproval` e
+   `subscription_authorized_payment`) — assinar mais tópicos só gastaria
+   requisição num receptor que os ignora. O segredo está na variável do Render.
+
+   Duas coisas que custaram tempo e valem ficar escritas. **Variável com
+   `sync: false` no `render.yaml` não é criada pelo `blueprint_sync`** — ela nem
+   aparece no painel, e é preciso criá-la à mão em Environment. E **o 401 do
+   receptor não distingue "sem segredo" de "assinatura errada"**, o que torna
+   impossível provar de fora que a variável entrou. A prova é assinar uma
+   notificação com um tópico **fora** de `TOPICOS`: ela atravessa a validação e
+   para no `ignorado` sem precisar do access token e sem escrever no banco.
+   Assinatura válida devolve `200 {"resultado":"ignorado"}`; a mesma requisição
+   com a chave trocada devolve 401. O par prova as duas direções de uma vez.
+
    **O que falta para ligar**, e nada disso é código: ativar as credenciais de
    produção no painel, criar os dois planos com elas (plano de teste e de
-   produção são objetos diferentes; os ids do `api/.env` não valem lá), cadastrar
-   a URL do webhook e guardar o segredo que ela gera, e preencher as quatro
-   variáveis `sync: false` do `render.yaml`. O item 1 do bloco de segurança (o
-   rate limit que não roda) passa a valer de verdade aqui: o receptor é a rota
-   pública que mais precisa dele.
+   produção são objetos diferentes; os ids do `api/.env` não valem lá) e
+   preencher as três variáveis `sync: false` que sobraram — o access token e os
+   dois ids de plano. O item 1 do bloco de segurança (o rate limit que não roda)
+   passa a valer de verdade aqui: o receptor é a rota pública que mais precisa
+   dele.
 8. ✅ **Tela de planos, estado do plano e o convite** — feito em 2026-08-13, com
    a cobrança ainda desligada.
 
@@ -2536,9 +2553,10 @@ Falta da Fase C: a cláusula de assinatura nos termos (item 9, que exige nova
 `VERSAO` e novo aceite) e a queda de plano (item 10). O **item 7 saiu em
 2026-08-13** — o backend do Mercado Pago inteiro, construído e desligado: rotas
 de assinatura, receptor de webhook com validação HMAC, carência de 7 dias e job
-diário de reconciliação. O que falta ali não é código, é painel: credenciais de
-produção, planos criados com elas, URL do webhook cadastrada e as quatro
-variáveis do `render.yaml` preenchidas.
+diário de reconciliação. Em **2026-08-14** ele entrou em produção: migração
+aplicada, código no ar e webhook cadastrado e validando de verdade. O que falta
+ali não é código, é painel: credenciais de produção, os dois planos criados com
+elas e as três variáveis que sobraram no Render.
 
 Meia carência do item 10 já veio junto com o item 7 (o prazo de 7 dias e a queda
 para FREE quando ele vence). Falta a outra metade: desativar os excedentes do
