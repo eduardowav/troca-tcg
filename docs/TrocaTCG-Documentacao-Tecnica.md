@@ -215,7 +215,13 @@ Não invista em moderação automática sofisticada agora. Denúncia manual reso
 
 ### 4.4 LGPD
 
-Como a plataforma trata dados pessoais (e-mail, contato, localização em nível de bairro), a política de privacidade precisa declarar:
+Como a plataforma trata dados pessoais (e-mail, contato), a política de privacidade precisa declarar:
+
+> A menção original a "localização em nível de bairro" saiu em 2026-08-14. O
+> campo `bairro` existe em `profiles` e nenhuma tela o pede — o app não coleta
+> localização nenhuma, e é isso que a política publicada diz. Ver o item 5 da
+> fila (seção 17).
+
 
 - Quais dados são coletados e para quê
 - Que o contato só é compartilhado com outro usuário mediante aceite mútuo em uma troca
@@ -1162,7 +1168,7 @@ def melhor_aresta(candidatas: list[Aresta]) -> Aresta:
 | `(4 − prioridade_média) × 5` | Médio | Carta marcada como prioridade 1 vale mais que prioridade 3 |
 | `−abs(valor_A − valor_B) × 0.05` | Penalidade | Troca desequilibrada é recusada; não vale sugerir |
 | `reputação × 0.2` | Médio | Usuário confiável primeiro |
-| `+8 se mesmo bairro` | Bônus | Proximidade é o maior preditor de troca concluída |
+| `+8 se mesmo bairro` | Bônus | Escrito, mas **inerte**: nenhuma tela pede bairro, então o campo é nulo para todo mundo e o bônus nunca soma. Ver a decisão de 2026-08-14 no item 5 da fila (seção 17) — a troca acontece em loja e em evento, não por proximidade de endereço |
 | `−25 se acabamento diferente` | Penalidade | Só entra se o usuário marcou "aceito outros acabamentos". Ver seção 8.6 |
 | Desequilíbrio usa `preco_ref × multiplicador` | Correção | Um Master Ball não equivale ao reverse comum da mesma carta |
 
@@ -2448,15 +2454,36 @@ hoje, na ordem em que faz sentido atacar.
    texto. Seletor em Configurações, com "seguir o sistema" como padrão.
 4. ✅ **A animação da troca fechando** — feita em 2026-08-10 (`8139fb7`). Selo
    COMBINADA no aceite; giro das cartas e selo TROCADO só na conclusão.
-5. **Filtro por bairro** na vitrine. A troca é presencial: "quem tem essa carta
-   perto de mim" decide mais que preço.
+5. ❌ **Filtro por bairro** na vitrine — **descartado em 2026-08-14, por decisão
+   do Eduardo.** A premissa que o justificava era "quem tem essa carta perto de
+   mim decide mais que preço", e ela não descreve como a troca acontece de fato:
+   as pessoas trocam **nas lojas locais e em eventos**, não na esquina de casa. O
+   ponto de encontro é escolhido pela agenda da comunidade, não pela distância
+   entre dois endereços — e um filtro que corta o feed por bairro esconderia
+   justamente quem vai estar na mesma loja no sábado.
+
+   Fica valendo o que já existe: a `cidade` continua sendo o recorte, e o bônus
+   de `+8 se mesmo bairro` no matcher segue no lugar. Vale saber que ele **nunca
+   dispara hoje** — nenhuma tela pede bairro, então o campo é nulo para todo
+   mundo. Não é defeito a consertar: é a mesma leitura que descartou o filtro,
+   registrada aqui para ninguém "corrigir" o matcher achando que achou um bug.
 6. ✅ **Alerta de carta** ("avise quando aparecer") — feito em 2026-08-12, junto
    da Fase B da monetização, onde está o detalhe (item 5 da
    [seção 16](#16-preparação-para-monetização)). Nasceu do vazio da vitrine, que
    é onde a pessoa descobre que ninguém tem a carta.
-7. **Medir de onde vem a troca.** O evento do aceite guarda o id da proposta;
-   falta a consulta que responde se a vitrine fecha mais troca que o motor — a
-   pergunta que decide se ela fica.
+7. ❌ **Medir de onde vem a troca** — **descartado em 2026-08-14, por decisão do
+   Eduardo.** A medição existia para responder uma pergunta só: se a vitrine
+   fecha mais troca que o motor, e portanto se ela fica. **A vitrine fica**, e
+   com a pergunta respondida por decisão a consulta perde a função.
+
+   O evento do aceite continua guardando o id da proposta — ele não custa nada e
+   é o que permitiria reabrir a conta no dia em que a pergunta voltar. O que não
+   entra é a consulta, o painel e o trabalho de manter os dois.
+
+   A escolha tem um custo que vale escrever: o app deixa de ter número para
+   comparar os dois caminhos, e uma decisão futura sobre qual deles priorizar
+   será tomada no olho. É aceitável agora porque a base é pequena demais para o
+   número significar alguma coisa — com oito perfis, qualquer proporção é ruído.
 8. ✅ **"Esqueci minha senha"** — feito em 2026-08-12. Era o único defeito do app
    sem contorno nenhum do lado de quem usa: senha perdida era conta perdida.
 
@@ -3018,6 +3045,13 @@ Trate o lançamento como evento, não como deploy. Escolha um dia de torneio na 
 > comentário de código, por commit e pelo próprio texto em dezenas de lugares, e
 > o custo de quebrar essas referências é maior que o de ler fora de ordem. Quem
 > for da seção 9 (matching) para cá está seguindo o caminho certo.
+
+**A vitrine é permanente desde 2026-08-14**, por decisão do Eduardo. Ela entrou
+em 2026-08-11 com uma pergunta pendurada — se fecha mais troca que o motor, e
+portanto se fica — e a pergunta foi respondida por decisão, não por número: fica.
+A medição que existia para respondê-la saiu da fila junto (item 7). O que se lê
+abaixo descreve um caminho definitivo do produto, não um experimento em
+observação.
 
 ### 22.1 O problema que o matcher não resolve
 
