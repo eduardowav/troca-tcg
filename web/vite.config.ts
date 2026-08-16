@@ -24,6 +24,12 @@ export default defineConfig({
       // sairiam do precache sem ninguém decidir isso.
       injectManifest: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,webmanifest}'],
+        // Fora do precache: nenhuma destas três é exibida pelo app rodando. A
+        // `og.png` quem lê é o raspador de prévia do WhatsApp, e os screenshots
+        // quem lê é o Chrome ao montar a caixa de instalação — os dois buscam a
+        // imagem de fora, sem passar pelo service worker. Precacheá-las faria
+        // toda pessoa baixar 80 KB que ela nunca vai ver.
+        globIgnores: ['og.png', 'screenshot-*.png'],
         // `iife`, e não o `es` padrão: service worker como módulo ES não é
         // suportado em todo navegador (o Firefox não suporta até hoje), e ali
         // a queda não é degradar — é o app ficar sem worker nenhum, ou seja,
@@ -68,6 +74,34 @@ export default defineConfig({
             sizes: '512x512',
             type: 'image/png',
             purpose: 'maskable',
+          },
+        ],
+        // O que o Chrome mostra na caixa de instalação. Sem eles, a caixa é um
+        // alerta de sistema com o nome do app e nada mais; com eles, vira uma
+        // prévia parecida com a de uma loja — e o app não tem loja nenhuma para
+        // explicar o que é antes de alguém instalar.
+        //
+        // Os dois formatos são obrigatórios na prática: o Chrome escolhe por
+        // `form_factor`, e se faltar o do contexto ele descarta os dois e volta
+        // para a caixa sem prévia. Declarar só o estreito é não declarar nada no
+        // desktop.
+        //
+        // Saem de `scripts/gerar-screenshots.mjs`, capturando a tela pública com
+        // o dev server no ar. Mudou a Home, rode o script.
+        screenshots: [
+          {
+            src: 'screenshot-estreito.png',
+            sizes: '720x1280',
+            type: 'image/png',
+            form_factor: 'narrow',
+            label: 'A tela inicial do TrocaTCG no celular',
+          },
+          {
+            src: 'screenshot-largo.png',
+            sizes: '1280x720',
+            type: 'image/png',
+            form_factor: 'wide',
+            label: 'A tela inicial do TrocaTCG no computador',
           },
         ],
       },

@@ -7,7 +7,10 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "typecheck": "tsc -b --noEmit"
+    "typecheck": "tsc -b --noEmit",
+    "gerar:icones": "node scripts/gerar-icones.mjs",
+    "gerar:og": "node scripts/gerar-og.mjs",
+    "gerar:screenshots": "node scripts/gerar-screenshots.mjs"
   },
   "dependencies": {
     "@base-ui-components/react": "1.0.0-rc.0",

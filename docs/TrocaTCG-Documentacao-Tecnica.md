@@ -2508,10 +2508,37 @@ com todo o resto.
 5. **Tela do código do WhatsApp** e o pedido no primeiro aceite. O backend está
    pronto e desligado desde 2026-08-12; a tela pode ser construída antes de o
    item 1 ficar de pé.
-6. **Open Graph (1200×630), `twitter:card`** e os **screenshots do manifesto**. É
-   o que aparece quando alguém cola o link no grupo, e o lançamento é por grupo.
-7. **Seletor de acabamento limitado ao que existe** para cada carta. O catálogo
-   já está populado; falta a tela usá-lo.
+6. ✅ **Open Graph (1200×630), `twitter:card`** e os **screenshots do manifesto**
+   — feitos em 2026-08-15.
+
+   As três imagens saem de scripts, e não de um editor: `scripts/gerar-og.mjs` e
+   `scripts/gerar-screenshots.mjs`, ao lado do `gerar-icones.mjs` que já existia
+   e com a mesma técnica — o Chromium do Playwright rasterizando, sem sharp nem
+   ImageMagick. Guardar arte solta em PNG é o que faz uma marca virar cinco
+   marcas parecidas na primeira mudança.
+
+   Duas armadilhas que ficam registradas. A `og:image` precisa ser **absoluta**:
+   caminho relativo funciona no navegador e falha em todo raspador de prévia, que
+   busca a imagem sem página base — e falha calada. E o Chrome exige os **dois**
+   `form_factor` de screenshot: se faltar o do contexto, ele descarta os dois e
+   volta para a caixa de instalação sem prévia nenhuma.
+
+   As três ficaram **fora do precache** (`globIgnores`): nenhuma é exibida pelo
+   app rodando. Quem lê a `og.png` é o raspador do WhatsApp, quem lê os
+   screenshots é o Chrome ao montar a caixa — os dois buscam de fora, sem passar
+   pelo service worker. Precacheá-las faria toda pessoa baixar 80 KB que nunca
+   veria.
+
+7. ✅ **Seletor de acabamento limitado ao que existe** — **já estava pronto**, e
+   entrou na ordem por erro meu de verificação em 2026-08-14: procurei
+   `card_finishes` nas rotas da API e não achei, sem notar que quem consulta é o
+   frontend direto no Supabase. `useAcabamentosDaCarta` existe e é usado pelas
+   quatro telas que oferecem a escolha — a folha de adicionar, a busca, o detalhe
+   da carta e o acervo. A validação do outro lado também já existia, em
+   `_resolver_acabamentos`.
+
+   Fica a lição de método, que é o que interessa: conferir um item de checklist
+   por um grep num diretório é o mesmo que não conferir.
 
 **Fase 3 — segurança, imediatamente antes de abrir.** Na ordem de gravidade da
 varredura de 2026-08-11, detalhada no bloco "Segurança do app" abaixo.
@@ -3612,9 +3639,9 @@ não presumido; o que tem ressalva está escrito por quê.
 - [ ] Domínio com HTTPS e HSTS — não haverá domínio próprio (decisão de custo zero em 2026-08-14). O `onrender.com` serve por HTTPS; o HSTS é dele, não nosso
 - [ ] PWA instalável testada em Android e iOS
 - [x] Página "Como instalar" publicada, com o passo a passo dos dois sistemas — `/instalar`, desde 2026-08-12
-- [ ] Imagem de compartilhamento (Open Graph 1200×630) e `twitter:card` no `index.html` — nenhuma meta tag social existe. Item 6
-- [ ] `screenshots` no manifesto (estreito e largo) — é o que o Chrome mostra na caixa de instalação
+- [x] Imagem de compartilhamento (Open Graph 1200×630) e `twitter:card` no `index.html` — feita em 2026-08-15, gerada por `scripts/gerar-og.mjs`
+- [x] `screenshots` no manifesto (estreito e largo) — 720×1280 e 1280×720, por `scripts/gerar-screenshots.mjs`. Os dois formatos são obrigatórios: faltando um, o Chrome descarta os dois
 - [x] Catálogo de acabamentos populado para os sets em circulação — 14 acabamentos e 24.813 vínculos em `card_finishes`
-- [ ] Seletor de acabamento limitado ao que existe para cada carta — o dado está lá, a tela não o usa. Item 7
+- [x] Seletor de acabamento limitado ao que existe para cada carta — já estava pronto (`useAcabamentosDaCarta`); marcado como pendente por erro de verificação em 2026-08-14
 - [ ] 30+ usuários pré-cadastrados
 - [ ] README de portfólio com diagrama de arquitetura e decisões justificadas

@@ -15,6 +15,46 @@
     <title>TrocaTCG</title>
 
     <!--
+      A prévia do link.
+
+      O lançamento é por grupo de WhatsApp (ver "O risco número um", seção 21),
+      e sem estas linhas o link colado no grupo aparece como uma faixa cinza com
+      o endereço cru. A diferença entre isso e um cartão com arte é a diferença
+      entre alguém tocar e ninguém tocar — é a única peça de divulgação que o app
+      tem, e ela custa dez linhas.
+
+      A `og:image` é absoluta de propósito: caminho relativo funciona no
+      navegador e falha em todo raspador de prévia, que busca a imagem sem ter
+      uma página base. Como o app não tem domínio próprio (decisão de custo zero,
+      2026-08-14), o endereço é o do Render — e é ele que precisa mudar no dia em
+      que um domínio entrar.
+
+      `summary_large_image` é o formato de cartão grande do Twitter/X. Sem esta
+      linha ele usa a miniatura quadrada e recorta o meio da arte.
+
+      A imagem sai de `scripts/gerar-og.mjs`, da mesma marca dos ícones.
+    -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="TrocaTCG" />
+    <meta property="og:locale" content="pt_BR" />
+    <meta property="og:title" content="TrocaTCG — troque cartas sem procurar" />
+    <meta
+      property="og:description"
+      content="Você diz o que tem e o que quer. O app acha com quem trocar, aqui em Belém."
+    />
+    <meta property="og:url" content="https://trocatcg-web.onrender.com" />
+    <meta property="og:image" content="https://trocatcg-web.onrender.com/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <!-- Lida por leitor de tela quando a prévia é anunciada, e é o único texto
+         alternativo que uma imagem de compartilhamento pode ter. -->
+    <meta
+      property="og:image:alt"
+      content="Três cartas em leque com as setas de troca, ao lado da frase: troque cartas sem procurar."
+    />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <!--
       O tema, antes da primeira pintura.
 
       Precisa ser um script bloqueante no `<head>`, e não código do React: o
