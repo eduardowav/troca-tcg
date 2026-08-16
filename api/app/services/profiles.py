@@ -32,7 +32,13 @@ _COLUNAS_PUBLICAS = """
 # só é servido em /me — é o dono vendo o próprio contato para poder editá-lo. A
 # regra de nunca revelar contato de terceiros vive em schemas/match.py, e é lá
 # que ela precisa continuar valendo.
-_COLUNAS = f"{_COLUNAS_PUBLICAS}, contato_visivel, plano, onboarding_ok"
+#
+# `bloqueado` entrou em 2026-08-16 com a trava do item 2 da segurança, e só faz
+# sentido aqui: no perfil público seria delação, e para o dono é a única forma de
+# descobrir por que o app parou de deixá-lo agir. Sem este campo, `GET /me`
+# continuar aberto a conta bloqueada não serviria para nada — a pessoa veria o
+# próprio perfil normal e concluiria que o app está quebrado.
+_COLUNAS = f"{_COLUNAS_PUBLICAS}, contato_visivel, plano, onboarding_ok, bloqueado"
 
 
 def _reputacao(concluidas: int, furadas: int) -> int | None:

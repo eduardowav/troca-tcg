@@ -87,3 +87,10 @@ class PerfilOut(PerfilPublicoOut):
     contato_visivel: str | None = None
     plano: str
     onboarding_ok: bool
+    #: A conta está bloqueada por descumprir os termos.
+    #:
+    #: Só para o dono — no perfil público seria delação, e a política é que quem
+    #: foi bloqueado simplesmente não aparece. Aqui é o contrário: é a única
+    #: forma de a pessoa saber por que o app parou de deixá-la agir, e sem isso
+    #: ela conclui que o app quebrou e cria uma segunda conta.
+    bloqueado: bool = False

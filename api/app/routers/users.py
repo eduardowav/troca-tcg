@@ -5,7 +5,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.auth import usuario_atual
+from app.core.auth import usuario_atual, usuario_da_sessao
 from app.core.errors import RegraNegocio
 from app.db.session import get_session
 from app.schemas.profile import (
@@ -26,9 +26,14 @@ def _ip(request: Request) -> str | None:
     return request.client.host if request.client else None
 
 
+# Uma das duas rotas que continuam abertas para conta bloqueada. Quem foi
+# bloqueado precisa poder descobrir isso: um app que só para de funcionar empurra
+# a pessoa para criar uma segunda conta, que é o oposto do que o bloqueio quer.
+# É por isso que `bloqueado` entrou no `PerfilOut` — sem o campo, esta exceção
+# não serviria para nada.
 @router.get("/me", response_model=PerfilOut)
 async def meu_perfil(
-    user_id: UUID = Depends(usuario_atual),
+    user_id: UUID = Depends(usuario_da_sessao),
     session: AsyncSession = Depends(get_session),
 ) -> PerfilOut:
     perfil = await profiles.obter_perfil(session, user_id)
@@ -62,10 +67,15 @@ async def atualizar_meu_perfil(
 
 @router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
 async def excluir_minha_conta(
-    user_id: UUID = Depends(usuario_atual),
+    user_id: UUID = Depends(usuario_da_sessao),
     session: AsyncSession = Depends(get_session),
 ) -> None:
-    """Direito do titular (LGPD art. 18) — sem passar por e-mail nem por nós."""
+    """Direito do titular (LGPD art. 18) — sem passar por e-mail nem por nós.
+
+    A outra rota aberta a conta bloqueada, e por isto: apagar os próprios dados
+    é direito, não recompensa por bom comportamento. Condicioná-lo ao bloqueio
+    seria transformar uma punição de comunidade em retenção de dado pessoal.
+    """
     await profiles.excluir_conta(session, user_id)
 
 

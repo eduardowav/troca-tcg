@@ -2567,7 +2567,9 @@ varredura de 2026-08-11, detalhada no bloco "Segurança do app" abaixo.
     ele libera toda requisição cuja rota não consegue resolver, e o FastAPI 0.140
     mudou a forma de incluir routers. O freio passou a ser do projeto, em
     `core/limitador.py`. Detalhe no bloco de segurança abaixo.
-9. Bloqueado continua agindo.
+9. ✅ **Bloqueado continua agindo** — feito em 2026-08-16. A trava ficou em
+    `usuario_atual`, com duas exceções declaradas (ver o próprio perfil e apagar
+    a conta), para que rota nova nasça fechada.
 10. `/docs` e `/openapi.json` fechados em produção.
 11. `JOB_SECRET` sem default publicado, comparado com `compare_digest`.
 12. CSP no PWA.
@@ -2879,11 +2881,45 @@ de dados hoje, com ou sem usuário no app.
    lugar nenhum além do secret e de onde ele a guardou — se ela se perder, os
    backups viram lixo cifrado. Vale provar a restauração uma vez, num banco
    descartável, antes de precisar dela num dia ruim.
-3. **Quem foi bloqueado continua agindo.** `bloqueado` filtra listagem: perfil
-   público, vitrine, acervo, matcher e demanda. Não há checagem nenhuma na
-   autenticação nem nas escritas, então quem foi bloqueado ainda cria anúncio,
-   abre proposta, aceita match e denuncia — fica invisível, não impedido. O
-   lugar da trava é uma dependência de escrita, ou o próprio `usuario_atual`.
+3. ✅ **Quem foi bloqueado continua agindo** — resolvido em 2026-08-16.
+
+   `bloqueado` só filtrava listagem: perfil público, vitrine, acervo, matcher e
+   demanda. Não havia checagem na autenticação nem nas escritas, então quem foi
+   bloqueado continuava criando anúncio, abrindo proposta, aceitando match e
+   denunciando. **Invisível, não impedido** — e invisível é a pior das duas,
+   porque o outro lado da troca não vê com quem está lidando.
+
+   **A trava ficou em `usuario_atual`, e não numa dependência aplicada às rotas
+   de escrita**, por causa de como as duas falham. São mais de vinte rotas que
+   escrevem; marcar uma a uma significa que esquecer uma abre um buraco
+   silencioso — exatamente o defeito que este item existe para fechar. Invertendo
+   (todos barrados, exceções se declaram), esquecer passa a ser seguro: rota nova
+   nasce fechada. Um teste varre os routers e quebra se aparecer uma terceira
+   exceção.
+
+   Custa uma consulta por requisição autenticada, indexada pela chave primária —
+   ruído perto das trinta que o feed já faz sozinho.
+
+   **Duas rotas seguem abertas**, e nenhuma por conveniência. `GET /me`, porque
+   quem foi bloqueado precisa poder descobrir isso: um app que só para de
+   funcionar empurra a pessoa a criar uma segunda conta, que é o oposto do que o
+   bloqueio quer. E `DELETE /me`, porque apagar os próprios dados é direito da
+   LGPD, não recompensa por bom comportamento — condicioná-lo transformaria uma
+   punição de comunidade em retenção de dado pessoal.
+
+   **403, e não 401.** A sessão é válida e a pessoa é quem diz ser; o que não
+   vale é o que ela quer fazer. Um 401 mandaria o app derrubar a sessão e pedir
+   login, o login funcionaria, e a pessoa entraria num laço de entrar e ser
+   deslogada sem nunca ler o motivo.
+
+   **Conta sem perfil passa.** Quem criou a conta e ainda não completou o
+   cadastro não tem linha em `profiles`; barrar ali trancaria justamente a tela
+   de completar cadastro. Só bloqueio explícito barra.
+
+   Do lado da tela, `bloqueado` entrou no `PerfilOut` — só para o dono, porque no
+   perfil público seria delação — e Configurações mostra o aviso com o que ainda
+   é possível fazer. Sem esse campo, manter `GET /me` aberto não serviria para
+   nada: a pessoa veria o próprio perfil normal e concluiria que o app quebrou.
 4. **`/docs` e `/openapi.json` abertos em produção.** O `FastAPI()` não desliga
    nada por ambiente, e o contrato inteiro — incluindo `/internal/jobs/*` — é
    o mapa que o atacante não precisaria levantar sozinho.

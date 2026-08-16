@@ -50,6 +50,8 @@ export default function Configuracoes() {
         </h1>
       </div>
 
+      {perfil?.bloqueado && <ContaBloqueada />}
+
       <Grupo titulo="Conta">
         <Ficha para="/perfil/editar">Editar perfil</Ficha>
         <Plano perfil={perfil} />
@@ -327,6 +329,50 @@ function Plano({ perfil }: { perfil?: Perfil | null }) {
     <Ficha para="/planos" valor={valor}>
       Plano
     </Ficha>
+  )
+}
+
+/**
+ * O aviso de conta bloqueada.
+ *
+ * Existe porque, sem ele, o bloqueio seria um app que simplesmente para de
+ * funcionar: cada ação devolveria 403 e a pessoa concluiria que quebrou — e a
+ * reação natural a um app quebrado é criar outra conta, que é o oposto do que o
+ * bloqueio quer.
+ *
+ * Diz as duas coisas que ainda são possíveis, e é de propósito que a segunda
+ * seja apagar a conta: reter os dados de quem foi bloqueado transformaria uma
+ * punição de comunidade em retenção de dado pessoal.
+ *
+ * Fica em Configurações, e não numa faixa em toda tela: quem foi bloqueado
+ * esbarra no 403 na primeira ação, e a mensagem da API já diz o que houve. Aqui
+ * é onde a pessoa vem entender e resolver, não onde ela precisa ser lembrada.
+ */
+function ContaBloqueada() {
+  return (
+    <div
+      role="alert"
+      className="mt-6 rounded-[var(--radius-cartela)] border-2 border-alerta bg-alerta-fraco p-5"
+    >
+      <h2 className="font-titulo text-[18px] font-black text-alerta">
+        Sua conta está bloqueada
+      </h2>
+      <p className="mt-2 font-corpo text-[15px] leading-relaxed text-tinta">
+        Ela foi bloqueada por descumprir os termos de uso, e por isso você não
+        consegue anunciar cartas, enviar propostas nem aceitar trocas.
+      </p>
+      <p className="mt-2 font-corpo text-[15px] leading-relaxed text-apagado">
+        Você ainda pode ver seu perfil e apagar sua conta. Se achar que houve
+        engano, fale com{' '}
+        <a
+          href="mailto:eduardowav@icloud.com"
+          className="text-tinta underline underline-offset-2"
+        >
+          eduardowav@icloud.com
+        </a>
+        .
+      </p>
+    </div>
   )
 }
 

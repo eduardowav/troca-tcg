@@ -31,6 +31,15 @@ export interface Perfil extends PerfilPublico {
   contato_visivel: string | null
   plano: string
   onboarding_ok: boolean
+  /**
+   * A conta foi bloqueada por descumprir os termos.
+   *
+   * Só existe aqui, e não no perfil público: lá quem foi bloqueado simplesmente
+   * não aparece. Para o dono é o contrário — é a única forma de saber por que
+   * toda ação passou a devolver 403, e sem isso a conclusão natural é que o app
+   * quebrou, o que empurra a pessoa a criar uma segunda conta.
+   */
+  bloqueado?: boolean
 }
 
 export interface PerfilNovo {
