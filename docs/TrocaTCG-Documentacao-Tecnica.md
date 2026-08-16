@@ -1609,6 +1609,29 @@ meses para conseguir.
 "esse navegador não existe mais" — desinstalou, limpou os dados, trocou de
 aparelho. `services/push.py` apaga a linha em vez de tentar de novo amanhã.
 
+**Inscrição viva sem permissão é outro caso, e faltava tratá-lo** (corrigido em
+2026-08-16, depois de o erro aparecer no console em produção). Revogar o aviso
+nas configurações do navegador não avisa o servidor: a inscrição continua
+válida, o serviço de push aceita a entrega, o push chega ao worker — e o
+`showNotification` estoura com *"No notification permission has been granted for
+this origin"*. Como o 404/410 nunca chega, a linha ficaria no banco para sempre e
+o envio seria repetido indefinidamente.
+
+O worker passou a conferir a permissão antes de mostrar e, quando ela não existe
+mais, **cancela a própria inscrição**. Isso provoca de propósito o 410 do envio
+seguinte, que é o que faz `services/push.py` limpar o registro — em vez de
+inventar uma segunda via de limpeza, usa-se a que já existe.
+
+Não é só ruído de console: uma promessa rejeitada dentro do `waitUntil` faz o
+navegador tratar o push como não atendido, e alguns mostram no lugar uma
+notificação genérica de "este site foi atualizado em segundo plano" — pior que
+não mostrar nada, porque não diz nada e ainda parece defeito.
+
+Detalhe de tipagem que vale a linha: `Notification` é global no worker em
+runtime, mas `lib.webworker` não a declara em `ServiceWorkerGlobalScope`. O
+`npm run typecheck` solto não pegou; o `tsc -b` do build pegou. É o build que
+manda aqui.
+
 **O push leva só o título.** O `corpo` fica de fora do payload: na tela de
 bloqueio o aviso é uma linha, e "@fulano propôs uma troca" já diz o que
 aconteceu e o que fazer. A segunda frase — o prazo de 72 horas, o pedido de

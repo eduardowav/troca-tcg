@@ -72,17 +72,52 @@ self.addEventListener('push', (evento: PushEvent) => {
     aviso = {}
   }
 
-  evento.waitUntil(
-    self.registration.showNotification(aviso.titulo ?? 'TrocaTCG', {
-      // Sem `body`: o título já diz o que aconteceu e o que fazer, e o resto do
-      // texto está na caixa do app, a um toque daqui.
-      icon: '/pwa-192.png',
-      badge: '/pwa-192.png',
-      tag: aviso.tipo ?? 'trocatcg',
-      data: { link: aviso.link ?? '/app' },
-    }),
-  )
+  evento.waitUntil(mostrar(aviso))
 })
+
+/**
+ * Mostra o aviso — se ainda houver permissão para isso.
+ *
+ * **A permissão pode ter sumido com a inscrição ainda viva.** Revogar o aviso
+ * nas configurações do navegador não avisa o servidor, e ele continua mandando;
+ * o push chega aqui e o `showNotification` estoura com "No notification
+ * permission has been granted for this origin". Também acontece com o push de
+ * teste que o DevTools dispara.
+ *
+ * Sem este cuidado a promessa rejeitada morre dentro do `waitUntil`, e aí não é
+ * só ruído no console: o navegador trata o push como não atendido e alguns
+ * mostram no lugar uma notificação genérica de "este site foi atualizado em
+ * segundo plano" — que é pior que não mostrar nada, porque não diz nada e ainda
+ * parece defeito.
+ *
+ * **E a inscrição é encerrada.** Sem isso o servidor seguiria gastando envio
+ * para um destino que não mostra nada, indefinidamente: o serviço de push
+ * responde sucesso (a inscrição existe), então nunca chega o 404 ou 410 que faz
+ * `services/push.py` apagar a linha. Cancelando aqui, o próximo envio recebe o
+ * erro que limpa o registro do outro lado.
+ */
+async function mostrar(aviso: AvisoPush): Promise<void> {
+  // `Notification` é global no worker em runtime, mas o `lib.webworker` não a
+  // declara em `ServiceWorkerGlobalScope` — daí a leitura pelo escopo global com
+  // asserção, em vez de `self.Notification`, que não compila.
+  const permissao = (globalThis as unknown as { Notification?: { permission: string } })
+    .Notification?.permission
+
+  if (permissao !== 'granted') {
+    const inscricao = await self.registration.pushManager.getSubscription()
+    await inscricao?.unsubscribe()
+    return
+  }
+
+  await self.registration.showNotification(aviso.titulo ?? 'TrocaTCG', {
+    // Sem `body`: o título já diz o que aconteceu e o que fazer, e o resto do
+    // texto está na caixa do app, a um toque daqui.
+    icon: '/pwa-192.png',
+    badge: '/pwa-192.png',
+    tag: aviso.tipo ?? 'trocatcg',
+    data: { link: aviso.link ?? '/app' },
+  })
+}
 
 /**
  * Tocou na notificação.
