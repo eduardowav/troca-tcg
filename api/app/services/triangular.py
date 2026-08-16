@@ -21,7 +21,6 @@ proporcional ao número de arestas, não ao cubo dos usuários. Ver seção 9.2.
 import logging
 from collections import defaultdict
 from dataclasses import dataclass
-from uuid import UUID
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession

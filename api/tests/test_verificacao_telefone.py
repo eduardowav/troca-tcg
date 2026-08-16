@@ -11,7 +11,7 @@ O envio em si é da Cloud API da Meta e depende de rede; o que fica aqui é a
 decisão de mandar.
 """
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 import pytest
@@ -64,7 +64,7 @@ class SessaoFalsa:
 
 
 def agora():
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 # ------------------------------------------------------------------ normalização

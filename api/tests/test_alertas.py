@@ -9,13 +9,12 @@ fechar, sem querer, o que devia continuar aberto.
 from uuid import uuid4
 
 import pytest
+from fastapi.testclient import TestClient
 
 from app.core import limites
 from app.core.errors import RegraNegocio
 from app.main import app
 from app.services import alertas, notificacoes
-
-from fastapi.testclient import TestClient
 
 
 class SessaoFalsa:

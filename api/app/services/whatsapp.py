@@ -71,7 +71,9 @@ async def enviar_codigo(telefone: str, codigo: str) -> Resultado:
         )
         return "registrado_no_log"
 
-    url = f"https://graph.facebook.com/{VERSAO_API}/{settings.WHATSAPP_PHONE_ID}/messages"
+    url = (
+        f"https://graph.facebook.com/{VERSAO_API}/{settings.WHATSAPP_PHONE_ID}/messages"
+    )
     corpo = {
         "messaging_product": "whatsapp",
         # O 55 entra só aqui. No banco o número é guardado como a pessoa o usa no

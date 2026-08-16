@@ -5,6 +5,8 @@ Ver seções 5, 10 e 18 da doc. Existem o sync de catálogo e a expiração; os 
 ver o teste que guarda essa lista em tests/test_internal.py.
 """
 
+import secrets
+
 import httpx
 from fastapi import APIRouter, Depends, Header, HTTPException
 from pydantic import BaseModel
@@ -20,7 +22,24 @@ router = APIRouter(prefix="/internal/jobs", tags=["internal"])
 
 
 def _verifica_secret(x_job_secret: str = Header(...)) -> None:
-    if x_job_secret != settings.JOB_SECRET:
+    """A porta das rotas internas. Duas mudanças em 2026-08-16, item 5.
+
+    **Sem segredo configurado, nada passa.** Antes o `config.py` trazia o default
+    `dev-job-secret`, publicado no repositório: bastava a variável faltar num
+    ambiente novo para estas rotas abrirem com uma senha que qualquer um lê. O
+    503 diz a verdade — não é que o pedido está errado, é que o servidor não está
+    em condição de atender.
+
+    **`compare_digest`, e não `!=`.** Comparação de string devolve no primeiro
+    byte diferente, e essa diferença de tempo permite adivinhar o segredo byte a
+    byte. É a mesma regra já aplicada no webhook do Mercado Pago e no código de
+    verificação por WhatsApp; faltava aqui.
+    """
+    if not settings.JOB_SECRET:
+        raise HTTPException(
+            status_code=503, detail="Servidor sem JOB_SECRET configurado."
+        )
+    if not secrets.compare_digest(x_job_secret, settings.JOB_SECRET):
         raise HTTPException(status_code=403, detail="Job secret inválido.")
 
 

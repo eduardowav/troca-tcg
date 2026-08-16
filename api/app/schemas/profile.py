@@ -8,10 +8,19 @@ from pydantic import BaseModel, Field, field_validator
 _USERNAME_RE = re.compile(r"^[a-z0-9_]{3,20}$")
 
 
+#: Teto de campo livre curto. `bairro` e `avatar_url` entravam sem limite nenhum
+#: (item 7 da segurança, resolvido em 2026-08-16): sem `max_length`, o Pydantic
+#: aceita megabytes, o Postgres aceita `text` sem reclamar, e o `avatar_url` de
+#: terceiros ainda é servido no perfil público. Não era explorável hoje; era o
+#: tipo de campo que vira problema no dia em que alguém procura por um.
+_MAX_BAIRRO = 60
+_MAX_URL = 500
+
+
 class PerfilCriar(BaseModel):
     username: str
     nome_exibicao: str = Field(min_length=1, max_length=60)
-    bairro: str | None = None
+    bairro: str | None = Field(default=None, max_length=_MAX_BAIRRO)
     contato_visivel: str | None = Field(default=None, max_length=120)
     aceite_termos: bool
 
@@ -29,10 +38,32 @@ class PerfilCriar(BaseModel):
 class PerfilAtualizar(BaseModel):
     username: str | None = None
     nome_exibicao: str | None = Field(default=None, min_length=1, max_length=60)
-    bairro: str | None = None
+    bairro: str | None = Field(default=None, max_length=_MAX_BAIRRO)
     bio: str | None = Field(default=None, max_length=200)
     contato_visivel: str | None = Field(default=None, max_length=120)
-    avatar_url: str | None = None
+    avatar_url: str | None = Field(default=None, max_length=_MAX_URL)
+
+    @field_validator("avatar_url")
+    @classmethod
+    def _so_https(cls, v: str | None) -> str | None:
+        """Endereço de imagem, e só por HTTPS.
+
+        Este campo é servido a terceiros no perfil público, então o que entra
+        aqui é renderizado no navegador de outra pessoa. Sem validação, um
+        `javascript:` ou um `data:` com SVG viram execução na página de quem
+        olha o perfil — e o app ainda não tem CSP para segurar isso sozinho.
+
+        Aceitar só `https://` é a regra mais estreita que não atrapalha ninguém:
+        toda hospedagem de imagem serve por HTTPS, e o app não hospeda avatar.
+        """
+        if v is None:
+            return None
+        v = v.strip()
+        if not v:
+            return None
+        if not v.startswith("https://"):
+            raise ValueError("O endereço da imagem precisa começar com https://")
+        return v
 
     @field_validator("username")
     @classmethod

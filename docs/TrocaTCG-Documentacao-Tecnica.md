@@ -2570,10 +2570,16 @@ varredura de 2026-08-11, detalhada no bloco "Segurança do app" abaixo.
 9. ✅ **Bloqueado continua agindo** — feito em 2026-08-16. A trava ficou em
     `usuario_atual`, com duas exceções declaradas (ver o próprio perfil e apagar
     a conta), para que rota nova nasça fechada.
-10. `/docs` e `/openapi.json` fechados em produção.
-11. `JOB_SECRET` sem default publicado, comparado com `compare_digest`.
-12. CSP no PWA.
-13. Miúdos: `bairro`, `avatar_url` e a f-string de `matching.py`.
+10. ✅ **`/docs` e `/openapi.json` fechados em produção** — 2026-08-16.
+11. ✅ **`JOB_SECRET` sem default publicado, com `compare_digest`** — 2026-08-16.
+12. ✅ **CSP no PWA** — 2026-08-16, com o hash do script inline conferido no CI.
+13. ✅ **Miúdos** — 2026-08-16.
+
+    Junto deles saiu uma dívida que não estava na lista e valia mais que qualquer
+    um: **o CI estava vermelho desde 2026-08-11**, por cinco erros de `ruff` em
+    arquivos antigos. Eu os vi em 14/08 e decidi não mexer por serem "fora do
+    escopo" — julgamento errado, porque um CI vermelho não protege nada, e o
+    `conferir:csp` acrescentado hoje nasceria inútil atrás dele.
 
 **Fase 4 — lançar.**
 
@@ -2920,23 +2926,62 @@ de dados hoje, com ou sem usuário no app.
    perfil público seria delação — e Configurações mostra o aviso com o que ainda
    é possível fazer. Sem esse campo, manter `GET /me` aberto não serviria para
    nada: a pessoa veria o próprio perfil normal e concluiria que o app quebrou.
-4. **`/docs` e `/openapi.json` abertos em produção.** O `FastAPI()` não desliga
-   nada por ambiente, e o contrato inteiro — incluindo `/internal/jobs/*` — é
-   o mapa que o atacante não precisaria levantar sozinho.
-5. **`JOB_SECRET` tem default no repositório.** `dev-job-secret`, em
-   `config.py`. No Render o valor vem de `generateValue`, mas basta a variável
-   faltar num ambiente novo para as rotas internas abrirem com um segredo que
-   está publicado aqui. Junto disso, a comparação em `internal.py` é `!=` puro,
-   não `secrets.compare_digest`.
-6. **PWA sem Content-Security-Policy.** O `render.yaml` manda
-   `X-Frame-Options`, `nosniff` e `Referrer-Policy`, e para o CSP. A sessão do
-   Supabase mora em `localStorage`, então um XSS leva a conta inteira. Não
-   achei injeção hoje — não há `dangerouslySetInnerHTML`, `innerHTML` nem
-   `eval` no `web/src` —, e é justamente por isso que a rede vale a pena
-   agora, enquanto é barata.
-7. **Miúdos.** `bairro` e `avatar_url` entram sem limite de tamanho e sem
-   validação, no Pydantic e no banco, e o `avatar_url` é servido a terceiros no
-   perfil público. (A parte das policies saiu inteira em 2026-08-11:
+4. ✅ **`/docs` e `/openapi.json` abertos em produção** — fechados em 2026-08-16.
+   O contrato inteiro, incluindo `/internal/jobs/*`, era o mapa que o atacante
+   não precisaria levantar sozinho — e o `/docs` ainda dava o botão de disparar
+   cada rota. Some por ambiente: `docs_url`, `redoc_url` e `openapi_url` viram
+   `None` quando `ENVIRONMENT` é `production`, e a raiz para de anunciar `/docs`
+   (endereço anunciado que responde 404 diz que existe algo ali).
+
+   **Some a rota, não o documento.** `app.openapi()` continua funcionando, e é
+   dele que os testes leem o contrato para provar coisas como "o feed não
+   serializa contato". Fechar apagando o documento derrubaria essas provas
+   justamente no ambiente que importa.
+5. ✅ **`JOB_SECRET` tinha default no repositório** — resolvido em 2026-08-16.
+   Era `dev-job-secret`, em `config.py`: bastava a variável faltar num ambiente
+   novo para as rotas internas abrirem com um segredo publicado aqui. O default
+   passou a ser vazio, e vazio recusa tudo com **503** — não é que o pedido está
+   errado, é que o servidor não está em condição de atender.
+
+   A comparação virou `secrets.compare_digest`. `!=` devolve no primeiro byte
+   diferente, e essa diferença de tempo permite adivinhar o segredo byte a byte;
+   a regra já valia no webhook do Mercado Pago e no código do WhatsApp, e
+   faltava aqui.
+6. ✅ **PWA sem Content-Security-Policy** — resolvido em 2026-08-16. A sessão do
+   Supabase mora em `localStorage`, então um XSS não vaza uma tela: leva a conta
+   inteira. Não há injeção conhecida (nem `dangerouslySetInnerHTML`, nem
+   `innerHTML`, nem `eval` no `web/src`), e é justamente por isso que a rede
+   valeu a pena agora, enquanto é barata.
+
+   **`script-src` sem `'unsafe-inline'`**, com o script do tema autorizado por
+   hash. Ele precisa ser inline — roda antes da primeira pintura, senão volta o
+   flash branco no modo escuro — e liberar todo inline para acomodar um script
+   desligaria a proteção inteira.
+
+   **`style-src` com `'unsafe-inline'`**, e a assimetria é deliberada: o React e
+   o motion escrevem `style=` em elemento, que o CSP trata como estilo inline.
+   Sem isso, toda animação e todo estilo calculado somem. CSS injetado é
+   problema de aparência; script injetado é a conta da pessoa.
+
+   **O hash falha calado, então o CI confere.** Mudar o script do tema sem
+   trocar o hash não quebra o app: o navegador bloqueia, e só volta o flash
+   branco — meses depois, sem ninguém ligar uma coisa à outra. É o mesmo formato
+   do rate limit que passou um mês inerte. `npm run conferir:csp` recalcula e
+   quebra o CI dizendo qual é o hash novo.
+
+   Uma armadilha que custou uma falsa falha na primeira execução: o script lê
+   normalizando CRLF para LF. O repositório guarda o `index.html` em LF
+   (`git ls-files --eol` diz `i/lf w/crlf`), a cópia no Windows fica em CRLF, e
+   o SHA-256 muda inteiro com uma quebra de linha diferente — o verificador
+   acusaria erro no Windows e passaria no Linux, que é onde o hash de verdade é
+   construído.
+7. ✅ **Miúdos** — resolvidos em 2026-08-16. `bairro` e `avatar_url` entravam sem
+   limite de tamanho e sem validação, e o `avatar_url` é servido a terceiros no
+   perfil público — o que a pessoa escreve ali é renderizado no navegador de
+   outra. Os dois ganharam `max_length`, e o `avatar_url` passou a exigir
+   `https://`: `javascript:` e `data:` com SVG são execução, não imagem, e
+   `http://` é conteúdo misto. Nenhum tem uso legítimo — toda hospedagem de
+   imagem serve por HTTPS. (A parte das policies saiu inteira em 2026-08-11:
    `24_notificacoes.sql` para `notifications` — `for select`, `revoke all` de
    `anon` e `authenticated`, `grant select` só para quem está logado — e
    `25_push_subscriptions.sql` para `push_subscriptions`, que perdeu o `for all`

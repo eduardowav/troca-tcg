@@ -180,3 +180,53 @@ def test_todo_job_do_cron_esta_previsto():
     sync-catalog fica de fora porque é disparo manual — catálogo inteiro é
     pesado e não tem por que rodar sozinho todo dia."""
     assert _jobs_publicados() - _jobs_do_cron() == {"sync-catalog"}
+
+
+# ------------------------------------------------- a porta das rotas internas
+
+
+def test_sem_job_secret_configurado_nada_passa(monkeypatch):
+    """Item 5 da segurança. O `config.py` trazia `dev-job-secret` como default,
+    publicado no repositório: bastava a variável faltar num ambiente novo para
+    estas rotas abrirem com uma senha que qualquer um lê.
+
+    503 e não 403 de propósito — não é que o pedido está errado, é que o servidor
+    não está em condição de atender.
+    """
+    monkeypatch.setattr(settings, "JOB_SECRET", "")
+
+    resp = TestClient(app).post(
+        "/v1/internal/jobs/expire", headers={"x-job-secret": "qualquer-coisa"}
+    )
+    assert resp.status_code == 503
+
+
+def test_o_default_publicado_saiu_do_repositorio():
+    """Regressão direta: o valor que estava aqui era legível por qualquer um."""
+    from app.core.config import Settings
+
+    assert Settings.model_fields["JOB_SECRET"].default == ""
+
+
+def test_segredo_errado_e_recusado(monkeypatch):
+    monkeypatch.setattr(settings, "JOB_SECRET", "o-certo")
+
+    resp = TestClient(app).post(
+        "/v1/internal/jobs/expire", headers={"x-job-secret": "o-errado"}
+    )
+    assert resp.status_code == 403
+
+
+def test_a_comparacao_do_segredo_e_de_tempo_constante():
+    """`compare_digest`, e não `!=`.
+
+    Comparação de string devolve no primeiro byte diferente, e essa diferença de
+    tempo permite adivinhar o segredo byte a byte. A regra já valia no webhook do
+    Mercado Pago e no código do WhatsApp; faltava aqui.
+    """
+    from app.routers import internal
+
+    fonte = inspect.getsource(internal._verifica_secret)
+    assert "compare_digest" in fonte
+    # E o `!=` não pode ter sobrado em lugar nenhum da função.
+    assert "x_job_secret !=" not in fonte

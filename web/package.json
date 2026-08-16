@@ -10,7 +10,8 @@
     "typecheck": "tsc -b --noEmit",
     "gerar:icones": "node scripts/gerar-icones.mjs",
     "gerar:og": "node scripts/gerar-og.mjs",
-    "gerar:screenshots": "node scripts/gerar-screenshots.mjs"
+    "gerar:screenshots": "node scripts/gerar-screenshots.mjs",
+    "conferir:csp": "node scripts/conferir-csp.mjs"
   },
   "dependencies": {
     "@base-ui-components/react": "1.0.0-rc.0",

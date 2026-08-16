@@ -80,7 +80,13 @@ class Settings(BaseSettings):
     MERCADO_PAGO_BACK_URL: str = "http://localhost:5173/planos"
 
     # Segurança
-    JOB_SECRET: str = "dev-job-secret"
+    # **Sem default, e é decisão de segurança** (item 5 do bloco da seção 17).
+    # Era `dev-job-secret`, publicado neste arquivo: bastava a variável faltar
+    # num ambiente novo para as rotas `/internal/jobs/*` abrirem com um segredo
+    # que qualquer um lê no repositório. No Render o valor vem de
+    # `generateValue`, então o default nunca protegeu nada — só escondia o
+    # buraco. Vazio, `_verifica_secret` recusa tudo com 503.
+    JOB_SECRET: str = ""
     CORS_ORIGINS: str = "http://localhost:5173"
 
     # Termos. **Precisa bater com a `VERSAO` de `web/src/routes/Termos.tsx`** —

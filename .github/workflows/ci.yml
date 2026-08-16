@@ -36,3 +36,8 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm run build
+      # O CSP autoriza o script inline do tema por hash do conteúdo. Mudar aquele
+      # script sem trocar o hash não quebra o app — só faz o navegador bloqueá-lo
+      # e voltar o flash branco no modo escuro, meses depois, sem ninguém ligar
+      # uma coisa à outra. Aqui a falha é imediata e diz qual é o hash novo.
+      - run: npm run conferir:csp

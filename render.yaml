@@ -168,6 +168,52 @@ services:
       - path: /*
         name: Referrer-Policy
         value: strict-origin-when-cross-origin
+
+      # Content-Security-Policy — item 6 do bloco de segurança da seção 17.
+      #
+      # A sessão do Supabase mora em `localStorage`, então um XSS não vaza uma
+      # tela: leva a conta inteira. Não há injeção conhecida hoje (não existe
+      # `dangerouslySetInnerHTML`, `innerHTML` nem `eval` no `web/src`), e é
+      # justamente por isso que a rede vale a pena agora — enquanto é barata.
+      #
+      # `script-src` sem `'unsafe-inline'`, com o script do tema autorizado por
+      # **hash**. Ele precisa ser inline (roda antes da primeira pintura, senão
+      # volta o flash branco no modo escuro), e liberar todo inline para acomodar
+      # um script desligaria a proteção inteira. Mudou aquele script? O hash muda
+      # junto — `npm run conferir:csp` falha no CI dizendo qual é o novo.
+      #
+      # `style-src` **com** `'unsafe-inline'`, e essa assimetria é deliberada: o
+      # React e o motion escrevem `style=` em elemento, que o CSP trata como
+      # estilo inline. Sem isso, toda animação e todo estilo calculado somem. CSS
+      # injetado é um problema de aparência; script injetado é a conta da pessoa.
+      #
+      # `img-src https:` aceita qualquer origem segura porque `avatar_url` é um
+      # endereço que a pessoa escolhe. O schema já exige `https://`, e imagem não
+      # executa — a alternativa seria hospedar avatar, que o projeto não faz.
+      #
+      # `connect-src` lista o Supabase (REST, Auth e o `wss` do Realtime, que o
+      # sino usa) e a API. `frame-ancestors 'none'` é o `X-Frame-Options` acima
+      # em versão moderna; os dois ficam, porque navegador velho só entende o
+      # primeiro.
+      - path: /*
+        name: Content-Security-Policy
+        value: >-
+          default-src 'self';
+          base-uri 'self';
+          object-src 'none';
+          frame-ancestors 'none';
+          form-action 'self';
+          script-src 'self' 'sha256-3nClB4VuFwq5sMItVPG9CVcqaAuFDxowwQcD6S4QQIU=';
+          style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+          font-src 'self' https://fonts.gstatic.com;
+          img-src 'self' data: blob: https:;
+          connect-src 'self'
+          https://qbdtcpotehvbkozppmyu.supabase.co
+          wss://qbdtcpotehvbkozppmyu.supabase.co
+          https://trocatcg-api.onrender.com;
+          manifest-src 'self';
+          worker-src 'self';
+          upgrade-insecure-requests
       # O Vite versiona o nome de cada asset por hash, então o arquivo em
       # /assets nunca muda de conteúdo — cachear para sempre é seguro e é o
       # que faz a segunda visita não baixar nada.

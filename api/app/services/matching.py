@@ -24,6 +24,7 @@ Duas decisões de produto embutidas aqui:
    Postgres significa "a carta oferecida é pelo menos tão boa quanto a pedida".
 """
 
+import json
 from uuid import UUID
 
 from sqlalchemy import text
@@ -1084,7 +1085,15 @@ async def registrar_furo(
             insert into match_events (match_id, user_id, evento, payload)
             values (:m, :u, 'NOSHOW', cast(:payload as jsonb))
         """),
-        {"m": str(match_id), "u": str(user_id), "payload": f'{{"faltou": "{outro}"}}'},
+        # `json.dumps`, e não f-string. O valor é um uuid vindo do banco, então
+        # não era explorável — era frágil: o dia em que alguém puser aqui um
+        # campo escrito por gente, a f-string vira injeção de JSON sem que a
+        # linha mude de aparência. Item 7 do bloco de segurança (2026-08-16).
+        {
+            "m": str(match_id),
+            "u": str(user_id),
+            "payload": json.dumps({"faltou": str(outro)}),
+        },
     )
 
     # Vai para quem faltou, e sem o @ de quem registrou — ver o texto em

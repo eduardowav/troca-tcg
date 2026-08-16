@@ -32,11 +32,25 @@ async def lifespan(_: FastAPI):
     await engine.dispose()
 
 
+# A documentação interativa some em produção (item 4 do bloco de segurança da
+# seção 17, resolvido em 2026-08-16). O `/openapi.json` é o contrato inteiro —
+# incluindo `/internal/jobs/*` — servido de graça a quem fosse levantar o mapa
+# sozinho, e o `/docs` ainda dá o botão de disparar cada rota.
+#
+# **Some a rota, não o documento.** `app.openapi()` continua funcionando, e é
+# dele que os testes leem o contrato para provar, por exemplo, que o feed não
+# serializa contato. Fechar por `openapi_url=None` mantém essa prova de pé; um
+# `if` em volta do teste a apagaria justamente no ambiente que importa.
+_EXPOSTA = settings.ENVIRONMENT != "production"
+
 app = FastAPI(
     title="TrocaTCG API",
     description="Quadro de trocas de Pokémon TCG para comunidades locais.",
     version="0.1.0",
     lifespan=lifespan,
+    docs_url="/docs" if _EXPOSTA else None,
+    redoc_url="/redoc" if _EXPOSTA else None,
+    openapi_url="/openapi.json" if _EXPOSTA else None,
 )
 
 app.add_exception_handler(RegraNegocio, regra_negocio_handler)
@@ -82,4 +96,7 @@ app.include_router(internal.router, prefix="/v1")
 
 @app.get("/")
 async def raiz() -> dict[str, str]:
-    return {"nome": "TrocaTCG API", "versao": "0.1.0", "docs": "/docs"}
+    # Sem apontar para `/docs` em produção: um endereço anunciado que responde
+    # 404 é pior que silêncio — diz que existe algo ali e convida a procurar.
+    resposta = {"nome": "TrocaTCG API", "versao": "0.1.0"}
+    return {**resposta, "docs": "/docs"} if _EXPOSTA else resposta

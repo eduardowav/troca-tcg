@@ -24,7 +24,7 @@ import hashlib
 import logging
 import re
 import secrets
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from sqlalchemy import text
@@ -88,7 +88,7 @@ def _gerar_codigo() -> str:
 
 
 def _agora() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 async def solicitar(
@@ -237,10 +237,11 @@ async def confirmar(session: AsyncSession, user_id: UUID, codigo: str) -> dateti
     # mesmo caminho: confirmar o que já estava lá, e trocar de número — que é
     # sempre uma troca seguida de confirmação, nunca uma troca solta.
     await session.execute(
-        text(
-            "update profiles set contato_visivel = :tel, contato_verificado_em = :agora "
-            "where id = :uid"
-        ),
+        text("""
+            update profiles
+               set contato_visivel = :tel, contato_verificado_em = :agora
+             where id = :uid
+        """),
         {"tel": _formatar(linha["telefone"]), "agora": agora, "uid": str(user_id)},
     )
     return agora

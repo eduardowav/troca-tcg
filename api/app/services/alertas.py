@@ -129,9 +129,7 @@ _OFERTAS_ESPERADAS = text("""
 """)
 
 
-async def notificar_cartas_disponiveis(
-    session: AsyncSession, horas: int = 24
-) -> int:
+async def notificar_cartas_disponiveis(session: AsyncSession, horas: int = 24) -> int:
     """Avisa quem espera uma carta que acabou de ser anunciada. Devolve quantos.
 
     Roda pelo cron (`/internal/jobs/notify-alerts`), no mesmo intervalo e com a
