@@ -2849,6 +2849,14 @@ de dados hoje, com ou sem usuário no app.
    Verificado contra a API rodando, do mesmo jeito que o defeito foi descoberto:
    320 chamadas em 0,4 segundo, **300 respostas 200 e 20 respostas 429**; e 120
    chamadas a `/v1/health`, 120 respostas 200.
+
+   **O teto é remendo, e o Eduardo apontou isso em 2026-08-16: a causa é o número
+   de requisições por tela.** Um app que pede pouco não encosta em teto nenhum, e
+   aí o freio volta a ser o que deveria ser — uma rede que só quem está raspando
+   encontra. Enquanto as rotas não são enxugadas, 300 por minuto é folga
+   suficiente para ninguém tropeçar. Fica como trabalho futuro, sem data: medir
+   quantas requisições cada tela dispara e cortar as que existem só porque é mais
+   fácil pedir de novo do que reaproveitar o que já veio.
 2. ✅ **Backup quebrado, e o destino dele era público** — feito em 2026-08-11
    (`9ef33e1`), fora da ordem do resto do bloco porque não era sobre proteger
    usuário: era o trabalho sem cópia desde 07/08. Eram duas coisas que se
