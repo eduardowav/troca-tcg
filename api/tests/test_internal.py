@@ -54,6 +54,21 @@ class SessaoFalsa:
         self.commits += 1
 
 
+@pytest.fixture(autouse=True)
+def job_secret(monkeypatch):
+    """Um segredo conhecido para todo teste deste arquivo.
+
+    Antes de 2026-08-16 estes testes liam `settings.JOB_SECRET` como ele viesse
+    do ambiente, e passavam na máquina de quem tem `api/.env` — onde há um valor.
+    No CI não há `.env`, o default virou vazio, e vazio agora responde 503: o
+    teste que esperava 403 quebrou lá e continuou verde aqui.
+
+    Depender do ambiente para uma constante do teste é o mesmo tipo de defeito
+    que o CI existe para pegar. Fixar aqui torna os dois iguais.
+    """
+    monkeypatch.setattr(settings, "JOB_SECRET", "segredo-de-teste")
+
+
 @pytest.fixture
 def sessao():
     """Duas trocas vencidas esperando a varredura."""
