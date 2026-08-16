@@ -40,7 +40,7 @@ from app.schemas.match import (
     ParticipanteCompleto,
     ParticipanteResumo,
 )
-from app.services import listings, notificacoes
+from app.services import listings, notificacoes, termos
 
 # Uma OFERTA atende uma PROCURA quando é a mesma carta, no mesmo idioma, em
 # condição pelo menos tão boa quanto a pedida, e com o acabamento que a pessoa
@@ -1098,7 +1098,14 @@ async def registrar_furo(
 
 
 async def obter_match(session: AsyncSession, user_id: UUID, match_id: UUID) -> MatchOut:
-    """Detalhe. Contato só entra quando o match inteiro está ACEITO."""
+    """Detalhe. Contato só entra com o match ACEITO **e** a isenção aceita.
+
+    A segunda condição entrou em 2026-08-15 e é o item 3 da ordem de execução.
+    Ela mora aqui, e não numa caixa do frontend, porque um modal sobre um contato
+    que a API já mandou não esconde nada de quem abre as ferramentas do navegador
+    — e o que a isenção precisa provar é que o dado **não saiu daqui** antes de a
+    pessoa ler o texto. Ver `services/termos.py`.
+    """
     linha = (
         (
             await session.execute(
@@ -1123,7 +1130,12 @@ async def obter_match(session: AsyncSession, user_id: UUID, match_id: UUID) -> M
     # CONCLUIDO entra junto: as duas pessoas já se encontraram, esconder o
     # contato depois do fato não protege ninguém e só atrapalha quem precisa
     # retomar o assunto.
-    completo = linha["status"] in ("ACEITO", "CONCLUIDO")
+    #
+    # A isenção é conferida **depois** do status, e nessa ordem de propósito: uma
+    # consulta a menos no caminho de quem abre um match que ainda nem foi aceito,
+    # que é a maioria das aberturas.
+    trocado = linha["status"] in ("ACEITO", "CONCLUIDO")
+    completo = trocado and await termos.aceitou_revelacao(session, user_id, match_id)
     ids = [linha["id"]]
     participantes = await _participantes_por_match(session, ids, completo=completo)
     itens = await _itens_por_match(session, ids)

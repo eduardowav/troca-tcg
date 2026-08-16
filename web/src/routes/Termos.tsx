@@ -1,5 +1,7 @@
 import { Link } from 'react-router-dom'
 
+import { NaoAfiliacao } from '@/components/Isencao'
+
 
 /**
  * Versão registrada em `term_acceptances` a cada aceite.
@@ -8,7 +10,7 @@ import { Link } from 'react-router-dom'
  * conteúdo — não de vírgula — suba a data: quem aceitou a versão anterior não
  * aceitou esta, e o registro de aceite existe justamente para provar o quê.
  */
-const VERSAO = '2026-08-14'
+const VERSAO = '2026-08-15'
 
 /**
  * Canal do controlador para pedidos de LGPD. Caixa pessoal por enquanto: o
@@ -64,6 +66,12 @@ export default function Termos() {
           Combinar o encontro, conferir a carta na hora e concluir é
           responsabilidade das duas pessoas, por conta e risco de cada uma.
           Recomendamos encontrar em local público e movimentado.
+          <p>
+            Você vai ler isto de novo, e não por engano: antes de o contato da
+            outra pessoa aparecer, o app pede que você confirme que leu. É o
+            instante em que a conversa sai daqui, e é o único aviso do TrocaTCG
+            que interrompe o caminho de propósito.
+          </p>
         </Secao>
 
         <Secao titulo="4. Venda não é troca">
@@ -143,7 +151,7 @@ export default function Termos() {
               'Telefone de WhatsApp — para combinarem a troca depois do aceite.',
               'Suas listas de Ofereço e Procuro, com condição e acabamento.',
               'Histórico de trocas e o resultado delas, que alimenta a reputação.',
-              'Data e IP do aceite destes termos, como comprovação legal.',
+              'Data e IP de cada aceite destes termos, como comprovação legal — o do cadastro e o de antes de ver o contato de alguém, este último junto do identificador da troca.',
               'Se você assinar o PRO: o identificador da assinatura no Mercado Pago, a situação dela e a data da próxima cobrança. Nada de cartão, conta ou CPF.',
             ]}
           />
@@ -199,6 +207,11 @@ export default function Termos() {
           No próprio app, em Perfil → “Apagar minha conta”. A remoção é imediata
           e não pode ser desfeita — não precisa pedir para ninguém nem esperar.
         </Secao>
+
+        {/* Exigida pela seção 4.1 da doc, e fora da numeração de propósito: não
+            é cláusula que rege a relação com quem usa, é declaração sobre marcas
+            de terceiros. Numerá-la a colocaria em pé de igualdade com o resto. */}
+        <NaoAfiliacao className="mt-2 border-t border-edge pt-6 text-muted" />
       </div>
     </div>
   )

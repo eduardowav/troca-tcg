@@ -4,6 +4,7 @@ import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 
 import { LinkNoTexto, ParDeCartas } from '@/components/brutal/Pecas'
+import { ModalIsencao } from '@/components/Isencao'
 import { Denunciar } from '@/components/perfil/Denunciar'
 import { Button, estiloBotao } from '@/components/ui/Button'
 import { useAcabamentoPorId } from '@/hooks/useAcabamentos'
@@ -15,6 +16,7 @@ import {
   useEstenderMatch,
   useMatch,
   useResponderMatch,
+  useRevelarContato,
 } from '@/hooks/useMatches'
 import { type Acabamento, precoDoAcabamento } from '@/lib/acabamentos'
 import { CONDICOES } from '@/lib/anuncios'
@@ -367,6 +369,7 @@ export default function MatchDetalhe() {
       ) : match.status === 'ACEITO' ? (
         <>
           <Contato
+            matchId={match.id}
             outro={outro}
             cartaQueDou={dou && cartas?.get(dou.card_id)}
             cartaQueRecebo={recebo && cartas?.get(recebo.card_id)}
@@ -788,25 +791,54 @@ function Encerrado({
 /**
  * Contato — só chega aqui com o match ACEITO pelos dois.
  *
- * A API nem serializa o campo antes disso (ParticipanteResumo não tem onde
- * guardá-lo), então este componente não precisa checar nada: se `contato_visivel`
- * chegou, é porque o aceite mútuo aconteceu.
+ * **E só depois da isenção.** O aceite mútuo deixa de bastar desde 2026-08-15:
+ * a API omite `contato_visivel` enquanto não houver linha em `term_acceptances`
+ * para esta troca, e quem cria essa linha é o botão daqui. Por isso o estado
+ * "aceito, mas contato ausente" tem dois significados diferentes agora — a
+ * pessoa não aceitou a isenção, ou a outra não cadastrou telefone — e a tela
+ * precisa distinguir os dois: mandar cadastrar contato quem só não leu o aviso
+ * seria mentir sobre de quem é a vez de agir.
+ *
+ * A distinção é `pediuContato`: enquanto ninguém pediu, a ausência é o esperado.
+ * Depois de pedir e voltar sem contato, a ausência é do outro lado.
  */
 function Contato({
+  matchId,
   outro,
   cartaQueDou,
   cartaQueRecebo,
 }: {
+  matchId: string
   outro?: { nome_exibicao: string; contato_visivel?: string | null }
   cartaQueDou?: Carta
   cartaQueRecebo?: Carta
 }) {
+  const [pedindo, setPedindo] = useState(false)
+  const [pediuContato, setPediuContato] = useState(false)
+  const revelar = useRevelarContato()
+
   const link =
     outro?.contato_visivel &&
     linkWhatsApp(
       outro.contato_visivel,
       primeiraMensagem(outro.nome_exibicao, cartaQueDou, cartaQueRecebo),
     )
+
+  async function aceitarIsencao() {
+    try {
+      await revelar.mutateAsync(matchId)
+      setPediuContato(true)
+      setPedindo(false)
+    } catch (erro) {
+      // A caixa fica aberta de propósito: fechá-la depois de uma falha daria a
+      // impressão de que o aceite passou e o contato é que não existe.
+      toast.error(
+        erro instanceof ApiError
+          ? erro.message
+          : 'Não foi possível liberar o contato agora.',
+      )
+    }
+  }
 
   return (
     <div
@@ -816,6 +848,7 @@ function Contato({
       <p className="titulo-tom text-[15px] font-medium text-offer">
         Troca combinada.
       </p>
+
       {outro?.contato_visivel ? (
         <>
           <p className="mt-2 text-[14px] leading-relaxed text-muted">
@@ -839,16 +872,40 @@ function Contato({
             </a>
           )}
         </>
-      ) : (
+      ) : pediuContato ? (
         <p className="mt-2 text-[14px] leading-relaxed text-muted">
           {outro?.nome_exibicao ?? 'A outra pessoa'} ainda não cadastrou um
           contato. Assim que cadastrar, ele aparece aqui.
         </p>
+      ) : (
+        <>
+          <p className="mt-2 text-[14px] leading-relaxed text-muted">
+            O contato de {outro?.nome_exibicao ?? 'quem trocou com você'} está
+            liberado. Antes de abrir, leia como funciona daqui em diante.
+          </p>
+          <Button
+            variant="primary"
+            size="lg"
+            block
+            className="mt-4"
+            onClick={() => setPedindo(true)}
+          >
+            Ver contato
+          </Button>
+        </>
       )}
+
       <p className="mt-4 text-[12px] leading-relaxed text-faint">
         O TrocaTCG só conecta vocês — a troca acontece por conta e risco de cada
         um. Combine um lugar público e confira as cartas na hora.
       </p>
+
+      <ModalIsencao
+        aberto={pedindo}
+        salvando={revelar.isPending}
+        onAceitar={aceitarIsencao}
+        onRecusar={() => setPedindo(false)}
+      />
     </div>
   )
 }

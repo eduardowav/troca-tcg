@@ -186,6 +186,38 @@ O disclaimer precisa aparecer em quatro momentos, e o mais importante é o terce
 
 O terceiro é o crítico. É o instante exato em que o usuário sai da plataforma e entra numa negociação pessoal, e é onde a fronteira de responsabilidade precisa ficar explícita. Registre o aceite:
 
+> **Feito em 2026-08-15**, e o desenho merece registro porque a versão óbvia dele
+> não funcionaria. Um modal do frontend cobrindo um contato que a API já mandou
+> não esconde nada de quem abre as ferramentas do navegador, e o registro
+> provaria que houve um clique, não que o texto foi mostrado antes do dado.
+>
+> Então **a trava é do servidor**. `obter_match` só serializa `contato_visivel`
+> para quem já tem linha em `term_acceptances` com contexto `REVELACAO_CONTATO`
+> **para aquele match**, e a única forma de criar essa linha é
+> `POST /v1/me/matches/{id}/contato` — que grava versão, IP e `match_id`, e só
+> então devolve a troca com o contato dentro. Antes disso o campo simplesmente
+> não existe na resposta.
+>
+> **O aceite é por troca, não por pessoa.** Um aceite global seria assinado uma
+> vez na vida e valeria para sempre; a isenção fala de *um* encontro, com *uma*
+> pessoa. É o `match_id` que faz o documento significar algo no dia de mostrá-lo.
+>
+> A conferência da versão fica de fora de propósito: quem aceitou em julho e
+> voltou ao mesmo match em agosto já leu a isenção naquele encontro, e reabrir a
+> caixa por causa de uma vírgula puniria quem só quis reler um telefone. A versão
+> gravada serve para provar **o que** foi aceito, não para decidir quem aceita de
+> novo.
+>
+> A caixa não fecha no Esc, não fecha clicando fora e não tem X — as três saídas
+> transformariam "aceito" em "consegui contornar". Recusar é possível pelo botão
+> secundário, que devolve a pessoa à troca sem o contato: precisa ser possível,
+> só não pode ser acidental.
+>
+> Efeito colateral que a tela precisou tratar: "aceito, mas sem contato" passou a
+> ter **dois** significados — não li a isenção, ou o outro não cadastrou telefone.
+> Mandar cadastrar contato quem só não leu o aviso seria mentir sobre de quem é a
+> vez de agir. Ver o componente `Contato` em `web/src/routes/Match.tsx`.
+
 ```sql
 create table term_acceptances (
   id          uuid primary key default uuid_generate_v4(),
@@ -2466,12 +2498,13 @@ com todo o resto.
 
 **Fase 2 — o que falta para poder abrir.** Tudo código ou texto, nada bloqueado.
 
-3. **Modal de disclaimer antes de revelar o contato**, com registro em
-   `term_acceptances`. A seção 4.2 chama este de "o terceiro é o crítico" — o
-   instante em que a pessoa sai da plataforma e entra numa negociação pessoal. Não
-   existe hoje, e é a maior lacuna jurídica aberta.
-4. **Disclaimer de não-afiliação** com Nintendo, Creatures, GAME FREAK e The
-   Pokémon Company. Não existe em lugar nenhum do app.
+3. ✅ **Modal de disclaimer antes de revelar o contato** — feito em 2026-08-15.
+   Detalhe na seção 4.2.
+4. ✅ **Disclaimer de não-afiliação** com Nintendo, Creatures, GAME FREAK e The
+   Pokémon Company — feito em 2026-08-15. Aparece no rodapé da Home, no fim de
+   Configurações (a única tela "do app" que quem já entrou abre para ver coisas
+   do app) e no fim dos termos, fora da numeração: não é cláusula que rege a
+   relação com quem usa, é declaração sobre marcas de terceiros.
 5. **Tela do código do WhatsApp** e o pedido no primeiro aceite. O backend está
    pronto e desligado desde 2026-08-12; a tela pode ser construída antes de o
    item 1 ficar de pé.
@@ -3375,7 +3408,9 @@ Sem isso ele colidiria com a sugestão que o matcher mantém para a mesma dupla,
 o unique derrubaria o aceite. Como ele nunca é `SUGERIDO`, o
 `sincronizar_matches` não o apaga na varredura de sugestões que não se sustentam.
 
-Daí para frente **nada é novo**: prazo e prorrogação, disclaimer bloqueante,
+Daí para frente **nada é novo** — e desde 2026-08-15 isso é verdade também para
+o disclaimer, que até então a frase abaixo prometia sem que existisse:
+prazo e prorrogação, disclaimer bloqueante,
 revelação de contato, conclusão bilateral, `CANCELADO`, `FURADO`, denúncia e
 reputação são os da seção 13, sem uma linha a mais.
 
@@ -3565,8 +3600,8 @@ não presumido; o que tem ressalva está escrito por quê.
 - [x] Termos de uso com isenção de responsabilidade publicados e versionados — `web/src/routes/Termos.tsx`, versão `2026-08-14`
 - [x] Política de privacidade publicada (LGPD) — no mesmo documento, seções 11 a 18
 - [x] Aceite de termos obrigatório no cadastro, com registro em `term_acceptances` — contexto `CADASTRO`, com IP
-- [ ] Modal de disclaimer bloqueante antes de revelar contato, com registro — **não existe.** A seção 22.6 o descreve como se existisse ("nada é novo daí para frente"), mas não há nada no código. Item 3 da ordem de execução
-- [ ] Disclaimer de não-afiliação com Nintendo / Creatures / GAME FREAK / The Pokémon Company — não aparece em lugar nenhum do app
+- [x] Modal de disclaimer bloqueante antes de revelar contato, com registro — feito em 2026-08-15, com a trava no servidor e não no modal (seção 4.2)
+- [x] Disclaimer de não-afiliação com Nintendo / Creatures / GAME FREAK / The Pokémon Company — rodapé da Home, fim de Configurações e fim dos termos
 - [x] Fluxo de exclusão de conta funcionando (exigência da LGPD) — `profiles.excluir_conta`, e desde 2026-08-14 ele cancela a assinatura antes de apagar
 - [x] Denúncia de usuário funcionando, com motivo `USO_PARA_VENDA`
 - [ ] Rate limit ativo — **o `Limiter` existe e não limita nada**; falta o `SlowAPIMiddleware`. Item 8

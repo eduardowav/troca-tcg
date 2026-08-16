@@ -181,6 +181,22 @@ export const obterMatch = (id: string) => api.get<Match>(`/me/matches/${id}`)
 export const responderMatch = (id: string, aceitou: boolean) =>
   api.post<Match>(`/me/matches/${id}/responder`, { aceitou })
 
+/**
+ * Aceita a isenção e recebe o match já com o contato.
+ *
+ * **O contato não vem antes disto.** O `GET` do detalhe omite `contato_visivel`
+ * enquanto não houver aceite registrado para este match — a trava é do servidor,
+ * não do modal. Uma caixa cobrindo um dado que já chegou não esconde nada de
+ * quem abre as ferramentas do navegador, e o que a isenção precisa provar é que
+ * o dado não saiu de lá antes de a pessoa ler o texto.
+ *
+ * Devolve o match inteiro, que é o que a tela já tem em mãos — costurar um
+ * `{contato}` solto dentro do objeto existente é onde os dois estados começam a
+ * divergir.
+ */
+export const revelarContato = (id: string) =>
+  api.post<Match>(`/me/matches/${id}/contato`)
+
 /** Confirma que a troca aconteceu. Só fecha quando os dois confirmam. */
 export const concluirMatch = (id: string) =>
   api.post<Match>(`/me/matches/${id}/concluir`)

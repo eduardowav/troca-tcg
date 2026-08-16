@@ -1,18 +1,80 @@
 """Testes do matching que não dependem de um Postgres real."""
 
+import asyncio
 import inspect
 from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
 from app.core.auth import usuario_atual
+from app.core.config import settings
 from app.db.session import get_session
 from app.main import app
 from app.routers import listings as rotas_listings
 from app.routers import matches as rotas_matches
 from app.schemas.listing import CartaProcurada, QuemProcura
 from app.schemas.match import MatchOut, ParticipanteCompleto, ParticipanteResumo
-from app.services import matching
+from app.services import matching, termos
+
+
+async def _vazio() -> dict:
+    """Substitui `_itens_por_match` nos testes da isenção: o que se mede ali é
+    quem pergunta pelo contato, e os itens da troca não têm parte nisso."""
+    return {}
+
+
+class _SessaoComMatch:
+    """Devolve uma linha de match com o status pedido, e nada mais.
+
+    `obter_match` faz uma consulta só antes de decidir sobre o contato, e é essa
+    decisão que os testes observam — o resto do caminho é substituído.
+    """
+
+    def __init__(self, status: str):
+        self.status = status
+
+    async def execute(self, _sql, _params=None):
+        linha = {
+            "id": str(uuid4()),
+            "tipo": "DIRETO",
+            "status": self.status,
+            "score": 4.0,
+            "expira_em": "2026-08-20T00:00:00+00:00",
+            "prorrogacoes": 0,
+            "desistiu_por": None,
+        }
+
+        class Res:
+            def mappings(self_inner):
+                class M:
+                    def first(self_m):
+                        return linha
+
+                return M()
+
+        return Res()
+
+
+class _SessaoDeEscrita:
+    """Dublê para `registrar_revelacao`: guarda o SQL e os parâmetros.
+
+    `ja_aceitou` é o que o `scalar` da guarda de idempotência devolve.
+    """
+
+    def __init__(self, ja_aceitou: bool = False):
+        self.ja_aceitou = ja_aceitou
+        self.sqls: list[str] = []
+        self.params: list[dict] = []
+
+    async def scalar(self, sql, params=None):
+        self.sqls.append(str(sql))
+        self.params.append(params or {})
+        return 1 if self.ja_aceitou else None
+
+    async def execute(self, sql, params=None):
+        self.sqls.append(str(sql))
+        self.params.append(params or {})
+        return None
 
 
 def test_hash_grupo_independe_da_ordem():
@@ -101,6 +163,123 @@ def test_detalhe_deixa_o_contato_passar():
         _schema_resposta("/v1/me/matches/{match_id}/responder", "post")
         == "MatchCompleto"
     )
+
+
+# ------------------------------------------- a isenção antes do contato
+
+
+def test_contato_so_sai_com_a_isencao_aceita(monkeypatch):
+    """O coração do item 3: aceite mútuo **não basta** mais.
+
+    `obter_match` só pede o contato ao banco (`completo=True`) quando existe
+    aceite registrado para esta troca. Sem ele, o match volta com
+    `ParticipanteResumo`, que não tem onde guardar contato — a trava não é uma
+    caixa na tela, é a ausência do dado na resposta.
+    """
+    pedidos: list[bool] = []
+
+    async def falso_participantes(_s, _ids, *, completo):
+        pedidos.append(completo)
+        return {}
+
+    async def nao_aceitou(_s, _u, _m):
+        return False
+
+    monkeypatch.setattr(matching, "_participantes_por_match", falso_participantes)
+    monkeypatch.setattr(matching, "_itens_por_match", lambda *_a, **_k: _vazio())
+    monkeypatch.setattr(matching.termos, "aceitou_revelacao", nao_aceitou)
+
+    asyncio.run(
+        matching.obter_match(_SessaoComMatch("ACEITO"), uuid4(), uuid4())  # type: ignore[arg-type]
+    )
+    assert pedidos == [False]
+
+
+def test_contato_sai_depois_da_isencao(monkeypatch):
+    """E o outro lado da mesma regra: com o aceite, o contato volta a sair."""
+    pedidos: list[bool] = []
+
+    async def falso_participantes(_s, _ids, *, completo):
+        pedidos.append(completo)
+        return {}
+
+    async def aceitou(_s, _u, _m):
+        return True
+
+    monkeypatch.setattr(matching, "_participantes_por_match", falso_participantes)
+    monkeypatch.setattr(matching, "_itens_por_match", lambda *_a, **_k: _vazio())
+    monkeypatch.setattr(matching.termos, "aceitou_revelacao", aceitou)
+
+    asyncio.run(
+        matching.obter_match(_SessaoComMatch("ACEITO"), uuid4(), uuid4())  # type: ignore[arg-type]
+    )
+    assert pedidos == [True]
+
+
+def test_match_nao_aceito_nem_pergunta_pela_isencao(monkeypatch):
+    """A ordem das condições importa: uma consulta a menos no caminho de quem
+    abre um match que ainda nem foi aceito, que é a maioria das aberturas."""
+    perguntou = []
+
+    async def falso_participantes(_s, _ids, *, completo):
+        return {}
+
+    async def aceitou(_s, _u, _m):
+        perguntou.append(True)
+        return True
+
+    monkeypatch.setattr(matching, "_participantes_por_match", falso_participantes)
+    monkeypatch.setattr(matching, "_itens_por_match", lambda *_a, **_k: _vazio())
+    monkeypatch.setattr(matching.termos, "aceitou_revelacao", aceitou)
+
+    asyncio.run(
+        matching.obter_match(_SessaoComMatch("SUGERIDO"), uuid4(), uuid4())  # type: ignore[arg-type]
+    )
+    assert perguntou == []
+
+
+def test_revelar_contato_exige_autenticacao():
+    """A única porta do contato é POST, e ela pede sessão como todas as outras."""
+    client = TestClient(app)
+    resp = client.post(f"/v1/me/matches/{uuid4()}/contato")
+    assert resp.status_code in (401, 403)
+
+
+def test_revelar_contato_devolve_o_match_completo():
+    """Devolver o match inteiro é o que evita a costura no cache do frontend."""
+    assert (
+        _schema_resposta("/v1/me/matches/{match_id}/contato", "post") == "MatchCompleto"
+    )
+
+
+def test_registro_do_aceite_grava_versao_match_e_ip():
+    """O que dá valor probatório ao registro: o quê, de quem, em qual troca e
+    de onde. Sem o `match_id`, o aceite viraria uma assinatura global — e a
+    isenção fala de *um* encontro, com *uma* pessoa."""
+    sql = str(termos.registrar_revelacao.__doc__)  # garante que a função existe
+    assert sql
+
+    sessao = _SessaoDeEscrita()
+    asyncio.run(
+        termos.registrar_revelacao(sessao, uuid4(), uuid4(), "200.1.2.3")  # type: ignore[arg-type]
+    )
+    insercao = [s for s in sessao.sqls if "insert into term_acceptances" in s][0]
+    assert "versao" in insercao and "match_id" in insercao and "ip" in insercao
+
+    params = sessao.params[-1]
+    assert params["c"] == termos.REVELACAO_CONTATO
+    assert params["v"] == settings.TERMOS_VERSAO
+    assert params["ip"] == "200.1.2.3"
+
+
+def test_aceite_repetido_nao_empilha_linha():
+    """Reabrir a mesma troca não grava de novo: a primeira linha é a que marca
+    o instante em que a pessoa leu o texto, e é essa data que interessa."""
+    sessao = _SessaoDeEscrita(ja_aceitou=True)
+    asyncio.run(
+        termos.registrar_revelacao(sessao, uuid4(), uuid4(), None)  # type: ignore[arg-type]
+    )
+    assert not any("insert into term_acceptances" in s for s in sessao.sqls)
 
 
 def test_feed_exige_autenticacao():

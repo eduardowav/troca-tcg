@@ -3,6 +3,7 @@ import { type ReactNode, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 
+import { NaoAfiliacao } from '@/components/Isencao'
 import { usePerfil } from '@/hooks/usePerfil'
 import { useMarcaOculta } from '@/hooks/useMundo'
 import { usePlanos } from '@/hooks/usePlanos'
@@ -71,6 +72,12 @@ export default function Configuracoes() {
       </Grupo>
 
       {perfil && <ExcluirConta perfil={perfil} />}
+
+      {/* A não-afiliação precisa estar alcançável de dentro do app, e não só na
+          página pública — quem já entrou nunca mais volta à Home. Aqui é o fim
+          da única tela que a pessoa abre para "ver as coisas do app", ao lado do
+          link dos termos. */}
+      <NaoAfiliacao className="mt-10 text-faint" />
     </div>
   )
 }

@@ -2,7 +2,7 @@
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Request, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,9 +15,22 @@ from app.schemas.match import (
     MatchOut,
 )
 from app.schemas.report import DenunciaCriar, DenunciaOut
-from app.services import matching, reports
+from app.services import matching, reports, termos
 
 router = APIRouter(prefix="/me/matches", tags=["matches"])
+
+
+def _ip(request: Request) -> str | None:
+    """O IP de quem aceitou, para o registro ter valor probatório.
+
+    Mesma leitura de `routers/users.py`: atrás do proxy do Render, o endereço
+    real está no `x-forwarded-for`, e `request.client.host` seria sempre o do
+    balanceador.
+    """
+    encaminhado = request.headers.get("x-forwarded-for")
+    if encaminhado:
+        return encaminhado.split(",")[0].strip()
+    return request.client.host if request.client else None
 
 
 class Resposta(BaseModel):
@@ -62,6 +75,34 @@ async def detalhar(
     user_id: UUID = Depends(usuario_atual),
     session: AsyncSession = Depends(get_session),
 ) -> MatchOut:
+    return await matching.obter_match(session, user_id, match_id)
+
+
+@router.post("/{match_id}/contato", response_model=MatchCompleto)
+async def revelar_contato(
+    match_id: UUID,
+    request: Request,
+    user_id: UUID = Depends(usuario_atual),
+    session: AsyncSession = Depends(get_session),
+) -> MatchOut:
+    """Registra o aceite da isenção e devolve o match já com o contato.
+
+    É a única porta pela qual `contato_visivel` sai daqui. O `GET` do detalhe
+    omite o campo enquanto não houver aceite para este match — ver
+    `services/termos.py` para por que a trava é do servidor e não do modal.
+
+    Devolve o match inteiro, e não só o contato, porque é isso que a tela tem em
+    mãos: um POST que respondesse `{"contato": "..."}` obrigaria o frontend a
+    costurar a resposta dentro do objeto que já tem, e essa costura é onde o
+    estado das duas telas começa a divergir.
+
+    Não confere o status do match: quem pede a revelação de um match que ainda
+    não foi aceito grava o aceite e recebe o match **sem** contato, porque quem
+    decide isso continua sendo `obter_match`. Recusar aqui seria uma segunda
+    regra dizendo a mesma coisa, e duas regras iguais divergem com o tempo.
+    """
+    await termos.registrar_revelacao(session, user_id, match_id, _ip(request))
+    await session.commit()
     return await matching.obter_match(session, user_id, match_id)
 
 

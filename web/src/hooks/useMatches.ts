@@ -11,6 +11,7 @@ import {
   type Match,
   obterMatch,
   responderMatch,
+  revelarContato,
 } from '@/lib/matches'
 
 const CHAVE = ['matches'] as const
@@ -71,8 +72,27 @@ export function useMatch(id: string | undefined) {
   })
 }
 
-/** Aceitar ou recusar. A resposta já vem com o status novo — e, se todo mundo
- *  aceitou, com o contato liberado. */
+/**
+ * Aceita a isenção e recebe a troca já com o contato.
+ *
+ * A resposta substitui o match no cache, e é por isso que a API devolve o objeto
+ * inteiro em vez de só o telefone: um `{contato}` solto obrigaria a costurá-lo
+ * dentro do participante certo aqui, e essa costura é onde o cache começa a
+ * discordar do servidor.
+ */
+export function useRevelarContato() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (id: string) => revelarContato(id),
+    onSuccess: (match: Match) => {
+      queryClient.setQueryData([...CHAVE, match.id], match)
+    },
+  })
+}
+
+/** Aceitar ou recusar. A resposta já vem com o status novo — mas **sem** o
+ *  contato: ele depende do aceite da isenção, em `useRevelarContato`. */
 export function useResponderMatch() {
   const queryClient = useQueryClient()
 

@@ -7,6 +7,7 @@ import {
   IconeTrocas,
   MarcaTrocaTCG,
 } from '@/components/brutal/Pecas'
+import { NaoAfiliacao } from '@/components/Isencao'
 import { useAuth } from '@/stores/auth'
 
 /**
@@ -134,6 +135,11 @@ export default function Home() {
           Baixar o app no celular
         </Link>
         <p>Feito em Belém, para quem troca em Belém</p>
+        {/* Fora do `uppercase` e do `font-dado` herdados: é texto legal, e
+            versalete em três linhas de letra miúda é o formato que garante que
+            ninguém leia. `normal-case` desfaz a herança sem soltar a linha do
+            rodapé. */}
+        <NaoAfiliacao className="mt-1 normal-case text-apagado/80" />
       </footer>
     </div>
   )
