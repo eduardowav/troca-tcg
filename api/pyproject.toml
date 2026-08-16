@@ -15,7 +15,12 @@ dependencies = [
     "python-jose[cryptography]>=3.3",
     "httpx>=0.27",
     "pywebpush>=2.0",
-    "slowapi>=0.1.9",
+    # O freio da API é escrito em `core/limitador.py` sobre esta biblioteca, e
+    # não sobre o slowapi — que era a dependência até 2026-08-16 e saiu porque o
+    # middleware dele libera toda requisição cuja rota não consegue resolver, e a
+    # partir do FastAPI 0.140 ele não resolve nenhuma. O motivo inteiro está no
+    # docstring do módulo.
+    "limits>=5.0",
     "structlog>=24.1",
 ]
 

@@ -33,10 +33,14 @@ services:
       pip install -r requirements.txt
 
     # `--proxy-headers` com `--forwarded-allow-ips` não é detalhe: sem eles o
-    # `request.client.host` é o IP do proxy do Render, e o rate limit de
-    # 100/minuto do slowapi passaria a valer para o app inteiro somado em vez
-    # de por pessoa. O curinga é seguro aqui porque o serviço só é alcançável
-    # através do proxy do Render.
+    # `request.client.host` é o IP do proxy do Render, e o freio da API passaria
+    # a valer para o app inteiro somado em vez de por pessoa. O curinga é seguro
+    # aqui porque o serviço só é alcançável através do proxy do Render.
+    #
+    # De julho a 2026-08-16 este comentário descrevia uma proteção que não
+    # existia: o rate limit estava configurado e não contava nada. Agora conta —
+    # e o `core/limitador.py` lê o `x-forwarded-for` por conta própria, então a
+    # proteção não depende só destas flags.
     startCommand: >-
       python -m uvicorn app.main:app
       --host 0.0.0.0 --port $PORT

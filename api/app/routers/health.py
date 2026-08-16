@@ -15,6 +15,11 @@ from app.db.session import get_session
 router = APIRouter(tags=["health"])
 
 
+# Esta é a única rota isenta do freio da API, e a isenção está declarada em
+# `core/limitador.ISENTOS` — por caminho, e não por decorador aqui, para não
+# depender de o middleware conseguir resolver qual rota está sendo chamada. Foi
+# exatamente essa dependência que fez a proteção anterior não valer para
+# ninguém. O porquê da isenção está lá.
 @router.get("/health")
 async def health(session: AsyncSession = Depends(get_session)) -> JSONResponse:
     try:

@@ -2563,7 +2563,10 @@ com todo o resto.
 **Fase 3 — segurança, imediatamente antes de abrir.** Na ordem de gravidade da
 varredura de 2026-08-11, detalhada no bloco "Segurança do app" abaixo.
 
-8. Rate limit — o `SlowAPIMiddleware` que nunca foi adicionado.
+8. ✅ **Rate limit** — feito em 2026-08-16. Não bastou adicionar o middleware:
+    ele libera toda requisição cuja rota não consegue resolver, e o FastAPI 0.140
+    mudou a forma de incluir routers. O freio passou a ser do projeto, em
+    `core/limitador.py`. Detalhe no bloco de segurança abaixo.
 9. Bloqueado continua agindo.
 10. `/docs` e `/openapi.json` fechados em produção.
 11. `JOB_SECRET` sem default publicado, comparado com `compare_digest`.
@@ -2794,15 +2797,58 @@ ordem quando a vez chegar. Uma ressalva que não é de segurança e por isso nã
 espera junto: o item 2 tem duas metades, e a metade do backup quebrado é perda
 de dados hoje, com ou sem usuário no app.
 
-1. **O rate limit não roda.** `main.py` cria o `Limiter` com `default_limits`
-   de 100/minuto, guarda-o em `app.state` e registra o handler do 429 — mas
-   nunca adiciona o `SlowAPIMiddleware`, e nenhuma rota usa `@limiter.limit`.
-   No slowapi, o `default_limits` só vale através desse middleware; sem ele o
-   objeto existe e não limita nada. Provado contra a API local: 120 chamadas a
-   `/v1/health` dentro de um minuto, 120 respostas 200, nenhum 429. O comentário
-   do `render.yaml` que justifica `--proxy-headers` descreve uma proteção por
-   pessoa que hoje não existe para ninguém. Sem ela, o freio da vitrine e de
-   `/u/{username}` contra raspagem é só "estar logado", que custa uma conta.
+1. ✅ **O rate limit não rodava** — resolvido em 2026-08-16, e a história vale
+   mais que a correção.
+
+   **O defeito original.** `main.py` criava o `Limiter` do slowapi com
+   `default_limits` de 100/minuto, guardava em `app.state` e registrava o handler
+   do 429 — mas nunca adicionava o `SlowAPIMiddleware`, e nenhuma rota usava
+   `@limiter.limit`. Sem esse middleware o `default_limits` não vale, e o objeto
+   existia sem contar nada. Medido em 2026-08-11: 120 chamadas em um minuto, 120
+   respostas 200.
+
+   **A correção óbvia não funcionou, e esse é o ponto.** Adicionado o middleware,
+   a medição repetida deu 310 chamadas a `/v1/planos` em 0,4 segundo e 310
+   respostas 200. O `SlowAPIMiddleware` descobre qual rota está sendo chamada
+   varrendo `app.routes` atrás de um objeto com `.endpoint`, e **libera a
+   requisição quando não acha** (`_should_exempt` devolve `True` para handler
+   nulo). A partir do **FastAPI 0.140**, `include_router` não achata mais as
+   rotas: cada inclusão vira um `_IncludedRouter` que guarda os caminhos sem o
+   prefixo e resolve o casamento por conta própria. Nenhuma rota é encontrada,
+   todas são tratadas como isentas — o mesmo defeito, numa forma nova e mais
+   difícil de ver, porque agora a linha do middleware está lá.
+
+   **O freio passou a ser escrito no projeto**, em `core/limitador.py`, sobre a
+   `limits` — a biblioteca que o próprio slowapi usa por baixo. São quarenta
+   linhas que não dependem de como o FastAPI monta a tabela de rotas, e essa
+   independência é a decisão: a forma mudou uma vez e pode mudar de novo. O
+   slowapi saiu das dependências.
+
+   **A chave é a pessoa, não o endereço.** Contar por IP seria errado exatamente
+   no dia que mais importa: o lançamento é um evento numa loja, com dezenas de
+   pessoas no mesmo Wi-Fi e no mesmo IP público. Um balde por IP transformaria
+   quarenta pessoas cadastrando cartas num cliente só estourando o limite, e o
+   app cairia na frente de todas elas por causa de uma proteção contra abuso. O
+   mesmo vale para o CGNAT das operadoras. Quem tem sessão é contado pelo `sub`
+   do token, lido **sem validar assinatura** — forjar token não dá acesso a nada
+   (quem valida é `usuario_atual`, com o JWKS), e o único ganho seria escapar do
+   próprio balde, coisa que trocar de IP já permite.
+
+   **O teto é 300 por minuto**, e não os 100 de antes. Estrear a proteção no
+   número antigo seria estreá-la apertada: o feed, o acervo e a vitrine disparam
+   várias requisições por abertura de tela. O alvo é raspagem — varrer a vitrine
+   ou `/u/{username}` para montar uma base de contatos —, não uso intenso.
+
+   **`/v1/health` é a única rota isenta**, e por caminho, não por decorador: é o
+   que o Render consulta para decidir se o serviço está vivo, e um 429 ali não
+   seria um pedido recusado, seria o deploy derrubado. As rotas internas seguem
+   limitadas (o cron as chama poucas vezes por dia) e o receptor do Mercado Pago
+   também — uma rajada dele que estourasse o teto receberia 429 e seria
+   reenviada, comportamento que a idempotência de `webhook_events` já cobre.
+
+   Verificado contra a API rodando, do mesmo jeito que o defeito foi descoberto:
+   320 chamadas em 0,4 segundo, **300 respostas 200 e 20 respostas 429**; e 120
+   chamadas a `/v1/health`, 120 respostas 200.
 2. ✅ **Backup quebrado, e o destino dele era público** — feito em 2026-08-11
    (`9ef33e1`), fora da ordem do resto do bloco porque não era sobre proteger
    usuário: era o trabalho sem cópia desde 07/08. Eram duas coisas que se
@@ -3653,7 +3699,7 @@ não presumido; o que tem ressalva está escrito por quê.
 - [x] Disclaimer de não-afiliação com Nintendo / Creatures / GAME FREAK / The Pokémon Company — rodapé da Home, fim de Configurações e fim dos termos
 - [x] Fluxo de exclusão de conta funcionando (exigência da LGPD) — `profiles.excluir_conta`, e desde 2026-08-14 ele cancela a assinatura antes de apagar
 - [x] Denúncia de usuário funcionando, com motivo `USO_PARA_VENDA`
-- [ ] Rate limit ativo — **o `Limiter` existe e não limita nada**; falta o `SlowAPIMiddleware`. Item 8
+- [x] Rate limit ativo — feito em 2026-08-16, e provado por rajada: 320 chamadas em 0,4 s, 300 passam e 20 recebem 429
 - [ ] Sentry recebendo eventos — não há dependência de Sentry no projeto
 - [x] **Keep-alive rodando** (API + banco) — a cada ~50 min pelo Actions, devolvendo `{"status":"ok","db":"ok"}`. Verificado em 2026-08-14
 - [ ] **Backup diário do banco** rodando e restauração testada uma vez — o backup roda e é cifrado desde `9ef33e1`; **a restauração nunca foi exercitada**. Item 14
