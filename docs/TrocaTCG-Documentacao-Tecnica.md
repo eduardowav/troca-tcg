@@ -2496,6 +2496,25 @@ com todo o resto.
    leva dias e corre sozinha — adiar isto é criar o gargalo do fim.
 2. Credenciais de produção do Mercado Pago e os dois planos criados com elas.
 
+   **Junto disso, e ainda não feito: a assinatura nunca rodou ponta a ponta.** O
+   backend inteiro é coberto por testes com dublês; nenhum `preapproval` foi
+   criado de verdade, nenhuma notificação real chegou ao receptor, e o job de
+   reconciliação nunca conversou com a API do Mercado Pago. Do jeito que está, a
+   primeira execução real desse caminho seria com o dinheiro de alguém.
+
+   Dá para fechar antes, e de graça: o MCP do Mercado Pago cria pagador de teste
+   e adiciona saldo, e as credenciais de teste com os `preapproval_plan_id` que
+   já estão no `api/.env` percorrem o fluxo inteiro — assinar, o webhook chegar,
+   `profiles.plano` virar PRO, cancelar, a carência abrir. Fecha de quebra a
+   dúvida do Pix em assinatura (cobrança por ciclo, como boleto, ou débito
+   automático), que nenhuma documentação respondeu. A conta dona do plano não
+   assina o próprio plano, então o checkout precisa ser percorrido por outra
+   pessoa.
+
+   **Decisão do Eduardo em 2026-08-16: fica para o lançamento**, junto com o
+   resto da ativação. Não bloqueia nada enquanto `COBRANCA_ATIVA` for falso — e
+   vira a primeira coisa a fazer no dia em que ele for virado.
+
 **Fase 2 — o que falta para poder abrir.** Tudo código ou texto, nada bloqueado.
 
 3. ✅ **Modal de disclaimer antes de revelar o contato** — feito em 2026-08-15.
@@ -2509,7 +2528,8 @@ com todo o resto.
    pronto e desligado desde 2026-08-12; a tela pode ser construída antes de o
    item 1 ficar de pé.
 6. ✅ **Open Graph (1200×630), `twitter:card`** e os **screenshots do manifesto**
-   — feitos em 2026-08-15.
+   — feitos em 2026-08-15, com a prévia confirmada num WhatsApp de verdade em
+   2026-08-16.
 
    As três imagens saem de scripts, e não de um editor: `scripts/gerar-og.mjs` e
    `scripts/gerar-screenshots.mjs`, ao lado do `gerar-icones.mjs` que já existia
@@ -2563,7 +2583,9 @@ varredura de 2026-08-11, detalhada no bloco "Segurança do app" abaixo.
 
 18. Tela de três pontas da triangulação. O motor está pronto e desligado.
 19. Virar `COBRANCA_ATIVA`, que depende do 18: a tabela do PRO vende match
-    triangular.
+    triangular. **Antes de virar, rodar a assinatura ponta a ponta com
+    credenciais de teste** — ver a ressalva no item 2. É o único caminho do app
+    que nunca foi exercitado contra o serviço de verdade.
 20. README de portfólio, que serve ao Eduardo e não ao app.
 
 Duas ressalvas sobre a própria ordem. O **rate limit (8)** sobe para antes do
