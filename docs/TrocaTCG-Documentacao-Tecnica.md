@@ -688,7 +688,21 @@ create policy "le anuncios ativos"
 create policy "gerencia proprios anuncios"
   on listings for all using (auth.uid() = user_id);
 
--- Matches: só participantes veem
+-- Matches: só participantes veem.
+--
+-- Escritas assim em julho e REESCRITAS em 2026-08-18 (32_rls_do_match_sem_recursao.sql):
+-- a do meio protegia `match_participants` com uma subconsulta na própria
+-- `match_participants`, e avaliá-la exigia avaliá-la de novo — as três
+-- respondiam `infinite recursion detected in policy`. A versão que vale hoje
+-- delega a uma função `security definer`, que roda como o dono e por isso não
+-- redispara a policy:
+--
+--   create policy "ve proprios matches"
+--     on matches for select using (public.participa_do_match(id));
+--   create policy "ve propria participacao"
+--     on match_participants for select using (public.participa_do_match(match_id));
+--   create policy "ve itens dos proprios matches"
+--     on match_items for select using (public.participa_do_match(match_id));
 create policy "ve proprios matches"
   on matches for select using (
     exists (
@@ -3013,13 +3027,93 @@ de dados hoje, com ou sem usuário no app.
    `matching.py`; o valor é um uuid vindo do banco, então não é explorável, é
    só frágil.
 
+8. ✅ **A camada do banco, exercitada em vez de lida** — 2026-08-18. Item que não
+   estava na varredura de 11/08 porque aquela varredura leu os arquivos; este
+   saiu de rodar consulta com JWT de gente de verdade contra o banco de
+   produção, e achou duas coisas que a leitura não acharia.
+
+   **As policies do match recursavam infinito, desde julho.** A policy
+   "ve propria participacao" protegia `match_participants` com uma subconsulta na
+   própria `match_participants`; avaliá-la exigia avaliá-la de novo. Qualquer
+   `select` pela anon key nas três tabelas do match respondia
+   `infinite recursion detected in policy for relation "match_participants"` —
+   e as outras duas policies caíam junto, porque as duas consultam
+   `match_participants` para saber quem participa. Nada quebrou em produção
+   porque nenhuma tela lê essas tabelas direto; a consequência é que **a rede de
+   segurança que o `09_rls.sql` promete nunca existiu ali** — era um erro 500, e
+   erro 500 é proteção por acidente. Corrigido no `32_rls_do_match_sem_recursao.sql`
+   com uma função `security definer` que quebra o laço, e conferido nos três
+   casos: participante vê o próprio match, quem não participa vê zero, `anon` vê
+   zero.
+
+   **Seis tabelas antigas ainda tinham `grant all` para `anon` e
+   `authenticated`.** O `11_grants.sql` fechou `profiles` e `listings`, e todo
+   arquivo posterior nasceu fechado — mas `cards`, `matches`,
+   `match_participants`, `match_items`, `match_events` e `term_acceptances` são
+   de julho e ficaram com o INSERT/UPDATE que o Supabase concede por padrão.
+   Medido: a escrita era recusada, porque as policies do 09 são todas
+   `for select` e tabela com RLS ligado e sem policy de escrita não aceita
+   escrita. Ou seja, um buraco fechado por uma única camada — e a frágil, já que
+   três policies deste mesmo schema são `for all` e trocar `for select` por
+   `for all` numa dessas seis é uma edição de um segundo. Fechado no
+   `31_grants_das_tabelas_antigas.sql`, que aproveita e inverte a causa: o
+   `default privileges` de `public` deixou de conceder tudo, então **tabela nova
+   nasce fechada** — a mesma inversão que o `core/auth.py` fez com o bloqueio de
+   conta.
+
+   O linter do Supabase, junto, parou de acusar `normaliza_busca` sem
+   `search_path` fixo. Sobraram nele três INFO que são decisão declarada
+   (`match_events`, `phone_verifications` e `webhook_events` têm RLS e nenhuma
+   policy de propósito) e dois WARN que não são código: `pg_trgm` no schema
+   `public`, que mover custa reconstruir os índices da busca por ganho nenhum, e
+   a proteção contra senha vazada do Auth, que é um interruptor do painel.
+
+9. ✅ **Pentest e hardening completos** — 2026-08-18, no mesmo dia e como
+   continuação do item 8. **O relatório inteiro está em
+   [`docs/SEGURANCA.md`](SEGURANCA.md)**: superfície, modelo de ameaças, os nove
+   achados no formato longo, testes de regressão e riscos residuais. O que vale
+   repetir aqui é só o que muda a decisão de quem lê esta seção.
+
+   **Dois HIGH, e os dois eram de estado, não de injeção.** `responder` gravava o
+   status do match sem olhar o status anterior: dava para ressuscitar uma troca
+   `EXPIRADO` e para apagar do histórico uma `CONCLUIDO` mantendo os pontos de
+   reputação que ela creditou. E `confirmar_conclusao` era uma corrida — dois
+   cliques simultâneos creditavam +2 em `trocas_concluidas` e baixavam o estoque
+   duas vezes. Os dois estão fechados, com guarda de estado no `update` e uma
+   trava de linha em `_status_do_participante` que serializa os quatro desfechos
+   (concluir, desistir, furar, prorrogar) de uma vez só.
+
+   **A fronteira que faltava estar escrita: autenticação não é nossa.** Login,
+   cadastro e recuperação falam direto com o Supabase, sem passar pela API — e
+   portanto sem passar pelo rate limit, pelos logs e pelas regras daqui. Não é
+   defeito; é o desenho. Mas a doc dava a entender que o freio cobria o app
+   inteiro, e não cobre. Três ajustes ficaram no painel do Supabase, listados no
+   §5 do relatório — entre eles o mínimo de senha, que hoje é conferido só no
+   cliente e por isso não é conferido.
+
+   **A lição de método, de novo, e é a mesma do item 7.** A varredura de 11/08
+   leu os arquivos; esta rodou o sistema. Toda a diferença entre as duas listas
+   veio daí. O que passou a rodar sozinho para não depender disso: o ruleset `S`
+   do ruff (bandit) no `ruff check` que já existia — e que achou um ponto real na
+   primeira execução —, `pip-audit --strict` no backend e `npm audit` no que vai
+   para o navegador.
+
+   Um risco fica **declarado e não resolvido**: a enumeração de e-mail no
+   cadastro. A mensagem da tela foi neutralizada, mas a causa é a confirmação de
+   e-mail estar desligada, e quem chamar o Supabase direto continua distinguindo
+   "já existe" de "criado". O front não é a fronteira. Fechar isso é o mesmo
+   interruptor que fecha o account squatting, e o custo é o funil do cadastro —
+   decisão de produto, registrada em R-1 do relatório.
+
 O que a varredura confirmou que está bem, para não se perder no meio da lista:
 a validação do JWT lida pelo JWKS e imune à confusão de algoritmo; o grant por
 coluna que tira `contato_visivel` do alcance da anon key; o contato revelado só
-em `ACEITO`/`CONCLUIDO` e sempre depois de conferir participação; RLS em todas
-as tabelas, inclusive nas criadas depois do 09; SQL sempre parametrizado, com as
-interpolações restritas a constantes internas; `.env` nunca commitado; o `bulk`
-travado em 300 itens; e o antiabuso de propostas por dia ativo desde o começo.
+em `ACEITO`/`CONCLUIDO` e sempre depois de conferir participação; RLS ligado em
+todas as tabelas, inclusive nas criadas depois do 09 — com a ressalva do item 8,
+que é a diferença entre estar ligado e estar segurando; SQL sempre parametrizado,
+com as interpolações restritas a constantes internas; `.env` nunca commitado; o
+`bulk` travado em 300 itens; e o antiabuso de propostas por dia ativo desde o
+começo.
 
 **Planos pagos** — decidido e detalhado na
 [seção 16](#16-preparação-para-monetização): FREE com 20 ofertas, PRO ilimitado
