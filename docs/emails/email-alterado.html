@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="x-apple-disable-message-reformatting" />
+    <!-- O mundo do TrocaTCG é papel creme com tinta preta. Sem esta declaração,
+         Apple Mail e Outlook invertem tudo no modo escuro e o papel vira cinza
+         sujo com a borda sumindo. O design é comprometido com a luz. -->
+    <meta name="color-scheme" content="light" />
+    <meta name="supported-color-schemes" content="light" />
+    <title>O e-mail da sua conta mudou — TrocaTCG</title>
+    <style>
+      /* Gmail bloqueia webfont; Apple Mail e iOS carregam. Quem não carregar cai
+         na pilha de fallback declarada em cada elemento — por isso a família vem
+         inline também, e não só aqui. */
+      @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@500;700;900&family=Inter:wght@400;600&display=swap');
+
+      body { margin: 0; padding: 0; width: 100% !important; }
+      table { border-collapse: collapse; }
+      img { border: 0; outline: none; text-decoration: none; }
+      a { color: #0038ff; }
+      @media only screen and (max-width: 620px) {
+        .cartela-pad { padding: 28px 22px !important; }
+        .titulo { font-size: 26px !important; }
+      }
+    </style>
+  </head>
+
+  <body style="margin:0; padding:0; background-color:#FFFDF5;">
+    <!-- Este e-mail chega no endereço ANTIGO, e é a última mensagem que ele vai
+         receber da conta. A prévia tem que carregar essa urgência sozinha. -->
+    <div style="display:none; font-size:1px; color:#FFFDF5; line-height:1px; max-height:0; max-width:0; opacity:0; overflow:hidden;">
+      Este endereço não é mais o da sua conta. Se não foi você, aja agora.
+      &#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;
+    </div>
+
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#FFFDF5;">
+      <tr>
+        <td align="center" style="padding: 32px 16px 40px 16px;">
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width:560px;">
+
+            <!-- ---------------------------------------------- marca -->
+            <tr>
+              <td align="center" style="padding-bottom: 24px;">
+                <img
+                  src="https://trocatcg-web.onrender.com/pwa-192.png"
+                  width="56" height="56" alt="TrocaTCG"
+                  style="display:block; width:56px; height:56px; border-radius:12px;"
+                />
+              </td>
+            </tr>
+
+            <!-- ---------------------------------------------- cartela -->
+            <tr>
+              <td>
+                <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#FFFFFF; border:2px solid #000000; border-radius:20px;">
+                  <tr>
+                    <td class="cartela-pad" style="padding: 36px 34px;">
+
+                      <h1 class="titulo" style="margin:0 0 14px 0; font-family:'Outfit','Trebuchet MS','Segoe UI',Arial,sans-serif; font-size:30px; line-height:1.1; font-weight:700; color:#000000;">
+                        O e-mail da sua conta mudou
+                      </h1>
+
+                      <p style="margin:0 0 20px 0; font-family:'Inter',-apple-system,'Segoe UI',Roboto,Arial,sans-serif; font-size:16px; line-height:1.6; color:#000000;">
+                        A conta do TrocaTCG que usava este endereço passou a usar outro.
+                      </p>
+
+                      <!-- ------------------------------------ de → para
+                           Em `Geist Mono`, que no sistema é a fonte do dado:
+                           id de troca, código de set, prazo. Endereço de e-mail
+                           é dado, e ler dado em fonte de corpo convida ao erro
+                           entre caracteres parecidos. -->
+                      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom:24px;">
+                        <tr>
+                          <td style="background-color:#F2F4FF; border:2px solid #000000; border-radius:12px; padding:14px 16px;">
+                            <p style="margin:0 0 4px 0; font-family:'Inter',-apple-system,'Segoe UI',Roboto,Arial,sans-serif; font-size:12px; line-height:1.4; letter-spacing:0.04em; text-transform:uppercase; color:#555552;">
+                              Era
+                            </p>
+                            <p style="margin:0 0 12px 0; font-family:'Geist Mono',ui-monospace,'SFMono-Regular',Consolas,'Courier New',monospace; font-size:14px; line-height:1.4; color:#000000; word-break:break-all;">
+                              {{ .OldEmail }}
+                            </p>
+                            <p style="margin:0 0 4px 0; font-family:'Inter',-apple-system,'Segoe UI',Roboto,Arial,sans-serif; font-size:12px; line-height:1.4; letter-spacing:0.04em; text-transform:uppercase; color:#555552;">
+                              Passou a ser
+                            </p>
+                            <p style="margin:0; font-family:'Geist Mono',ui-monospace,'SFMono-Regular',Consolas,'Courier New',monospace; font-size:14px; line-height:1.4; color:#000000; word-break:break-all;">
+                              {{ .Email }}
+                            </p>
+                          </td>
+                        </tr>
+                      </table>
+
+                      <!-- ------------------------------------ o alerta -->
+                      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                        <tr>
+                          <td style="background-color:#FEE2E2; border:2px solid #000000; border-radius:12px; padding:16px 18px;">
+                            <p style="margin:0 0 6px 0; font-family:'Outfit','Trebuchet MS','Segoe UI',Arial,sans-serif; font-size:17px; font-weight:700; line-height:1.3; color:#DC2626;">
+                              Não foi você?
+                            </p>
+                            <p style="margin:0; font-family:'Inter',-apple-system,'Segoe UI',Roboto,Arial,sans-serif; font-size:14px; line-height:1.6; color:#DC2626;">
+                              Então alguém tomou sua conta, e a recuperação por e-mail já não chega
+                              mais aqui. <strong>Fale com a gente agora</strong> — quanto antes,
+                              mais fácil devolver a conta para você.
+                            </p>
+                          </td>
+                        </tr>
+                      </table>
+
+                      <!-- ------------------------------------ botão
+                           O único caminho honesto aqui é humano. Não existe
+                           "desfazer" automático: o link de recuperação sairia
+                           para o endereço novo, que é justamente o de quem tomou
+                           a conta. Mandar a pessoa para "esqueci minha senha"
+                           seria mandá-la para uma porta que não abre mais. -->
+                      <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-top:24px;">
+                        <tr>
+                          <td bgcolor="#0038FF" style="border:2px solid #000000; border-radius:12px;">
+                            <a href="mailto:eduardowav@icloud.com?subject=Minha%20conta%20do%20TrocaTCG%20teve%20o%20e-mail%20trocado"
+                               style="display:block; padding:15px 30px; font-family:'Outfit','Trebuchet MS','Segoe UI',Arial,sans-serif; font-size:17px; font-weight:700; color:#FFFFFF; text-decoration:none;">
+                              Falar com o TrocaTCG
+                            </a>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td style="padding-left:3px;">
+                            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                              <tr>
+                                <td height="3" style="height:3px; line-height:3px; font-size:0; background-color:#000000;">&nbsp;</td>
+                              </tr>
+                            </table>
+                          </td>
+                        </tr>
+                      </table>
+
+                      <p style="margin:22px 0 0 0; font-family:'Inter',-apple-system,'Segoe UI',Roboto,Arial,sans-serif; font-size:13px; line-height:1.6; color:#555552;">
+                        Se foi você que mudou, não precisa fazer nada. Os próximos avisos da conta
+                        chegam no endereço novo.
+                      </p>
+
+                    </td>
+                  </tr>
+                </table>
+
+                <!-- Sombra da cartela: 4px. -->
+                <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                  <tr>
+                    <td width="6" style="width:6px; font-size:0; line-height:0;">&nbsp;</td>
+                    <td height="4" style="height:4px; line-height:4px; font-size:0; background-color:#000000;">&nbsp;</td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+
+            <!-- ---------------------------------------------- rodapé -->
+            <tr>
+              <td align="center" style="padding-top: 26px;">
+                <p style="margin:0; font-family:'Inter',-apple-system,'Segoe UI',Roboto,Arial,sans-serif; font-size:13px; line-height:1.6; color:#555552;">
+                  TrocaTCG — troca de cartas Pokémon entre gente da mesma cidade.
+                </p>
+                <p style="margin:8px 0 0 0; font-family:'Inter',-apple-system,'Segoe UI',Roboto,Arial,sans-serif; font-size:12px; line-height:1.6; color:#555552;">
+                  Enviado para {{ .OldEmail }} — o endereço que a conta usava até agora.
+                </p>
+              </td>
+            </tr>
+
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
