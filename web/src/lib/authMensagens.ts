@@ -1,6 +1,19 @@
 /**
  * Traduz os erros do Supabase Auth (que vêm em inglês, prontos para dev, não
  * para jogador) em frases que a pessoa entende e sabe o que fazer a seguir.
+ *
+ * **Uma frase daqui não pode responder "esse e-mail tem conta?"** — achado F-03
+ * da auditoria de 2026-08-18. Até então o cadastro devolvia "Esse e-mail já tem
+ * conta", que é um oráculo: quem quisesse saber quais e-mails de uma lista estão
+ * no app só precisava tentar criar conta com cada um. Isso vale mais para este
+ * app do que para a média, porque o produto todo é gente combinando encontro
+ * presencial — a lista de quem está aqui é informação sobre pessoas, não sobre
+ * contas.
+ *
+ * Ver `docs/SEGURANCA.md`: o texto daqui fecha o que a tela mostra, e **não**
+ * fecha o buraco. A causa raiz é a confirmação de e-mail estar desligada no
+ * Supabase, e quem chamar `supabase.co` direto continua distinguindo os dois
+ * casos. Está registrado lá como risco residual, com o custo de fechá-lo.
  */
 export function mensagemAuth(bruta: string): string {
   const m = bruta.toLowerCase()
@@ -12,7 +25,12 @@ export function mensagemAuth(bruta: string): string {
     return 'Confirme seu e-mail antes de entrar — veja sua caixa de entrada.'
   }
   if (m.includes('already registered') || m.includes('already exists')) {
-    return 'Esse e-mail já tem conta. Entre em vez de criar.'
+    // Deliberadamente ambígua entre "já existe" e "não deu para criar", e
+    // deliberadamente sem sugerir "entre em vez de criar" — a sugestão era a
+    // parte que confirmava a existência da conta. Quem de fato já tem conta
+    // encontra o caminho no "Entrar" e no "Esqueci minha senha", que estão na
+    // mesma tela, a um toque.
+    return 'Não foi possível criar a conta com esses dados. Confira o e-mail, ou entre se já tiver conta.'
   }
   if (m.includes('password should be')) {
     return 'Senha muito curta. Use ao menos 8 caracteres.'
