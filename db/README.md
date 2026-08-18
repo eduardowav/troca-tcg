@@ -34,6 +34,16 @@ foreign key entre eles (ex.: `listings` referencia `finishes`, `cards` e `profil
 | 20 | `schema/20_prazo_e_desistencia.sql` | prorrogação, `CANCELADO` e `trocas_desistidas` |
 | 21 | `schema/21_acabamento_dos_anuncios_antigos.sql` | correção dos anúncios que diziam "Normal" |
 | 22 | `schema/22_denuncias.sql` | `user_reports` acertada: match obrigatório, motivos em check, uma por troca |
+| 23 | `schema/23_propostas.sql` | propostas: a troca que o matcher não enxerga, com rodadas e prazo |
+| 24 | `schema/24_notificacoes.sql` | `notifications` ligada: policy, grant e a publicação do Realtime |
+| 25 | `schema/25_push_subscriptions.sql` | inscrições de Web Push — escrita e leitura só pela API |
+| 26 | `schema/26_verificacao_telefone.sql` | código de uso único do WhatsApp, construído e desligado |
+| 27 | `schema/27_baixa_por_troca.sql` | baixa de estoque quando a troca conclui |
+| 28 | `schema/28_resolver_lista.sql` | catálogo respondendo a muitos nomes numa consulta (cadastro em massa) |
+| 29 | `schema/29_alertas_de_carta.sql` | "avise quando aparecer" |
+| 30 | `schema/30_assinaturas.sql` | lastro local da assinatura do PRO e dedupe de webhook |
+| 31 | `schema/31_grants_das_tabelas_antigas.sql` | os GRANTs que o 11 não alcançou + tabela nova nasce fechada |
+| 32 | `schema/32_rls_do_match_sem_recursao.sql` | as policies do match, que recursavam infinito desde julho |
 
 > **Dependência do Supabase Auth:** `profiles.id` referencia `auth.users(id)`.
 > Aplique este schema em um projeto Supabase (onde o schema `auth` já existe).
