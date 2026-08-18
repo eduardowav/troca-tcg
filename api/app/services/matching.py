@@ -195,21 +195,56 @@ async def sincronizar_matches(session: AsyncSession, user_id: UUID) -> int:
         },
     )
 
-    for par in pares:
-        await _gravar_match(session, user_id, par)
+    await _gravar_matches(session, user_id, pares)
 
     await session.commit()
     return len(pares)
 
 
-async def _gravar_match(session: AsyncSession, eu: UUID, par: dict) -> None:
-    parceiro = par["parceiro"]
-    hash_grupo = _hash_grupo(eu, parceiro)
+async def _gravar_matches(session: AsyncSession, eu: UUID, pares: list) -> None:
+    """Grava **todos** os pares de uma vez. Antes era um par por vez, e caro.
 
-    res = await session.execute(
-        text("""
+    Medido em 2026-08-18, contra o banco de produção: `sincronizar_matches`
+    custava 13 idas ao banco e **2.423 ms** para dois pares. O mesmo perfil com
+    `EXPLAIN ANALYZE` mostrou o outro lado da conta — a consulta do matcher roda
+    em **1,0 ms** e a varredura de vencidos em **0,145 ms**. Ou seja: o Postgres
+    não estava fazendo nada. Praticamente todo aquele tempo era o fio entre a
+    API (Virgínia) e o banco (São Paulo), pago cinco vezes por par.
+
+    Por isso a correção não é índice nem cache — nenhum dos dois tem o que
+    melhorar num trabalho de um milissegundo. É **parar de ir lá tantas vezes**:
+    cinco consultas por par viram cinco consultas no total, quantos pares
+    existam. Com dois pares são cinco idas a menos; com dez pares, quarenta e
+    cinco.
+
+    O caminho importa porque não é raro: `sincronizar_matches` roda em toda
+    escrita de anúncio — as cinco rotas de `/me/listings` —, ou seja, em cada
+    carta que alguém cadastra. É o primeiro minuto de uso de toda pessoa nova.
+
+    A semântica é a mesma, item por item, e é isso que os testes de
+    `test_matching_lote.py` fixam.
+    """
+    if not pares:
+        return
+
+    por_hash = {_hash_grupo(eu, p["parceiro"]): p for p in pares}
+
+    # 1) O upsert de todos os matches numa consulta. `unnest` de arrays paralelos
+    #    em vez de um VALUES montado por string: os valores continuam sendo
+    #    parâmetros, e o texto do SQL não muda com a quantidade de pares — o que
+    #    também deixa o Postgres reaproveitar o plano.
+    #
+    #    Um `on conflict` só pode tocar cada linha uma vez por comando, e é o
+    #    `_PARES` que garante isso: ele traz `row_number() ... where posicao = 1`,
+    #    uma linha por parceiro, então dois hashes iguais não chegam aqui.
+    linhas = (
+        (
+            await session.execute(
+                text("""
             insert into matches (tipo, status, score, hash_grupo)
-            values ('DIRETO', 'SUGERIDO', :score, :hash)
+            select 'DIRETO', 'SUGERIDO', v.score, v.hash
+            from unnest(cast(:scores as numeric[]), cast(:hashes as text[]))
+                 as v(score, hash)
             on conflict (hash_grupo) do update
               set score = excluded.score,
                   status = 'SUGERIDO',
@@ -222,80 +257,122 @@ async def _gravar_match(session: AsyncSession, eu: UUID, par: dict) -> None:
                  -- leria como o app ignorando a decisão dela. Uma semana depois
                  -- volta, porque desistir quase sempre é sobre o momento.
                  or (matches.status = 'CANCELADO' and matches.expira_em <= now())
-            returning id::text, (xmax = 0) as inedito
+            returning id::text as id, hash_grupo, (xmax = 0) as inedito
         """),
-        {"score": par["score"], "hash": hash_grupo},
+                {
+                    "scores": [p["score"] for p in pares],
+                    "hashes": list(por_hash),
+                },
+            )
+        )
+        .mappings()
+        .all()
     )
-    linha = res.mappings().first()
-    if linha is None:
-        return  # já existe e alguém respondeu: não é mais sugestão, deixa quieto
 
-    match_id = linha["id"]
-    # `xmax = 0` separa o INSERT do UPDATE do upsert, e essa distinção é a
-    # diferença entre notificar uma vez e notificar sempre: `sincronizar_matches`
-    # roda a cada escrita de anúncio e reescreve os mesmos pares indefinidamente.
-    # Sem isto, a coisa mais útil do app viraria a mais irritante.
-    inedito = bool(linha["inedito"])
+    # Quem não voltou já existe e alguém respondeu: não é mais sugestão, deixa
+    # quieto. Antes isso era o `if linha is None: return` de cada par; agora é a
+    # própria ausência da linha no retorno.
+    if not linhas:
+        return
 
-    # Se este match está ressuscitando de um EXPIRADO, os participantes ainda
-    # carregam o aceite da rodada anterior — sem zerar, a tela mostraria uma
-    # troca "já combinada" que na verdade acabou de ser sugerida de novo. No
-    # caminho normal (match ainda SUGERIDO) isto é inócuo: ninguém respondeu.
+    ids = [linha["id"] for linha in linhas]
+
+    # 2) Se algum match está ressuscitando de um EXPIRADO, os participantes ainda
+    #    carregam o aceite da rodada anterior — sem zerar, a tela mostraria uma
+    #    troca "já combinada" que na verdade acabou de ser sugerida de novo. No
+    #    caminho normal (match ainda SUGERIDO) isto é inócuo: ninguém respondeu.
     await session.execute(
         text("""
             update match_participants
             set aceitou = null, respondeu_em = null, confirmou_conclusao = false
-            where match_id = :m
+            where match_id = any(cast(:ms as uuid[]))
         """),
-        {"m": match_id},
+        {"ms": ids},
     )
 
-    # Participantes em ordem estável, para "posicao" não variar entre execuções.
-    # As duas linhas vão num INSERT só: a ida ao banco é o custo dominante aqui,
-    # não o trabalho que o Postgres faz depois que a consulta chega.
-    primeiro, segundo = sorted([str(eu), str(parceiro)])
+    # 3) Participantes em ordem estável, para "posicao" não variar entre
+    #    execuções — a ordenação por texto do uuid é o que dá essa estabilidade.
+    ms_p: list[str] = []
+    us_p: list[str] = []
+    pos_p: list[int] = []
+    for linha in linhas:
+        par = por_hash[linha["hash_grupo"]]
+        primeiro, segundo = sorted([str(eu), str(par["parceiro"])])
+        ms_p += [linha["id"], linha["id"]]
+        us_p += [primeiro, segundo]
+        pos_p += [0, 1]
+
     await session.execute(
         text("""
             insert into match_participants (match_id, user_id, posicao)
-            values (:m, :u0, 0), (:m, :u1, 1)
+            select v.m::uuid, v.u::uuid, v.pos
+            from unnest(cast(:ms as text[]), cast(:us as text[]),
+                        cast(:pos as smallint[])) as v(m, u, pos)
             on conflict (match_id, user_id) do nothing
         """),
-        {"m": match_id, "u0": primeiro, "u1": segundo},
+        {"ms": ms_p, "us": us_p, "pos": pos_p},
     )
 
-    # Itens são recalculados: a melhor combinação pode ter mudado.
+    # 4) Itens são recalculados: a melhor combinação pode ter mudado.
     await session.execute(
-        text("delete from match_items where match_id = :m"), {"m": match_id}
+        text("delete from match_items where match_id = any(cast(:ms as uuid[]))"),
+        {"ms": ids},
     )
-    # As duas cartas da troca, também num INSERT só, pelo mesmo motivo.
+
+    # 5) As duas cartas de cada troca. `condicao` é enum e precisa do cast
+    #    explícito: `text[]` não vira `card_condition[]` sozinho.
+    ms_i: list[str] = []
+    cards: list[str] = []
+    des: list[str] = []
+    paras: list[str] = []
+    conds: list[str] = []
+    fins: list[int] = []
+    for linha in linhas:
+        par = por_hash[linha["hash_grupo"]]
+        parceiro = str(par["parceiro"])
+        ms_i += [linha["id"], linha["id"]]
+        cards += [str(par["card_dou"]), str(par["card_recebo"])]
+        des += [str(eu), parceiro]
+        paras += [parceiro, str(eu)]
+        conds += [par["cond_dou"], par["cond_recebo"]]
+        fins += [par["finish_dou"], par["finish_recebo"]]
+
     await session.execute(
         text("""
             insert into match_items
               (match_id, card_id, de_user_id, para_user_id, condicao, finish_id)
-            values (:m, :c_dou,    :eu,     :parceiro, :cond_dou,    :fin_dou),
-                   (:m, :c_recebo, :parceiro, :eu,     :cond_recebo, :fin_recebo)
+            select v.m::uuid, v.card::uuid, v.de::uuid, v.para::uuid,
+                   v.cond::card_condition, v.fin
+            from unnest(cast(:ms as text[]), cast(:cards as text[]),
+                        cast(:des as text[]), cast(:paras as text[]),
+                        cast(:conds as text[]), cast(:fins as smallint[]))
+                 as v(m, card, de, para, cond, fin)
         """),
         {
-            "m": match_id,
-            "eu": str(eu),
-            "parceiro": str(parceiro),
-            "c_dou": str(par["card_dou"]),
-            "cond_dou": par["cond_dou"],
-            "fin_dou": par["finish_dou"],
-            "c_recebo": str(par["card_recebo"]),
-            "cond_recebo": par["cond_recebo"],
-            "fin_recebo": par["finish_recebo"],
+            "ms": ms_i,
+            "cards": cards,
+            "des": des,
+            "paras": paras,
+            "conds": conds,
+            "fins": fins,
         },
     )
 
-    if inedito:
+    # `xmax = 0` separa o INSERT do UPDATE do upsert, e essa distinção é a
+    # diferença entre notificar uma vez e notificar sempre: `sincronizar_matches`
+    # roda a cada escrita de anúncio e reescreve os mesmos pares indefinidamente.
+    # Sem isto, a coisa mais útil do app viraria a mais irritante.
+    for linha in linhas:
+        if not bool(linha["inedito"]):
+            continue
         # Os dois lados são avisados. Quem escreveu o anúncio está com o app
         # aberto e verá o feed de qualquer jeito; o parceiro é quem não tem
         # como saber que a troca dele apareceu — e é ele que a notificação
         # existe para alcançar.
-        for pessoa in (str(eu), str(parceiro)):
+        parceiro = str(por_hash[linha["hash_grupo"]]["parceiro"])
+        for pessoa in (str(eu), parceiro):
             await notificacoes.match_novo(
-                session, para=pessoa, match_id=match_id, tipo="DIRETO"
+                session, para=pessoa, match_id=linha["id"], tipo="DIRETO"
             )
 
 
@@ -766,19 +843,40 @@ async def _itens_por_match(
 async def responder(
     session: AsyncSession, user_id: UUID, match_id: UUID, aceitou: bool
 ) -> MatchOut:
-    """Aceita ou recusa. O contato só é revelado quando *todos* aceitaram."""
-    res = await session.execute(
+    """Aceita ou recusa. O contato só é revelado quando *todos* aceitaram.
+
+    **Só se responde a match PENDENTE**, e essa linha faltava até 2026-08-18.
+    Sem ela a rota gravava `status` sem olhar o status anterior, e o que era
+    "responder à sugestão do motor" virava um botão de reescrever o desfecho de
+    qualquer troca da pessoa:
+
+    - `{"aceitou": false}` num `CONCLUIDO` apagava a troca do histórico e
+      deixava de pé os pontos de reputação que ela já tinha creditado;
+    - `{"aceitou": true}` num `EXPIRADO` ressuscitava a troca vencida, furando o
+      prazo que o `expirar_vencidos` existe para aplicar;
+    - `RECUSADO` e `CANCELADO` voltavam ao jogo do mesmo jeito.
+
+    Nada disso é alcançável pela tela — ela só mostra os botões em PENDENTE —, e
+    é exatamente esse o ponto: quem chama a API direto não passa pela tela. A
+    regra tem de estar aqui.
+    """
+    # A trava vem antes de qualquer escrita: ela prova a participação (404 para
+    # quem não é da troca) e congela o status enquanto esta transação decide.
+    status = await _status_do_participante(session, user_id, match_id)
+    if status != "PENDENTE":
+        raise RegraNegocio(
+            "MATCH_JA_RESPONDIDO",
+            "Esta troca já teve um desfecho e não aceita mais resposta.",
+            status_code=409,
+        )
+
+    await session.execute(
         text("""
             update match_participants set aceitou = :aceitou, respondeu_em = now()
             where match_id = :m and user_id = :u
-            returning match_id::text
         """),
         {"aceitou": aceitou, "m": str(match_id), "u": str(user_id)},
     )
-    if res.mappings().first() is None:
-        raise RegraNegocio(
-            "MATCH_NAO_ENCONTRADO", "Match não encontrado.", status_code=404
-        )
 
     if not aceitou:
         novo = "RECUSADO"
@@ -792,8 +890,11 @@ async def responder(
         )
         novo = "ACEITO" if not pendentes else "PENDENTE"
 
+    # `and status = 'PENDENTE'` de novo, agora na escrita: a trava acima já
+    # serializa, e esta condição é a segunda camada que sobrevive a alguém
+    # remover a trava sem perceber o que ela segurava.
     await session.execute(
-        text("update matches set status = :s where id = :m"),
+        text("update matches set status = :s where id = :m and status = 'PENDENTE'"),
         {"s": novo, "m": str(match_id)},
     )
     await session.execute(
@@ -837,12 +938,28 @@ async def _status_do_participante(
 
     O join com `match_participants` é a autorização: quem não está na troca
     recebe 404, não 403 — não confirmamos nem que o match existe.
+
+    **`for update of m` trava a linha do match até o fim da transação**, e é o
+    que torna seguros os quatro desfechos que entram por aqui (concluir,
+    desistir, furar, prorrogar). Sem a trava, todos eles são ler-decidir-gravar:
+    duas requisições simultâneas leem o mesmo status `ACEITO`, as duas passam
+    pela regra e as duas gravam. Medido no `confirmar_conclusao`, era +2 em
+    `trocas_concluidas` e baixa de estoque dobrada por um clique duplo — em
+    `registrar_desistencia`, +2 em `trocas_desistidas`. Reputação que se infla
+    apertando o botão duas vezes não é reputação.
+
+    A trava é sobre `matches` e não sobre a participação (`of m`): é o status do
+    match que as quatro funções decidem em cima, e travar a linha certa é o que
+    faz a segunda requisição esperar a primeira terminar em vez de correr junto.
+    Como todas travam a mesma linha e só ela, não há ordem de aquisição para dar
+    errado — a segunda espera, lê o status já atualizado e para na própria regra.
     """
     status = await session.scalar(
         text("""
             select m.status::text from matches m
             join match_participants mp on mp.match_id = m.id
             where m.id = :m and mp.user_id = :u
+            for update of m
         """),
         {"m": str(match_id), "u": str(user_id)},
     )
@@ -895,11 +1012,27 @@ async def confirmar_conclusao(
         {"m": str(match_id)},
     )
 
+    fechou = False
     if not faltam:
-        await session.execute(
-            text("update matches set status = 'CONCLUIDO' where id = :m"),
+        # `and status = 'ACEITO'` é a guarda, e o `rowcount` é a resposta: quem
+        # muda a linha é quem credita a reputação e baixa o estoque, e só uma
+        # transação consegue mudá-la.
+        #
+        # A trava de `_exigir_aceito` já serializa as chamadas, e esta condição
+        # é a camada que não depende dela. As duas juntas fecham o clique duplo
+        # que antes creditava +1 em cada chamada: o docstring de 2026-08-11
+        # dizia que a segunda esbarraria no `_exigir_aceito`, o que vale para
+        # chamadas em sequência e não valia para duas ao mesmo tempo.
+        res = await session.execute(
+            text(
+                "update matches set status = 'CONCLUIDO' "
+                "where id = :m and status = 'ACEITO'"
+            ),
             {"m": str(match_id)},
         )
+        fechou = res.rowcount == 1
+
+    if fechou:
         await session.execute(
             text("""
                 update profiles set trocas_concluidas = trocas_concluidas + 1
@@ -911,9 +1044,7 @@ async def confirmar_conclusao(
         )
         # A carta trocada sai do estoque dos dois lados: uma unidade da OFERTA
         # de quem deu, uma da PROCURA de quem recebeu. Aqui dentro do `if`, e
-        # não acima: enquanto falta um lado confirmar, a troca não aconteceu —
-        # e é só uma vez, porque a segunda chamada esbarra no `_exigir_aceito`,
-        # que já vai encontrar o match em CONCLUIDO.
+        # não acima: enquanto falta um lado confirmar, a troca não aconteceu.
         await listings.baixar_por_troca(session, match_id)
 
     # A confirmação de um lado só vale com a do outro, e é aqui que ela é
@@ -927,7 +1058,7 @@ async def confirmar_conclusao(
             de=user_id,
             quem=await notificacoes.arroba(session, user_id),
             match_id=match_id,
-            fechou=not faltam,
+            fechou=fechou,
         )
 
     await session.commit()

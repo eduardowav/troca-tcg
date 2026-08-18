@@ -404,8 +404,18 @@ async def _checar_limite_diario(session: AsyncSession, user_id: UUID) -> None:
     índice único. Este aqui cobre o outro caso: uma pessoa abrindo proposta para
     a base inteira, uma para cada.
     """
+    # `for update` trava a linha de quem está abrindo a proposta até o fim da
+    # transação, e é o que torna o teto um teto (F-06 da auditoria de
+    # 2026-08-18). Sem ela isto é contar-e-depois-gravar: dez requisições
+    # simultâneas leem as mesmas "nove abertas hoje", as dez passam, e o limite
+    # que existe para impedir disparo em massa é furado exatamente pelo disparo
+    # em massa — o caso que ele foi escrito para pegar.
+    #
+    # A trava é na própria pessoa, que é a unidade do limite. Duas pessoas
+    # abrindo proposta ao mesmo tempo não esperam uma pela outra; a mesma pessoa
+    # abrindo dez de uma vez, sim.
     plano = await session.scalar(
-        text("select plano from profiles where id = cast(:eu as uuid)"),
+        text("select plano from profiles where id = cast(:eu as uuid) for update"),
         {"eu": str(user_id)},
     )
     limite = limites_de(plano or "FREE").propostas_por_dia

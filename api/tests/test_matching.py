@@ -503,7 +503,7 @@ def test_desistencia_volta_a_ser_sugerida_depois_da_carencia():
     Sem a comparação com `expira_em`, a troca que a pessoa acabou de desmarcar
     reapareceria no feed no refresh seguinte.
     """
-    fonte = inspect.getsource(matching._gravar_match)
+    fonte = inspect.getsource(matching._gravar_matches)
     assert "matches.status = 'CANCELADO' and matches.expira_em <= now()" in fonte
 
 

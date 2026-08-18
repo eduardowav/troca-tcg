@@ -182,9 +182,14 @@ def test_match_novo_so_dispara_no_insert():
     """`sincronizar_matches` roda a cada escrita de anúncio e reescreve os mesmos
     pares indefinidamente. É o `xmax = 0` que separa o INSERT do UPDATE do
     upsert — sem ele, a coisa mais útil do app vira a mais irritante."""
-    fonte = inspect.getsource(matching._gravar_match)
+    fonte = inspect.getsource(matching._gravar_matches)
     assert "(xmax = 0) as inedito" in fonte
-    assert "if inedito:" in fonte
+    # A guarda mudou de forma em 2026-08-18, quando a gravação passou a ser em
+    # lote: era `if inedito:` dentro da função de um par só, virou um `continue`
+    # sobre as linhas devolvidas pelo upsert. O que este teste protege é a
+    # decisão, não a sintaxe — o aviso continua preso ao `inedito`.
+    assert 'linha["inedito"]' in fonte
+    assert "continue" in fonte
 
 
 def test_recusa_de_sugestao_nao_notifica():
