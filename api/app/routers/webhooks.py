@@ -54,8 +54,11 @@ async def mercadopago(
     try:
         corpo = await request.json()
     except Exception:
-        # Corpo ilegível não é motivo para 500: a assinatura ainda decide.
-        pass
+        # Corpo ilegível não é motivo para 500: a assinatura ainda decide. Mas
+        # engolir calado é como uma integração quebrada vira mistério — se o
+        # Mercado Pago mudar o formato do corpo, este log é o único lugar onde
+        # isso aparece antes de virar "as assinaturas pararam de funcionar".
+        logger.info("[webhook] corpo ilegivel (request-id %s)", x_request_id)
 
     data_id = request.query_params.get("data.id") or str(
         (corpo.get("data") or {}).get("id") or ""

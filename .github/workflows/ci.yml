@@ -17,9 +17,21 @@ jobs:
         with:
           enable-cache: true
       - run: uv sync
+      # `ruff check` carrega o ruleset `S` (flake8-bandit) desde 2026-08-18 —
+      # o SAST do backend mora aqui, e não num passo separado, porque análise
+      # estática que exige lembrar de rodar é análise que não roda.
       - run: uv run ruff check .
       - run: uv run ruff format --check .
       - run: uv run pytest -q
+
+      # Dependência com CVE conhecido (F-07). O `--strict` faz falhar também
+      # quando o pip-audit não consegue avaliar um pacote: "não sei" sobre
+      # dependência não é a mesma coisa que "está limpo", e tratar os dois igual
+      # é como um scanner passa a dar falsa paz.
+      - name: CVEs nas dependências do backend
+        run: |
+          uv export --frozen --no-dev --no-emit-project --no-hashes -o /tmp/req.txt
+          uvx pip-audit --strict -r /tmp/req.txt
 
   frontend:
     runs-on: ubuntu-latest
@@ -34,6 +46,23 @@ jobs:
           cache: npm
           cache-dependency-path: web/package-lock.json
       - run: npm ci
+
+      # CVE no que é *entregue ao navegador* (F-07). Duas escolhas deliberadas:
+      #
+      # `--omit=dev` porque o que roda na máquina de quem usa o app é o bundle,
+      # e não o `vite`. Vulnerabilidade em ferramenta de build é problema do
+      # laptop de quem programa — real, tratado em docs/SEGURANCA.md, e não é
+      # este passo que decide se um commit pode ir para produção.
+      #
+      # `--audit-level=high` porque o portão precisa recusar o que bloqueia
+      # lançamento (§57 da auditoria) e não o que já foi avaliado e aceito: os
+      # dois `moderate` do react-router de hoje não são alcançáveis aqui (não há
+      # SSR, e o destino do pós-login sai de `location.pathname`, não da URL) e
+      # só se corrigem com um major do roteador. Um portão que já nasce vermelho
+      # é um portão que se aprende a ignorar.
+      - name: CVEs no que vai para o navegador
+        run: npm audit --omit=dev --audit-level=high
+
       - run: npm run typecheck
       - run: npm run build
       # O CSP autoriza o script inline do tema por hash do conteúdo. Mudar aquele

@@ -36,9 +36,32 @@ line-length = 88
 target-version = "py312"
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B", "W"]
-# B008: Depends()/Security() em default de argumento é o padrão idiomático do FastAPI.
-ignore = ["B008"]
+# `S` é o flake8-bandit: análise estática de segurança (F-07 da auditoria de
+# 2026-08-18). Entra aqui em vez de virar uma ferramenta nova no CI porque o
+# ruff já roda em todo push — SAST que exige um passo a mais é SAST que não roda.
+# Pega o que esta auditoria teve de procurar à mão: `assert` em produção, hash
+# fraco, `subprocess` com shell, binding em 0.0.0.0, segredo em default de
+# argumento, `random` onde devia ser `secrets`.
+select = ["E", "F", "I", "UP", "B", "W", "S"]
+ignore = [
+    # B008: Depends()/Security() em default de argumento é o padrão idiomático do FastAPI.
+    "B008",
+    # S101: `assert` é a linguagem do pytest. A regra existe porque `python -O`
+    # remove asserts, e o que importa é que não haja assert *decidindo* coisa em
+    # produção — nos testes ele é a própria ferramenta.
+    "S101",
+    # S608: "SQL construído por string". Todo SQL deste projeto é `text()` com
+    # parâmetros nomeados, e as f-strings interpolam constantes internas ou nomes
+    # de coluna vindos de schema pydantic — nunca valor de usuário. Auditado
+    # linha a linha em 2026-08-18; ver docs/SEGURANCA.md. A regra não distingue
+    # os dois casos e marcaria ~20 consultas legítimas, e um lint que grita onde
+    # não há problema é um lint que ensina a ignorar lint.
+    "S608",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Nos testes, "credencial em código" é dublê, e é o que eles existem para ser.
+"tests/**" = ["S105", "S106", "S107"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
