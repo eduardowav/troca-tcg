@@ -16,6 +16,7 @@ cartão toca o TrocaTCG, o que tira do projeto a parte cara de guardar pagamento
 import hashlib
 import hmac
 import logging
+import time
 from typing import Any
 
 import aiohttp
@@ -129,6 +130,44 @@ async def cancelar_assinatura(preapproval_id: str) -> dict[str, Any]:
     )
 
 
+def _carimbo_fresco(carimbo: str) -> bool:
+    """O `ts` da assinatura está dentro da janela de tolerância?
+
+    O `ts` sempre entrou no manifesto — ou seja, sempre esteve *coberto* pelo
+    HMAC — e nunca foi comparado com o relógio. A diferença importa: assinatura
+    cobrindo o carimbo prova que ninguém o alterou, não que ele é de agora. Sem
+    esta conferência, uma notificação capturada continua válida para sempre.
+
+    Hoje o estrago de um reenvio já é contido pela idempotência de
+    `webhook_events` — mesma assinatura, mesmo `notificacao_id`, resposta
+    "repetida" —, mas essa é uma camada só, e ela é uma tabela que cresce sem
+    fim. A janela é a camada que recusa antes de tocar no banco.
+
+    **Carimbo ilegível reprova.** É a escolha certa para um receptor de
+    pagamento: um `ts` que não é número não vem do Mercado Pago.
+
+    O provedor manda segundos, mas dois campos de carimbo do mesmo painel vêm em
+    milissegundos, e trocar a unidade recusaria toda notificação legítima de uma
+    vez. Treze dígitos são milissegundos — a diferença é grande demais para
+    caber em ambiguidade.
+    """
+    try:
+        segundos = int(carimbo)
+    except (TypeError, ValueError):
+        return False
+
+    if segundos > 10**11:
+        segundos //= 1000
+
+    tolerancia = settings.MERCADO_PAGO_TOLERANCIA_SEGUNDOS
+    if tolerancia <= 0:
+        return True
+
+    # `abs` porque relógio adiantado também é suspeito, e porque o desvio entre
+    # o relógio do provedor e o nosso corre para os dois lados.
+    return abs(time.time() - segundos) <= tolerancia
+
+
 def assinatura_confere(
     *, x_signature: str | None, x_request_id: str | None, data_id: str | None
 ) -> bool:
@@ -157,6 +196,9 @@ def assinatura_confere(
     )
     carimbo, recebido = partes.get("ts"), partes.get("v1")
     if not carimbo or not recebido:
+        return False
+
+    if not _carimbo_fresco(carimbo):
         return False
 
     # O id alfanumérico chega em maiúsculas em alguns tópicos e o manifesto é

@@ -18,6 +18,7 @@ de promover, manter ou derrubar.
 
 import hashlib
 import hmac
+import time
 from uuid import uuid4
 
 import pytest
@@ -84,8 +85,15 @@ class SessaoFalsa:
         self.commits += 1
 
 
-def _assinar(data_id: str, request_id: str, carimbo: str = "1700000000") -> str:
-    """Monta um `x-signature` legítimo, do jeito que o Mercado Pago monta."""
+def _assinar(data_id: str, request_id: str, carimbo: str | None = None) -> str:
+    """Monta um `x-signature` legítimo, do jeito que o Mercado Pago monta.
+
+    O carimbo é **de agora** por padrão, e não uma constante: desde a janela de
+    frescor (`_carimbo_fresco`), um `ts` fixo envelhece e o dia em que ele passa
+    da tolerância é o dia em que a suíte inteira quebra sem nada ter mudado.
+    Quem quer um carimbo velho passa um — é o que os testes da janela fazem.
+    """
+    carimbo = carimbo if carimbo is not None else str(int(time.time()))
     manifesto = f"id:{data_id.lower()};request-id:{request_id};ts:{carimbo};"
     v1 = hmac.new(SEGREDO.encode(), manifesto.encode(), hashlib.sha256).hexdigest()
     return f"ts={carimbo},v1={v1}"
@@ -143,6 +151,71 @@ def test_assinatura_malformada_nao_derruba(com_segredo):
         assert not mercado_pago.assinatura_confere(
             x_signature=ruim, x_request_id="req-1", data_id="abc123"
         )
+
+
+# ------------------------------------------------------- a janela de frescor
+#
+# F-05 da auditoria de 2026-08-18. O `ts` sempre entrou no manifesto e nunca foi
+# comparado com o relógio: assinatura cobrindo o carimbo prova que ninguém o
+# alterou, não que ele é de agora. Sem a janela, uma notificação capturada
+# continua válida para sempre.
+
+
+def test_carimbo_velho_nao_passa(com_segredo):
+    """Uma notificação legítima de uma hora atrás é recusada.
+
+    A assinatura é perfeita — foi montada com o segredo de verdade. O que a
+    reprova é a idade, que é justamente o que faltava conferir.
+    """
+    velho = str(int(time.time()) - 3600)
+    assert not mercado_pago.assinatura_confere(
+        x_signature=_assinar("abc123", "req-1", carimbo=velho),
+        x_request_id="req-1",
+        data_id="abc123",
+    )
+
+
+def test_carimbo_do_futuro_tambem_nao_passa(com_segredo):
+    """Relógio adiantado é tão suspeito quanto atrasado — a janela é `abs`."""
+    futuro = str(int(time.time()) + 3600)
+    assert not mercado_pago.assinatura_confere(
+        x_signature=_assinar("abc123", "req-1", carimbo=futuro),
+        x_request_id="req-1",
+        data_id="abc123",
+    )
+
+
+def test_carimbo_dentro_da_janela_passa(com_segredo):
+    """Um minuto de atraso é retentativa do provedor, não ataque."""
+    recente = str(int(time.time()) - 60)
+    assert mercado_pago.assinatura_confere(
+        x_signature=_assinar("abc123", "req-1", carimbo=recente),
+        x_request_id="req-1",
+        data_id="abc123",
+    )
+
+
+def test_carimbo_em_milissegundos_passa(com_segredo):
+    """Treze dígitos são milissegundos, e trocar a unidade recusaria tudo.
+
+    O provedor manda segundos, mas dois campos de carimbo do mesmo painel vêm em
+    milissegundos. Errar isso não falha um caso de borda: recusa toda
+    notificação legítima, e o sintoma seria "ninguém consegue assinar".
+    """
+    assert mercado_pago.assinatura_confere(
+        x_signature=_assinar("abc123", "req-1", carimbo=str(int(time.time() * 1000))),
+        x_request_id="req-1",
+        data_id="abc123",
+    )
+
+
+def test_carimbo_ilegivel_nao_passa(com_segredo):
+    """`ts` que não é número não vem do Mercado Pago."""
+    assert not mercado_pago.assinatura_confere(
+        x_signature=_assinar("abc123", "req-1", carimbo="ontem"),
+        x_request_id="req-1",
+        data_id="abc123",
+    )
 
 
 # ------------------------------------------------------------------ o receptor

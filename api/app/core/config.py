@@ -75,6 +75,13 @@ class Settings(BaseSettings):
     # ele o receptor recusa tudo, de propósito: webhook de pagamento sem
     # validação é uma rota pública que promove qualquer um a PRO.
     MERCADO_PAGO_WEBHOOK_SECRET: str = ""
+    # Quantos segundos de idade uma notificação pode ter e ainda ser aceita.
+    # O `ts` da assinatura sempre esteve coberto pelo HMAC e nunca foi comparado
+    # com o relógio — assinatura sobre o carimbo prova que ele não foi alterado,
+    # não que ele é de agora. Cinco minutos cobrem com folga a retentativa do
+    # provedor e o desvio de relógio entre as duas pontas. Zero desliga a
+    # conferência, que é o que os testes usam para fixar um carimbo.
+    MERCADO_PAGO_TOLERANCIA_SEGUNDOS: int = 300
     # Para onde o Mercado Pago devolve a pessoa depois do checkout. Não é o mesmo
     # que a origem do CORS: aqui é uma tela específica, e ela precisa existir.
     MERCADO_PAGO_BACK_URL: str = "http://localhost:5173/planos"
