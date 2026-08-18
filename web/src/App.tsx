@@ -1,39 +1,81 @@
+import { Suspense, lazy } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 
 import { LayoutApp } from '@/components/Navegacao'
 import { ExigePerfil, ExigeSessao } from '@/components/RotaProtegida'
 import { usePerfil } from '@/hooks/usePerfil'
-import CompletarCadastro from '@/routes/CompletarCadastro'
-import Buscar from '@/routes/Buscar'
-import ColarLista from '@/routes/ColarLista'
-import CartaDetalhe from '@/routes/Carta'
-import Configuracoes from '@/routes/Configuracoes'
-import EditarPerfil from '@/routes/EditarPerfil'
-import { Mensagens } from '@/routes/EmBreve'
 import Entrar from '@/routes/Entrar'
 import Home from '@/routes/Home'
-import Instalar from '@/routes/Instalar'
-import LabAzul from '@/routes/LabAzul'
-import LabTroca from '@/routes/LabTroca'
-import MatchDetalhe from '@/routes/Match'
-import Matches from '@/routes/Matches'
-import MinhasCartas from '@/routes/MinhasCartas'
-import Notificacoes from '@/routes/Notificacoes'
-import NovaSenha from '@/routes/NovaSenha'
-import Recuperar from '@/routes/Recuperar'
-import Onboarding from '@/routes/Onboarding'
-import Acervo from '@/routes/Acervo'
-import PerfilTela from '@/routes/Perfil'
-import Planos from '@/routes/Planos'
-import PerfilPublicoTela from '@/routes/PerfilPublico'
-import Pronto from '@/routes/Pronto'
-import PropostaDetalhe from '@/routes/Proposta'
-import Propostas from '@/routes/Propostas'
-import Termos from '@/routes/Termos'
-import Vitrine from '@/routes/Vitrine'
-import VitrineCarta from '@/routes/VitrineCarta'
+
+/**
+ * Divisão do pacote por rota — medido em 2026-08-18.
+ *
+ * O app inteiro vinha num arquivo só: **912 KiB cru, 269 KiB comprimido**, e
+ * quem abria a Home baixava as 28 telas antes da primeira pintura, incluindo as
+ * que talvez nunca visitasse. No 4G de uma loja, isso é a primeira impressão.
+ *
+ * **`Home` e `Entrar` ficam estáticas**, e só elas: são a primeira e a segunda
+ * tela de todo mundo que chega. Carregá-las sob demanda trocaria peso por um
+ * piscar no caminho crítico, que é pior — o ganho de dividir está em adiar o que
+ * *não* é caminho crítico, não em adiar tudo.
+ *
+ * As duas telas de `/lab` entram aqui com ganho extra: o `import.meta.env.DEV`
+ * tira a **rota** do bundle de produção, mas o `import` estático no topo mantinha
+ * o **componente** dentro dele. Bancada de decisão viajava junto com o app de
+ * quem usa. Com `lazy`, o pedaço existe e nunca é pedido.
+ */
+const CompletarCadastro = lazy(() => import('@/routes/CompletarCadastro'))
+const Buscar = lazy(() => import('@/routes/Buscar'))
+const ColarLista = lazy(() => import('@/routes/ColarLista'))
+const CartaDetalhe = lazy(() => import('@/routes/Carta'))
+const Configuracoes = lazy(() => import('@/routes/Configuracoes'))
+const EditarPerfil = lazy(() => import('@/routes/EditarPerfil'))
+const Mensagens = lazy(() =>
+  import('@/routes/EmBreve').then((m) => ({ default: m.Mensagens })),
+)
+const Instalar = lazy(() => import('@/routes/Instalar'))
+const LabAzul = lazy(() => import('@/routes/LabAzul'))
+const LabTroca = lazy(() => import('@/routes/LabTroca'))
+const MatchDetalhe = lazy(() => import('@/routes/Match'))
+const Matches = lazy(() => import('@/routes/Matches'))
+const MinhasCartas = lazy(() => import('@/routes/MinhasCartas'))
+const Notificacoes = lazy(() => import('@/routes/Notificacoes'))
+const NovaSenha = lazy(() => import('@/routes/NovaSenha'))
+const Recuperar = lazy(() => import('@/routes/Recuperar'))
+const Onboarding = lazy(() => import('@/routes/Onboarding'))
+const Acervo = lazy(() => import('@/routes/Acervo'))
+const PerfilTela = lazy(() => import('@/routes/Perfil'))
+const Planos = lazy(() => import('@/routes/Planos'))
+const PerfilPublicoTela = lazy(() => import('@/routes/PerfilPublico'))
+const Pronto = lazy(() => import('@/routes/Pronto'))
+const PropostaDetalhe = lazy(() => import('@/routes/Proposta'))
+const Propostas = lazy(() => import('@/routes/Propostas'))
+const Termos = lazy(() => import('@/routes/Termos'))
+const Vitrine = lazy(() => import('@/routes/Vitrine'))
+const VitrineCarta = lazy(() => import('@/routes/VitrineCarta'))
+
+/**
+ * O que ocupa a tela enquanto o pedaço da rota chega.
+ *
+ * Papel creme e nada mais — deliberadamente. Um spinner aqui apareceria por
+ * ~100 ms numa rede boa e viraria um pisca a cada navegação; o fundo na cor da
+ * página faz a troca de tela parecer instantânea quando é rápida, e só um vazio
+ * curto quando não é. Quem está offline não chega aqui: o service worker já
+ * guardou os pedaços no precache.
+ */
+function Carregando() {
+  return <div className="min-h-[100dvh] bg-paper" aria-busy="true" />
+}
 
 export default function App() {
+  return (
+    <Suspense fallback={<Carregando />}>
+      <Rotas />
+    </Suspense>
+  )
+}
+
+function Rotas() {
   return (
     <Routes>
       <Route path="/" element={<Home />} />
