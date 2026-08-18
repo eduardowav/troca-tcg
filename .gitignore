@@ -46,3 +46,8 @@ Thumbs.db
 /.agents/
 /agent/
 /.claude/skills/
+
+# ---- Claude Code ----
+# Config do projeto entra; a local, nao: `settings.local.json` guarda a lista
+# de permissoes desta maquina, com caminhos absolutos de sessoes antigas.
+.claude/settings.local.json
