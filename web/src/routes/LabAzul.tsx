@@ -8,8 +8,8 @@ import { cn } from '@/lib/cn'
  * Laboratório do azul de link — rota de desenvolvimento, fora de produção.
  *
  * Existe para uma decisão só, a que o `DESIGN.md` registra em "Achado em aberto:
- * azul de link no escuro": `#0038FF` sobre o papel escuro dá 2,82:1 e reprova o
- * piso AA que o próprio documento fixa para texto. Em peça com borda de 2px o
+ * azul de link no escuro": o azul da marca sobre a cartela escura dá 3,40:1 e
+ * reprova o piso AA que o próprio documento fixa para texto. Em peça com borda de 2px o
  * mesmo azul funciona — ali quem separa do fundo é a borda, não a tinta —, mas
  * em **link solto** não há borda nenhuma fazendo esse trabalho.
  *
@@ -27,9 +27,12 @@ import { cn } from '@/lib/cn'
  * `LinkNoTexto`. A coluna "Como está hoje" mostra, daqui para a frente, como o
  * app **era**.
  *
- * A rota fica de pé enquanto o segundo achado — azul como texto que não é link
- * — continuar aberto, porque a conta aqui é a mesma e serve para julgá-lo. O
- * `import.meta.env.DEV` em `App.tsx` garante que ela nunca chegue ao usuário.
+ * O segundo achado — azul como texto que não é link — fechou em 2026-08-19,
+ * pela saída A: o tema escuro passou a ter um `--color-azul-texto` clareado, e
+ * com ele o preço do par e a etiqueta RARA passam. A rota fica de pé como
+ * bancada: a conta aqui é a mesma, e é onde se julga o próximo tom que alguém
+ * queira mexer. O `import.meta.env.DEV` em `App.tsx` garante que ela nunca
+ * chegue ao usuário.
  */
 
 /* ------------------------------------------------------------------ contraste
@@ -64,15 +67,15 @@ function contraste(a: string, b: string) {
  * impediria mostrar claro e escuro na mesma página, que é o ponto desta rota.
  */
 const COR = {
-  azul: '#0038ff',
-  azulClaro: '#6082ff',
-  papelEscuro: '#0b0b0d',
-  cartelaEscura: '#17171a',
-  tintaEscura: '#f5f5f7',
-  bordaEscura: '#6b6b76',
-  papelClaro: '#fffdf5',
-  cartelaClara: '#ffffff',
-  tintaClara: '#000000',
+  azul: '#0067ff',
+  azulNoEscuro: '#3385ff',
+  papelEscuro: '#171717',
+  cartelaEscura: '#202020',
+  tintaEscura: '#f4eee4',
+  bordaEscura: '#6b6b6b',
+  papelClaro: '#f4eee4',
+  cartelaClara: '#fffdf5',
+  tintaClara: '#171717',
 } as const
 
 type Saida = 'atual' | 'claro' | 'etiqueta'
@@ -89,14 +92,14 @@ const COLUNAS: Coluna[] = [
   {
     saida: 'atual',
     nome: 'Como está hoje',
-    resumo: '#0038FF, o azul da marca, sublinhado.',
-    custo: 'Reprova AA no escuro. É o achado.',
+    resumo: '#0067FF, o azul da marca puro, sublinhado.',
+    custo: 'Reprova AA no escuro (3,40:1 na cartela). É o achado.',
   },
   {
     saida: 'claro',
     nome: 'Saída A — clarear',
-    resumo: '#6082FF no escuro, o azul que já é o da aba ativa.',
-    custo: 'Uma linha no bloco do tema. Nenhuma tela muda de desenho.',
+    resumo: '#3385FF no escuro — o azul da marca clareado 20%.',
+    custo: 'Foi esta que entrou, em 2026-08-19, como `--color-azul-texto`.',
   },
   {
     saida: 'etiqueta',
@@ -115,11 +118,11 @@ export default function LabAzul() {
   const borda = tema === 'escuro' ? COR.bordaEscura : COR.tintaClara
 
   // O azul de link de cada saída, no tema que está na tela. A saída A só clareia
-  // no escuro: no papel claro o #6082FF cai abaixo de 4,5:1, e é por isso que
+  // no escuro: no papel claro o #3385FF cai a 3,2:1 e reprova, e é por isso que
   // ela é uma sobrescrita dentro de `[data-tema='escuro']`, e não um token novo
   // valendo para os dois temas.
   const azulDaSaida = (saida: Saida) =>
-    saida === 'claro' && tema === 'escuro' ? COR.azulClaro : COR.azul
+    saida === 'claro' && tema === 'escuro' ? COR.azulNoEscuro : COR.azul
 
   return (
     <div className="mx-auto w-full max-w-5xl px-5 py-8">
@@ -223,16 +226,17 @@ export default function LabAzul() {
                    regra de `index.css` vale para qualquer elemento que o
                    carregue.
 
-                   A saída A entra como sobrescrita da variável neste pedaço da
-                   árvore — que é a forma exata da correção de verdade: uma
-                   linha dentro do bloco do escuro, e não uma passada tela a
-                   tela. */
+                   Quem sobrescreve, desde 2026-08-19, é a coluna "como está
+                   hoje" — invertido de propósito: a saída A **entrou**, e o
+                   tema escuro já entrega `--color-azul-texto` clareado. Para
+                   mostrar o achado é preciso desfazer a correção neste pedaço
+                   da árvore, não aplicá-la. */
                 <div
                   key={coluna.saida}
                   data-tema={tema === 'escuro' ? 'escuro' : undefined}
                   style={
-                    coluna.saida === 'claro' && tema === 'escuro'
-                      ? { ['--color-azul' as string]: 'var(--color-azul-claro)' }
+                    coluna.saida === 'atual' && tema === 'escuro'
+                      ? { ['--color-azul-texto' as string]: COR.azul }
                       : undefined
                   }
                   className="rounded-[var(--radius-cartela)] border-2 border-tinta bg-papel p-3"
@@ -276,13 +280,13 @@ export default function LabAzul() {
             piso={4.5}
           />
           <Linha
-            rotulo="Azul claro sobre o papel"
-            razao={contraste(COR.azulClaro, papel)}
+            rotulo="Azul clareado sobre o papel"
+            razao={contraste(COR.azulNoEscuro, papel)}
             piso={4.5}
           />
           <Linha
-            rotulo="Azul claro sobre a cartela"
-            razao={contraste(COR.azulClaro, cartela)}
+            rotulo="Azul clareado sobre a cartela"
+            razao={contraste(COR.azulNoEscuro, cartela)}
             piso={4.5}
           />
           <Linha
@@ -303,8 +307,8 @@ export default function LabAzul() {
               É por isto que a saída A vive dentro do escuro.
             </p>
             <p className="mt-1.5 font-corpo text-[13px] leading-relaxed text-apagado">
-              O azul claro sobre a cartela branca dá{' '}
-              {contraste(COR.azulClaro, COR.cartelaClara).toFixed(2)}:1 e
+              O azul clareado sobre a cartela do tema claro dá{' '}
+              {contraste(COR.azulNoEscuro, COR.cartelaClara).toFixed(2)}:1 e
               reprovaria o piso de texto no papel claro, onde hoje o azul da
               marca passa com {contraste(COR.azul, COR.cartelaClara).toFixed(2)}
               :1. Clarear vale como sobrescrita de tema, nunca como troca do

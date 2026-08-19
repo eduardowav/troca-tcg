@@ -17,20 +17,42 @@ obscurece a tarefa, o estado ou a afordância.
 
 ## Tokens (fonte: `web/src/index.css`)
 
-Superfícies: `papel #FFFDF5` (fundo da página) · `cartela #FFFFFF` (tudo que se levanta
-dela com borda e sombra) · `meu #F2F4FF` (o que é meu numa troca).
+A paleta oficial da marca, fechada em 2026-08-19, tem sete cores: azul `#0067FF`,
+bege `#F4EEE4`, escuro `#171717`, branco `#FFFDF5`, cinza `#202020`, vermelho
+`#B2292E` e amarelo `#FF9D1B`. Os tokens abaixo são elas — e, onde uma delas não
+alcança o contraste de texto, uma derivada dela por conta, nunca um vizinho
+escolhido no olho.
 
-Tinta: `tinta #000000` — uma cor só para borda e texto, e é ela que dá a dureza do
+Superfícies: `papel #F4EEE4` (fundo da página) · `cartela #FFFDF5` (tudo que se levanta
+dela com borda e sombra) · `meu #F9FAFF` (o que é meu numa troca).
+
+Tinta: `tinta #171717` — uma cor só para borda e texto, e é ela que dá a dureza do
 mundo · `apagado #555552` (secundário, letra miúda, dado frio).
 
 Cor com significado, e só três:
-- `azul #0038FF` — **ação, e nada além dela**. `azul-claro #6082FF` na aba ativa.
-- `ambar #996700` sobre `ambar-fraco #FFF4E5` — raridade de topo e aviso com hora
-  marcada. O texto **não** é o `#FFAB00` do arquivo: aquele dá 1,74:1 sobre o próprio
-  fundo e reprova no piso AA que este documento fixa. Escurecido 40% mantendo a
-  proporção entre canais — mesmo âmbar, 4,52:1.
-- `alerta #DC2626` sobre `alerta-fraco #FEE2E2` — **o que não tem volta**. Apagar conta
-  usa; sair da conta não, porque entrar de novo devolve tudo.
+- `azul #0067FF` — **ação, e nada além dela**. Também na aba ativa, desde que o
+  segundo azul (`azul-claro #6082FF`) saiu com a paleta oficial. Por cima dele se
+  escreve em `azul-tinta #FFFDF5`, 4,70:1 — o bege reprova ali, com 4,15:1.
+- `ambar-marca #FF9D1B` é o amarelo da marca e serve de **área**: a etiqueta de
+  raridade de topo é chapada nele, com `ambar-tinta #171717` por cima (8,61:1). Como
+  texto ele dá 1,92:1 e não existe: quem escreve é `ambar #8C560F`, a mesma cor
+  escurecida a 55% mantendo a proporção entre canais, sobre `ambar-fraco #FFF4E5`
+  (5,60:1).
+- `alerta #B2292E` sobre `alerta-fraco #FEE2E2` — **o que não tem volta**. Apagar conta
+  usa; sair da conta não, porque entrar de novo devolve tudo. É o único dos três
+  acentos que entrou puro da paleta: 5,29:1 sobre o próprio fundo.
+
+No tema escuro o papel é o `#171717` e a cartela é o cinza `#202020`. Dois acentos
+mudam ali, e os dois por conta e não por gosto:
+
+- O **azul clareia só quando é letra** — `azul-texto #3385FF`, 4,61:1 sobre a
+  cartela. O preenchimento continua no azul da marca, porque o botão azul fica na
+  mesma tela que o ícone da marca, que é chapado nele e não muda de tema: clarear o
+  botão poria dois azuis quase iguais lado a lado.
+- O **vermelho clareia 35%** (`#CD7477`): puro ele dá 2,77:1 no papel escuro.
+
+O amarelo entra **puro**, 8,61:1 — no escuro a cor da marca é texto sem ajuste
+nenhum.
 
 Não existe cor por lista. Ofereço e Procuro se distinguem por aba, rótulo e posição —
 nesta grade o azul já é `RARE` e o âmbar já é `ULTRA RARE` dentro da própria célula, e
@@ -121,7 +143,7 @@ configurações.
 ## As duas formas de link
 
 O app tinha uma só — texto azul sublinhado —, e ela reprovava AA no papel escuro:
-`#0038FF` dá **2,82:1** sobre o papel e **2,56:1** sobre a cartela, contra o piso de
+o azul da marca dá **3,40:1** sobre a cartela escura, contra o piso de
 4,5:1 deste documento para texto. Em peça com borda de 2px o mesmo azul funciona, porque
 ali quem separa do fundo é a borda; em texto solto não há borda fazendo esse trabalho.
 Foi pego na varredura da tela de falha (2026-08-12) e decidido em 2026-08-13, no
@@ -138,11 +160,13 @@ vinham pintados igual:
   `LinkNoTexto`, tinta sublinhada. Etiqueta ali abriria a altura da linha em todo
   parágrafo, e um `@nome` em caixa alta com moldura deixa de parecer o nome de alguém.
 
-Nas duas o azul sai e a tinta entra: **16,43:1** no escuro, **21:1** no claro. O
+Nas duas o azul sai e a tinta entra: **14,12:1** no escuro, **17,60:1** no claro. O
 `--color-azul` continua inteiro onde sempre funcionou — fundo de peça, tinta branca por
-cima. `--color-azul-claro` (`#6082FF`) segue sendo só da aba ativa: sobre a cartela
-branca ele dá 3,42:1 e reprovaria no tema claro, então clarear o azul de link nunca
-poderia ser um token só para os dois temas.
+cima. O `--color-azul-claro` que servia à aba ativa **deixou de existir** em 2026-08-19,
+com a paleta oficial: a aba passou a usar o `azul-texto`, que no claro é o próprio azul
+de ação e no escuro é a versão clareada — sobrescrita dentro de `[data-tema='escuro']`,
+que é o que ela sempre teve de ser, porque `#3385FF` sobre a cartela clara dá 3,2:1 e
+reprovaria.
 
 ## Achado em aberto: azul como texto que não é link
 

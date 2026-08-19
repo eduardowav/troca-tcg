@@ -9,7 +9,7 @@ import {
   IconeSino,
   IconeTrocas,
   IconeVitrine,
-  MarcaTrocaTCG,
+  LockupTrocaTCG,
 } from '@/components/brutal/Pecas'
 import { useAssinarNotificacoes, useNaoLidas } from '@/hooks/useNotificacoes'
 import { useNavegacaoPorNotificacao } from '@/hooks/usePush'
@@ -90,16 +90,7 @@ export function LayoutApp() {
 function MarcaApp() {
   return (
     <header className="marca-app mx-auto w-full max-w-[100rem] items-center justify-between px-6 pt-[calc(1rem+env(safe-area-inset-top))] 2xl:max-w-[120rem]">
-      {/* O lockup: marca à esquerda, palavra à direita, alinhadas pela altura
-          do x. A marca já tem borda e cor próprias — envolvê-la num quadrado,
-          como o raio antigo exigia, criaria uma segunda moldura em volta de uma
-          coisa que já é moldurada. */}
-      <span className="flex items-center gap-2">
-        <MarcaTrocaTCG className="h-7 w-auto shrink-0" />
-        <span className="font-titulo text-[24px] leading-none font-black text-tinta">
-          TrocaTCG
-        </span>
-      </span>
+      <LockupTrocaTCG />
 
       <SinoApp />
     </header>

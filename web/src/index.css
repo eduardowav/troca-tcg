@@ -64,15 +64,37 @@
      ========================================================== */
 
   /* Superfícies. O papel é o fundo da página; a cartela é tudo
-     que se levanta dela com borda e sombra. */
-  --color-papel: #fffdf5;
-  --color-cartela: #ffffff;
-  --color-meu: #f2f4ff; /* o que é meu numa troca (fundo do par) */
+     que se levanta dela com borda e sombra.
+
+     O papel esquentou em 2026-08-19, com a paleta base do Eduardo.
+     Antes era #fffdf5, branco com um sopro de creme, e contra a
+     cartela #ffffff dava 1,02:1 — a cartela **não existia** como
+     superfície, só a borda e a sombra a separavam do fundo.
+
+     A solução não foi inventar um tom para a cartela: foi **descer
+     o papel e promover o antigo papel a cartela**. O #fffdf5 que
+     era fundo agora é a peça, e o creme mais fechado #f4eee4 é o
+     fundo. Os dois vêm da paleta, nenhum vizinho foi inventado, e a
+     cartela passa a levantar em 1,13:1.
+
+     `meu` foi clareado junto, de #f2f4ff: a etiqueta RARA é azul
+     sobre ele, e com o azul novo (mais claro) ela caía para 4,37:1.
+     Em #f9faff dá 4,60:1 e ainda destaca melhor do papel — melhor
+     nos dois eixos, e é um tom de fundo que não carrega identidade. */
+  --color-papel: #f4eee4;
+  --color-cartela: #fffdf5;
+  --color-meu: #f9faff; /* o que é meu numa troca (fundo do par) */
 
   /* Tinta. Uma cor só para borda e texto — é o que dá a dureza
-     do neobrutalismo: nada de cinza-borda decorativo. */
-  --color-tinta: #000000;
-  --color-apagado: #555552; /* secundário, letra miúda, dado frio */
+     do neobrutalismo: nada de cinza-borda decorativo.
+
+     Carvão e não preto puro, desde 2026-08-19. Sobre o papel dá
+     15,53:1 e sobre a cartela 17,60:1 — folga de sobra sobre o piso
+     de 4,5:1. A diferença para o preto absoluto é invisível em
+     texto e visível em área grande, onde o preto endurece a página
+     mais do que a marca quer. */
+  --color-tinta: #171717;
+  --color-apagado: #555552; /* secundário, 6,48:1 no papel, 7,34:1 na cartela */
 
   /* A borda, que no claro é a própria tinta.
      ----------------------------------------------------------
@@ -85,25 +107,94 @@
      `var(--color-tinta)`, nada muda no claro. */
   --color-borda: var(--color-tinta);
 
-  /* Ação. Azul chapado, sem gradiente. */
-  --color-azul: #0038ff;
-  --color-azul-claro: #6082ff; /* aba ativa da navegação */
-  --color-azul-tinta: #ffffff; /* texto sobre azul */
+  /* Ação. Azul chapado, sem gradiente.
+     ----------------------------------------------------------
+     Subiu de #0038ff para #0067ff em 2026-08-19, e **a folga de
+     contraste encolheu junto**: azul mais claro é menos contraste
+     com o branco por cima dele, que é onde o texto de todo botão
+     do app mora. Era 6,98:1, agora é **4,79:1** — passa o piso de
+     4,5:1, e passa raspando.
+
+     A consequência prática: `azul-tinta` tem de continuar branco
+     puro. A regra da paleta base diz "no azul, texto bege ou
+     branco", mas com este azul o bege do papel (#f4eee4) dá 4,15:1
+     e **reprova** — só o branco e a cartela passam. Se o azul
+     clarear mais um passo, o branco cai junto e não sobra saída.
+
+     Como texto, o azul só aparece em 12px no preço do par de cartas
+     (4,70:1 sobre a cartela) e na etiqueta RARA (4,60:1 sobre
+     `meu`, que foi clareado para isso).
+
+     O `azul-claro` **saiu** junto: a paleta oficial tem um azul só, e o
+     segundo tom era do arquivo antigo do Figma. Quem o usava era a aba
+     ativa da navegação, que passou a usar o azul de ação — 4,70:1 sobre
+     a cartela, então ele lê como texto e não só como enfeite. */
+  --color-azul: #0067ff;
+  /* O azul **quando ele é letra**, e não peça.
+     ----------------------------------------------------------
+     No claro é o mesmo azul, e é por isso que ele aponta para o token em
+     vez de repetir o hexadecimal. Existe por causa do escuro: ali o azul
+     da marca sobre a cartela dá 3,40:1 e não se lê, mas clarear o token
+     inteiro clarearia junto o **preenchimento** dos botões — que ficaria
+     ao lado do ícone da marca, chapado no azul de verdade, dando dois
+     azuis quase iguais na mesma tela. Que é exatamente o erro que fez o
+     azul da marca subir para #0067ff em primeiro lugar.
+
+     Então o escuro clareia só a letra. Quem troca é uma regra sobre a
+     classe `.text-azul` lá embaixo, como já era feito com `.border-tinta`
+     — assim as dez chamadas espalhadas pelo app não precisam saber. */
+  --color-azul-texto: var(--color-azul);
+  /* O branco da paleta, não o #ffffff: é o mesmo tom da cartela, e o app
+     não tem dois brancos. Custa 0,09 de contraste (4,70:1 em vez de
+     4,79:1) e continua acima do piso — o que não sobrevive aqui é o bege
+     do papel, que dá 4,15:1 e reprova. */
+  --color-azul-tinta: #fffdf5; /* texto sobre azul — 4,70:1, sem folga */
 
   /* Alerta. Do frame de ajustes (`log-out-button`), única peça do arquivo
-     que tem vermelho. O fraco é o fundo dela; o forte, a borda e o texto. */
-  --color-alerta: #dc2626;
+     que tem vermelho. O fraco é o fundo dela; o forte, a borda e o texto.
+
+     Desde 2026-08-19 o forte é o **vermelho da paleta oficial**, sem
+     correção nenhuma — e é o único dos três acentos que entrou puro.
+     Coube: 5,29:1 sobre o próprio fundo, 5,60:1 sobre o bege e 6,35:1
+     sobre a cartela, e o branco por cima dele (o botão de apagar conta)
+     dá os mesmos 6,35:1. Antes daqui passaram um #dc2626 que reprovava
+     em 3,95:1 e um #b92020 escurecido à mão para consertar aquilo; o
+     valor certo era o da marca, e ele não precisava de conserto.
+
+     O fundo é o #fee2e2 do Figma. Ele chegou a ser clareado para
+     #fff3f3, porque contra o bege antigo dava 1,00:1 e a caixa sumia no
+     papel; com o papel atual isso não acontece (1,06:1, o mesmo degrau
+     do âmbar-fraco), e o valor inventado deixou de ter motivo. */
+  --color-alerta: #b2292e;
   --color-alerta-fraco: #fee2e2;
 
   /* Âmbar — raridade de topo e avisos com hora marcada.
-     O fundo é o do arquivo (`rarity-tag` de ULTRA RARE). O texto **não**:
-     lá ele é #ffab00, que sobre esse fundo dá 1,74:1 e reprova no piso AA
-     de 4,5:1 que o próprio DESIGN.md fixa — num rótulo de 10px, que é o
-     pior tamanho para se ter contraste ruim. Escurecido 40% mantendo a
-     proporção entre canais: é o mesmo âmbar, agora em 4,52:1. Mesma
-     correção que o token `faint` do playmat já tinha recebido, pelo mesmo
-     motivo. */
-  --color-ambar: #996700;
+     ----------------------------------------------------------
+     É o único acento que precisa de **dois** valores, e o motivo é
+     aritmético: o amarelo da paleta (#ff9d1b) dá 1,92:1 sobre o fundo
+     âmbar e 1,80:1 sobre o bege. Amarelo claro sobre papel claro não
+     vira texto legível em ajuste nenhum — é uma cor de área.
+
+     Então `ambar-marca` é a cor oficial, e serve de **preenchimento**:
+     a etiqueta de raridade de topo é chapada nela, com a tinta por
+     cima (8,61:1). É onde o amarelo da marca aparece de verdade no app.
+
+     E `ambar` é a mesma cor escurecida a 55%, mantendo a proporção
+     entre canais — a manobra que este arquivo já usava. Serve de
+     **texto e borda**: 5,60:1 sobre o fraco, 5,27:1 sobre o bege e
+     5,97:1 sobre a cartela. Antes daqui passaram #ffab00 (1,74:1),
+     #996700 e #8b5e00, cada um escurecido no olho a partir do anterior;
+     este é o primeiro que desce da cor da marca por uma conta.
+
+     O fundo fraco é o do arquivo do Figma, e contra o bege dá 1,06:1 —
+     o mesmo degrau da caixa de alerta. */
+  --color-ambar-marca: #ff9d1b;
+  /* O que se escreve por cima do amarelo, e o único token de cor deste
+     arquivo que **não** tem irmão no tema escuro: o amarelo é o mesmo nos
+     dois temas, então a letra em cima dele também precisa ser. Deixá-la
+     em `tinta` daria bege sobre amarelo no escuro, 1,8:1. */
+  --color-ambar-tinta: #171717;
+  --color-ambar: #8c560f;
   --color-ambar-fraco: #fff4e5;
 
   /* Raios. Quatro degraus, do container à etiqueta. */
@@ -256,14 +347,24 @@
     font-weight: 500;
   }
 
+  /* A aba ativa era o `azul-claro`, o segundo azul do arquivo antigo do
+     Figma, que a paleta oficial não tem. Passou a ser o azul de ação na
+     forma de letra: 4,70:1 sobre a cartela no claro, 4,61:1 no escuro,
+     onde `azul-texto` já vem clareado. Uma cor a menos, e a única cor de
+     ação do app é a mesma que marca onde a pessoa está.
+
+     O tracinho embaixo dela é peça, não letra, e por isso sai do
+     `--color-azul` cru: no escuro ele fica azul da marca sobre a cartela
+     (3,40:1, acima do piso de 3:1 de elemento não-textual) e continua
+     sendo o mesmo azul do ícone no cabeçalho. */
   [data-mundo='brutal'] .nav-app a[aria-current='page'] {
-    color: var(--color-azul-claro);
+    color: var(--color-azul-texto);
     font-weight: 800;
   }
 
-  /* O tracinho da aba ativa é `bg-volt` — roxo do playmat. */
+  /* O tracinho da aba ativa era `bg-volt` — roxo do playmat. */
   [data-mundo='brutal'] .nav-app a[aria-current='page'] span[aria-hidden] {
-    background-color: var(--color-azul-claro);
+    background-color: var(--color-azul);
   }
 
   /* A moldura do sleeve: fundo escuro, anel e sombra interna saem. A
@@ -275,7 +376,7 @@
     box-shadow: none;
   }
 
-/* O esqueleto enquanto a arte carrega. Era `bg-surface-2`, o grafite
+  /* O esqueleto enquanto a arte carrega. Era `bg-surface-2`, o grafite
      do playmat: num mundo de papel creme, cada carta piscava um
      retângulo cinza-escuro antes de aparecer — e numa troca são duas
      ao mesmo tempo, no meio da tela. */
@@ -587,8 +688,7 @@
     font-variant-numeric: tabular-nums;
   }
 
-
-/* Sai de dentro da carta de origem e some antes de encostar na de destino: o
+  /* Sai de dentro da carta de origem e some antes de encostar na de destino: o
      rastro sugere o caminho, não desenha uma seta de ponta a ponta por cima da
      arte, que é o que a pessoa veio ver. Entrada e saída longas (30% de cada
      lado) para nenhuma ponta aparecer ou sumir de estalo. */
@@ -630,7 +730,7 @@
     }
   }
 
-@keyframes marca-entra {
+  @keyframes marca-entra {
     0% {
       opacity: 0;
       transform: translate(-50%, -50%) scale(0.55) rotate(-14deg);
@@ -762,8 +862,7 @@
         scale(0.9);
     }
     to {
-      transform: translateX(var(--troca-passo)) rotateY(360deg)
-        scale(1);
+      transform: translateX(var(--troca-passo)) rotateY(360deg) scale(1);
     }
   }
 
@@ -923,20 +1022,14 @@
       transform: translate(0, 0);
     }
     27% {
-      transform: translate(
-        calc(var(--entrar-passo) / -2),
-        var(--entrar-arco)
-      );
+      transform: translate(calc(var(--entrar-passo) / -2), var(--entrar-arco));
     }
     40%,
     60% {
       transform: translate(calc(var(--entrar-passo) * -1), 0);
     }
     73% {
-      transform: translate(
-        calc(var(--entrar-passo) / -2),
-        var(--entrar-arco)
-      );
+      transform: translate(calc(var(--entrar-passo) / -2), var(--entrar-arco));
     }
     86%,
     100% {
@@ -979,50 +1072,75 @@
        aparece como *ausência*: um pedaço de fundo vazando por baixo da
        peça, um buraco em vez de um degrau. Em cinza ele volta a ser
        matéria.
-     - O contorno é **forte, não vinco** (#6b6b76). No claro a borda não
+     - O contorno é **forte, não vinco** (#6b6b6b). No claro a borda não
        é sutileza, é metade da linguagem; um cinza discreto a entregava
        ao fundo em troca de calma.
      - A superfície da cartela fica **mais clara** que o papel da
        página, invertendo a relação do claro (onde a cartela é branca
        sobre creme, quase o mesmo tom, e quem separa é a borda).
-     - **O azul é o mesmo do claro** (#0038ff), em teste. A primeira
-       versão o clareava para #2b6bff, com a justificativa de que o
-       branco em cima do azul original reprovaria no escuro — o que
-       estava simplesmente errado: branco sobre #0038ff dá **6,98:1**, e
-       sobre o #2b6bff clareado dá **4,52:1**. Clarear o azul *piorava*
-       a leitura do rótulo, porque aproximava o fundo do branco.
+     - **O azul clareia só quando é letra.** O azul da marca sobre a
+       cartela escura dá 3,40:1: serve de peça, não de texto, e o app
+       escreve em azul — a aba ativa, o preço do par, a etiqueta RARA.
+       Clareado 20% em direção ao branco ele dá 4,61:1 sobre a cartela e
+       4,62:1 sobre o `meu`, e passa nos três.
 
-       O que o azul claro melhorava era outra coisa: a separação entre a
-       peça azul e o papel escuro. Ali #0038ff dá 2,82:1 e #2b6bff dá
-       4,35:1, contra um piso de 3:1 para elemento não-textual. Só que
-       esse piso vale para quem depende do próprio azul para achar a
-       borda do botão — e aqui **todo botão carrega borda de 2px**, que é
-       quem desenha o limite. O azul não precisa fazer esse trabalho.
+       O preenchimento **não** acompanha, e essa foi a decisão fina: o
+       botão azul fica ao lado do ícone da marca, que é chapado no azul
+       de verdade e não muda de tema. Clarear o botão poria dois azuis
+       quase iguais na mesma tela — o erro que fez o azul da marca subir
+       para #0067ff em primeiro lugar. Fora que o branco sobre o azul
+       clareado cairia para 3,47:1, obrigando a virar a letra do botão
+       junto.
 
-       Voltar para #0038ff é decisão do Eduardo, para ver rodando. Se
-       ficar fechado demais em tela de celular no escuro, é uma linha.
+     - **O âmbar entra puro no escuro**, e é o oposto do que acontece no
+       claro: #ff9d1b dá 8,61:1 sobre o papel escuro. A cor da marca, que
+       no claro precisa ser escurecida para virar texto, aqui é texto sem
+       ajuste nenhum.
 
      Quem liga o atributo é `stores/tema.ts`, no `<html>`, junto com o
      script de primeira pintura em `index.html`. Ajustar o tom da peça
      inteira é mexer em `--color-borda` e mais nada: o degrau segue.
      ------------------------------------------------------------------ */
   [data-tema='escuro'] {
-    --color-papel: #0b0b0d;
-    --color-cartela: #17171a;
-    --color-meu: #141c33; /* o lado que é meu, agora em azul de noite */
+    /* O #171717 é o escuro da paleta oficial — o mesmo hexadecimal que
+       no claro é a tinta. A cartela é o cinza #202020, também da paleta:
+       levanta 1,10:1 do papel, praticamente o mesmo degrau que a cartela
+       do claro levanta do bege (1,13:1). Antes eram #0b0b0d e #17171a,
+       inventados aqui antes de a paleta existir. */
+    --color-papel: #171717;
+    --color-cartela: #202020;
+    /* O lado que é meu, em azul de noite. Foi aberto de #141c33 para
+       acompanhar o papel novo — no fundo antigo ele levantava 1,06:1, e
+       agora dá o mesmo 1,10:1 da cartela. Segura o azul de texto por
+       cima em 4,62:1. */
+    --color-meu: #18202e;
 
-    --color-tinta: #f5f5f7; /* só texto, daqui para baixo */
-    --color-borda: #6b6b76;
-    --color-apagado: #96969e; /* 6,5:1 sobre a cartela */
+    /* O bege da paleta virado texto — o mesmo arquivo que a palavra da
+       marca usa no escuro. 15,53:1 sobre o papel, 14,12:1 sobre a
+       cartela. Era #f5f5f7, um branco-azulado que não vinha de lugar
+       nenhum. */
+    --color-tinta: #f4eee4; /* só texto, daqui para baixo */
+    --color-borda: #6b6b6b; /* 3,36:1 sobre o papel, 3,06:1 sobre a cartela */
+    --color-apagado: #9a9a9a; /* 5,79:1 sobre a cartela */
 
-    /* Sem sobrescrita: os três herdam o valor do claro. Escrever o
-       hexadecimal de novo aqui seria criar dois lugares para o mesmo
-       azul e uma chance de eles se separarem sem ninguém decidir. */
+    /* O azul de **peça** não muda: é o da marca, o mesmo do ícone que fica
+       no cabeçalho logo acima de qualquer botão. Sobre o papel escuro ele
+       dá 3,74:1, acima do piso de 3:1 de elemento não-textual, e o branco
+       por cima dele segue nos mesmos 4,70:1 do claro. Só a **letra** azul
+       clareia — ver o bloco do token. */
+    --color-azul-texto: #3385ff;
 
-    --color-alerta: #ff6b63;
-    --color-alerta-fraco: #3a1414;
-    --color-ambar: #e5a83a;
-    --color-ambar-fraco: #33260c;
+    /* O vermelho da marca clareado 35% em direção ao branco: puro ele dá
+       2,77:1 aqui e reprova. Assim são 5,43:1 sobre o papel e 4,93:1
+       sobre a cartela. */
+    --color-alerta: #cd7477;
+    --color-alerta-fraco: #331416;
+    /* Puro, sem correção — 8,61:1 sobre o papel. E as duas variáveis do
+       âmbar apontam para a mesma cor no escuro: aqui ela serve de texto
+       e de área, e não há por que separar o que não se separa. */
+    --color-ambar: #ff9d1b;
+    --color-ambar-marca: #ff9d1b;
+    --color-ambar-fraco: #3a2a0a;
 
     /* A sombra dura para de sair da tinta — com a tinta virando texto
        quase branco, ela pintaria um degrau branco embaixo de cada
@@ -1049,23 +1167,41 @@
     border-color: var(--color-borda);
   }
 
-  /* A marca troca de arquivo no escuro.
-     ------------------------------------------------------------------
-     `marca.svg` tem o traço preto e o azul do papel creme; nenhum dos
-     dois sobrevive ao fundo escuro. `marca-escura.svg` é a irmã dela,
-     exportada do mesmo arquivo do Figma, com o traço em #F6F7FA e o azul
-     subido para #1F4FFE.
+  /* Mesma manobra, e pelo mesmo motivo: as dez chamadas de `text-azul`
+     espalhadas pelo app — o preço do par, a etiqueta RARA, a ênfase de um
+     número — querem o azul que **se lê**, e no escuro ele é mais claro que
+     o azul de peça. Repintar a classe num lugar só resolve as dez sem
+     tocar em arquivo nenhum.
 
-     Trocar por `content` e não por `src` é o que permite as duas marcas
-     na mesma página: o tema é um atributo, e o laboratório abre claro e
+     `bg-azul` fica de fora de propósito: preenchimento continua sendo o
+     azul da marca, igual ao do ícone no cabeçalho. */
+  [data-tema='escuro'] .text-azul {
+    color: var(--color-azul-texto);
+  }
+
+  /* A palavra troca de arquivo no escuro; o ícone não.
+     ------------------------------------------------------------------
+     Com a marca nova (2026-08-19) o ícone é azul #0067FF nos dois temas —
+     4,19:1 sobre o bege e 3,71:1 sobre o #171717, os dois acima do piso de
+     3:1 que vale para desenho. Foi o que apagou `marca-escura.svg` e a
+     regra que trocava o ícone aqui: um arquivo a menos para sair de
+     sintonia com o outro.
+
+     A palavra não tem essa sorte. Ela é chapada em #171717, que sobre o
+     fundo escuro dá 1,00:1 — some por inteiro. `palavra-escura.svg` é a
+     mesma arte em #F4EEE4, o bege do papel claro virado letra.
+
+     Trocar por `content` e não por `src` é o que permite os dois temas na
+     mesma página: o tema é um atributo, e o laboratório abre claro e
      escuro lado a lado. Um `src` decidido em JavaScript acertaria o app e
      erraria o laboratório, que é onde a marca está sendo julgada.
 
-     `alt` já é vazio e a peça é `aria-hidden` — o letreiro "TrocaTCG" vem
-     ao lado em texto —, então substituir o conteúdo não tira nada de quem
-     usa leitor de tela. */
-  [data-tema='escuro'] .marca-svg {
-    content: url('/marca-escura.svg');
+     O `alt` da peça é "TrocaTCG", e não vazio — é ela, e não o ícone ao
+     lado, que dá o nome do app a quem usa leitor de tela. Substituir o
+     conteúdo por CSS não mexe no `alt`, então trocar de tema não muda o
+     que é anunciado. */
+  [data-tema='escuro'] .palavra-svg {
+    content: url('/palavra-escura.svg');
   }
 
   @media (prefers-reduced-motion: reduce) {

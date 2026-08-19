@@ -88,7 +88,12 @@ export function SeloRaridade({ raridade }: { raridade: string }) {
       className={cn(
         'inline-block max-w-full truncate rounded-[var(--radius-etiqueta)] border-[1.5px] border-tinta px-2 py-0.5',
         'font-dado text-[10px] font-bold uppercase',
-        nivel === 'topo' && 'bg-ambar-fraco text-ambar',
+        // Chapada no amarelo da paleta, com o carvão por cima (8,61:1) — e não
+        // texto âmbar sobre fundo âmbar fraco, que é como ela era até
+        // 2026-08-19. A raridade de topo é a única etiqueta do app que se lê
+        // como prêmio, e o amarelo da marca só existe como área: escrito, ele
+        // dá 1,92:1. É aqui que ele aparece.
+        nivel === 'topo' && 'bg-ambar-marca text-ambar-tinta',
         nivel === 'rara' && 'bg-meu text-azul',
         nivel === 'comum' && 'bg-cartela text-apagado',
       )}

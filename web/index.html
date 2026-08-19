@@ -7,7 +7,12 @@
          iPhone é este PNG, e sem ele o sistema faz uma miniatura da página. -->
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#FFFDF5" />
+    <!-- O bege do papel (`--color-papel`), e tem de acompanhar o token: é esta
+         cor que o Android pinta na barra de endereço e que o iPhone pinta na
+         barra de status da PWA instalada. Divergir do fundo da página deixa uma
+         emenda visível no topo — e só aparece no celular, nunca no navegador de
+         quem está programando. Quem troca no escuro é `stores/tema.ts`. -->
+    <meta name="theme-color" content="#F4EEE4" />
     <meta
       name="description"
       content="Descubra com quem trocar suas cartas de Pokémon TCG. Ofereço, Procuro e o app acha o match."
@@ -50,7 +55,7 @@
          alternativo que uma imagem de compartilhamento pode ter. -->
     <meta
       property="og:image:alt"
-      content="Três cartas em leque com as setas de troca, ao lado da frase: troque cartas sem procurar."
+      content="A marca do TrocaTCG em azul, ao lado da frase: troque cartas sem procurar."
     />
     <meta name="twitter:card" content="summary_large_image" />
 
@@ -78,7 +83,7 @@
           document.documentElement.dataset.tema = 'escuro'
           document
             .querySelector('meta[name="theme-color"]')
-            .setAttribute('content', '#0B0B0D')
+            .setAttribute('content', '#171717')
         }
       } catch (e) {}
     </script>

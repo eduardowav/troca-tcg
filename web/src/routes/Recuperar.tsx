@@ -5,7 +5,7 @@ import { z } from 'zod'
 import {
   AcaoSecundaria,
   Cartela,
-  MarcaTrocaTCG,
+  LockupTrocaTCG,
 } from '@/components/brutal/Pecas'
 import { Button } from '@/components/ui/Button'
 import { Campo } from '@/components/ui/Campo'
@@ -148,11 +148,8 @@ export default function Recuperar() {
 export function Moldura({ children }: { children: React.ReactNode }) {
   return (
     <div className="mx-auto flex min-h-[100dvh] w-full max-w-sm flex-col justify-center gap-6 px-5 py-10">
-      <Link to="/" className="flex items-center justify-center gap-2.5">
-        <MarcaTrocaTCG className="h-9 w-auto shrink-0" />
-        <span className="font-titulo text-[30px] leading-none font-black text-tinta">
-          TrocaTCG
-        </span>
+      <Link to="/" className="flex justify-center">
+        <LockupTrocaTCG grande />
       </Link>
       {children}
     </div>

@@ -74,40 +74,111 @@ export function IconeRaio({ className }: { className?: string }) {
 }
 
 /**
- * A marca do app: três cartas em leque com as setas da troca na da frente.
+ * O ícone do TrocaTCG: dois círculos e duas quinas, em azul chapado.
  *
- * Substitui o raio dentro do quadrado azul, que era herança do playmat e não
- * dizia nada sobre o produto — raio é velocidade, e o app não é sobre isso. As
- * cartas empilhadas e as duas setas dizem as duas coisas que ele é: cartas, e
- * cartas que trocam de mão.
+ * Trocado em 2026-08-19 pela identidade fechada do Eduardo. O que havia antes
+ * eram três cartas em leque com as setas da troca — desenho meu, feito no Figma
+ * para o app não abrir sem marca. Este é o desenho dele, e a diferença que
+ * importa não é o traço: é que agora existe uma fonte fora do repositório
+ * (`idv_troca_tcg/logo_finalizada/SVG`) da qual este arquivo é cópia.
  *
  * É uma `<img>` de `public/marca.svg`, e não um SVG copiado para cá. Marca
  * duplicada é marca que sai de sintonia: aquele arquivo é a fonte de que saem o
- * favicon e os ícones do PWA (`scripts/gerar-icones.mjs`), então trocar a marca
- * vira substituir um arquivo, não caçar cópias pelo projeto.
+ * favicon, os ícones do PWA (`scripts/gerar-icones.mjs`) e a imagem de
+ * compartilhamento (`scripts/gerar-og.mjs`), então trocar a marca vira
+ * substituir um arquivo e rodar dois scripts, não caçar cópias pelo projeto.
  *
  * A versão sem fundo, e não o `favicon.svg`: o favicon traz a marca sobre um
  * quadrado de papel porque precisa se sustentar sozinho numa aba ou numa gaveta
  * de apps. Aqui ela já está sobre o papel do app, e o quadrado seria uma
  * moldura em volta de nada.
  *
- * `alt` vazio e `aria-hidden` porque o letreiro "TrocaTCG" vem ao lado em texto:
- * anunciar as duas coisas faria o leitor de tela dizer o nome do app duas vezes.
+ * `alt` vazio e `aria-hidden` porque a palavra "TrocaTCG" vem ao lado, e é ela
+ * que carrega o nome para o leitor de tela — ver `PalavraTrocaTCG`.
  *
- * A arte é mais larga que alta (577×458). Quem usa passa **altura** e deixa a
- * largura em `auto` — `size-*`, que fixa as duas, achataria o leque.
+ * **Não troca de arquivo no escuro, e é a novidade da marca nova.** O azul é um
+ * só nos dois temas: #0067FF dá 4,19:1 sobre o bege e 3,71:1 sobre o #171717,
+ * os dois acima do piso de 3:1 que vale para desenho. A irmã escura que existia
+ * (`marca-escura.svg`) foi apagada, e com ela a regra de `content` no
+ * `index.css` — sobrou só na palavra, que é chapada e precisa clarear.
+ *
+ * A arte é quadrada (720×720), mas quem usa passa **altura** e deixa a largura
+ * em `auto`, como antes: é o que mantém a peça correta no dia em que o
+ * enquadramento do arquivo mudar de novo.
+ */
+export function MarcaTrocaTCG({ className }: { className?: string }) {
+  return <img src="/marca.svg" alt="" aria-hidden className={className} />
+}
+
+/**
+ * A palavra "TrocaTCG", desenhada.
+ *
+ * Era texto até 2026-08-19: um `<span>` em Outfit 900, que é a fonte de título
+ * do app. Ficou parecido o bastante para ninguém notar e errado o bastante para
+ * não ser a marca — o lockup da identidade tem corte próprio, e a diferença
+ * entre desenhar as letras e pedi-las a uma fonte do Google é exatamente a
+ * diferença entre ter marca e ter um letreiro.
+ *
+ * Por ser imagem, o nome do app sairia do alcance do leitor de tela se o `alt`
+ * ficasse vazio. Fica preenchido, e é aqui — não no ícone ao lado — que o nome
+ * é anunciado, uma vez só.
  *
  * **No escuro ela troca de arquivo**, e quem troca é o CSS, pela classe
- * `marca-svg` (regra em `index.css`). Não é teimosia: o tema é um atributo que
+ * `palavra-svg` (regra em `index.css`). Não é teimosia: o tema é um atributo que
  * pode viver no `<html>` — no app — ou num `<div>` no meio da página, que é como
  * o laboratório mostra claro e escuro lado a lado. Um hook de React não enxerga
  * um atributo posto acima dele por outro componente; o CSS enxerga. Escolher
- * aqui, em JavaScript, daria a marca certa no app e a errada no laboratório —
+ * aqui, em JavaScript, daria a palavra certa no app e a errada no laboratório —
  * justamente onde ela está sendo julgada.
  */
-export function MarcaTrocaTCG({ className }: { className?: string }) {
+export function PalavraTrocaTCG({ className }: { className?: string }) {
   return (
-    <img src="/marca.svg" alt="" aria-hidden className={cn('marca-svg', className)} />
+    <img src="/palavra.svg" alt="TrocaTCG" className={cn('palavra-svg', className)} />
+  )
+}
+
+/**
+ * O lockup: ícone à esquerda, palavra à direita.
+ *
+ * Existe porque o par aparece em cinco lugares — o cabeçalho do app, a Home
+ * pública, a tela de instalar, o Entrar e o Recuperar — e até 2026-08-19 cada
+ * um repetia as mesmas quatro linhas com a palavra escrita à mão em Outfit.
+ * Cinco cópias são cinco chances de a marca sair de sintonia, e foi o que a
+ * troca de identidade mostrou: mudar a palavra exigiu abrir os cinco arquivos.
+ *
+ * As duas alturas são as que já existiam: 28px de ícone no cabeçalho e nas
+ * telas de conteúdo, 36px nas telas em que o lockup é a única coisa acima do
+ * formulário (`grande`). A palavra acompanha em 18px e 22px — a altura de x que
+ * o letreiro em Outfit ocupava nos dois tamanhos, para o peso não mudar.
+ *
+ * Ícone e palavra têm alturas **diferentes** de propósito. O ícone é um
+ * quadrado cheio e a palavra é uma faixa de letras; igualar a caixa das duas
+ * faria a palavra parecer maior que o ícone, que é o efeito que o olho tem e a
+ * régua não.
+ *
+ * O `className` passa para o `<span>` de fora, que é onde mora o alinhamento de
+ * quem chama (`justify-center` nas telas de entrar, nada nas outras).
+ */
+export function LockupTrocaTCG({
+  grande = false,
+  className,
+}: {
+  grande?: boolean
+  className?: string
+}) {
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center',
+        grande ? 'gap-2.5' : 'gap-2',
+        className,
+      )}
+    >
+      <MarcaTrocaTCG className={cn('w-auto shrink-0', grande ? 'h-9' : 'h-7')} />
+      <PalavraTrocaTCG
+        className={cn('w-auto shrink-0', grande ? 'h-[22px]' : 'h-[18px]')}
+      />
+    </span>
   )
 }
 

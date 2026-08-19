@@ -30,16 +30,31 @@ const AQUI = dirname(fileURLToPath(import.meta.url))
 const PUBLICO = join(AQUI, '..', 'public')
 
 /** Os mesmos tokens do app — a prévia é a primeira tela que a pessoa vê dele. */
-const PAPEL = '#FFFDF5'
-const TINTA = '#0B0B0D'
-const AZUL = '#0038FF'
+const PAPEL = '#F4EEE4'
+const TINTA = '#171717'
+const AZUL = '#0067FF'
+/** O texto sobre o azul. Não é o papel: o bege sobre #0067FF dá 4,15:1 e
+ *  reprova o piso de 4,5:1 — o branco da cartela dá 4,79:1 e passa. É a mesma
+ *  conta que fixou `--color-azul-tinta` em branco no `index.css`. */
+const SOBRE_AZUL = '#FFFDF5'
 
 const LARGURA = 1200
 const ALTURA = 630
 
-const marca = (await readFile(join(PUBLICO, 'marca.svg'), 'utf8'))
+const arquivoMarca = (await readFile(join(PUBLICO, 'marca.svg'), 'utf8'))
   .replace(/<!--[\s\S]*?-->/g, '')
   .trim()
+
+/** O `viewBox` e a cor saem do próprio arquivo. Cravá-los aqui foi o que
+ *  quebrou na troca de marca de 2026-08-19: o quadro antigo (577×458) esticaria
+ *  o ícone novo, e a cor, que agora mora num `fill` no `<svg>` — descartado
+ *  logo abaixo —, deixaria as formas herdarem o `fill="none"` do quadro e sairia
+ *  uma prévia com um vão branco no lugar da marca, sem erro nenhum. */
+const CAIXA_MARCA = arquivoMarca.match(/viewBox="([^"]+)"/)[1]
+const COR_MARCA = arquivoMarca.match(/<svg[^>]*\sfill="([^"]+)"/)[1]
+const [, , LARGURA_MARCA, ALTURA_MARCA] = CAIXA_MARCA.trim().split(/\s+/).map(Number)
+
+const marca = arquivoMarca
   .replace(/<svg[^>]*>/, '')
   .replace('</svg>', '')
   .trim()
@@ -77,8 +92,11 @@ const pagina = `<!doctype html>
     position: absolute; left: 0; right: 0; bottom: 0; height: 18px;
     background: ${AZUL};
   }
+  /* A altura manda e a largura acompanha a proporção do arquivo: a marca já
+     mudou de formato uma vez (era mais larga que alta, virou quadrada), e um par
+     de números cravados aqui a teria achatado sem avisar. */
   .arte {
-    width: 300px; height: 238px; flex: none;
+    width: ${(300 * LARGURA_MARCA) / ALTURA_MARCA}px; height: 300px; flex: none;
     filter: drop-shadow(10px 10px 0 ${TINTA});
   }
   .texto { display: flex; flex-direction: column; gap: 18px; }
@@ -97,13 +115,13 @@ const pagina = `<!doctype html>
   .selo {
     align-self: flex-start; margin-top: 6px;
     border: 4px solid ${TINTA}; border-radius: 999px;
-    padding: 10px 22px; background: ${AZUL}; color: ${PAPEL};
+    padding: 10px 22px; background: ${AZUL}; color: ${SOBRE_AZUL};
     font-size: 24px; font-weight: 800; letter-spacing: 0.02em;
     box-shadow: 6px 6px 0 ${TINTA};
   }
 </style>
 <div class="quadro">
-  <svg class="arte" viewBox="0 0 577 458" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <svg class="arte" viewBox="${CAIXA_MARCA}" fill="${COR_MARCA}" xmlns="http://www.w3.org/2000/svg">
     ${marca}
   </svg>
   <div class="texto">

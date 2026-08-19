@@ -19,7 +19,7 @@
       body { margin: 0; padding: 0; width: 100% !important; }
       table { border-collapse: collapse; }
       img { border: 0; outline: none; text-decoration: none; }
-      a { color: #0038ff; }
+      a { color: #0067ff; }
       @media only screen and (max-width: 620px) {
         .cartela-pad { padding: 28px 22px !important; }
         .titulo { font-size: 26px !important; }
@@ -27,15 +27,15 @@
     </style>
   </head>
 
-  <body style="margin:0; padding:0; background-color:#FFFDF5;">
+  <body style="margin:0; padding:0; background-color:#F4EEE4;">
     <!-- Linha de prévia. Escrita para ser lida na tela de bloqueio: quem pediu a
          troca reconhece, e quem não pediu já entende que não precisa abrir. -->
-    <div style="display:none; font-size:1px; color:#FFFDF5; line-height:1px; max-height:0; max-width:0; opacity:0; overflow:hidden;">
+    <div style="display:none; font-size:1px; color:#F4EEE4; line-height:1px; max-height:0; max-width:0; opacity:0; overflow:hidden;">
       Pediu para trocar a senha? O link está aqui dentro. Se não pediu, sua senha continua a mesma.
       &#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;
     </div>
 
-    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#FFFDF5;">
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#F4EEE4;">
       <tr>
         <td align="center" style="padding: 32px 16px 40px 16px;">
           <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width:560px;">
@@ -54,15 +54,15 @@
             <!-- ---------------------------------------------- cartela -->
             <tr>
               <td>
-                <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#FFFFFF; border:2px solid #000000; border-radius:20px;">
+                <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#FFFDF5; border:2px solid #171717; border-radius:20px;">
                   <tr>
                     <td class="cartela-pad" style="padding: 36px 34px;">
 
-                      <h1 class="titulo" style="margin:0 0 14px 0; font-family:'Outfit','Trebuchet MS','Segoe UI',Arial,sans-serif; font-size:30px; line-height:1.1; font-weight:700; color:#000000;">
+                      <h1 class="titulo" style="margin:0 0 14px 0; font-family:'Outfit','Trebuchet MS','Segoe UI',Arial,sans-serif; font-size:30px; line-height:1.1; font-weight:700; color:#171717;">
                         Criar uma senha nova
                       </h1>
 
-                      <p style="margin:0 0 10px 0; font-family:'Inter',-apple-system,'Segoe UI',Roboto,Arial,sans-serif; font-size:16px; line-height:1.6; color:#000000;">
+                      <p style="margin:0 0 10px 0; font-family:'Inter',-apple-system,'Segoe UI',Roboto,Arial,sans-serif; font-size:16px; line-height:1.6; color:#171717;">
                         Alguém pediu para trocar a senha da conta de {{ .Email }}.
                       </p>
 
@@ -74,9 +74,9 @@
                       <!-- ------------------------------------ botão -->
                       <table role="presentation" cellpadding="0" cellspacing="0" border="0">
                         <tr>
-                          <td bgcolor="#0038FF" style="border:2px solid #000000; border-radius:12px;">
+                          <td bgcolor="#0067FF" style="border:2px solid #171717; border-radius:12px;">
                             <a href="{{ .ConfirmationURL }}"
-                               style="display:block; padding:15px 30px; font-family:'Outfit','Trebuchet MS','Segoe UI',Arial,sans-serif; font-size:17px; font-weight:700; color:#FFFFFF; text-decoration:none;">
+                               style="display:block; padding:15px 30px; font-family:'Outfit','Trebuchet MS','Segoe UI',Arial,sans-serif; font-size:17px; font-weight:700; color:#FFFDF5; text-decoration:none;">
                               Criar senha nova
                             </a>
                           </td>
@@ -88,7 +88,7 @@
                           <td style="padding-left:3px;">
                             <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
                               <tr>
-                                <td height="3" style="height:3px; line-height:3px; font-size:0; background-color:#000000;">&nbsp;</td>
+                                <td height="3" style="height:3px; line-height:3px; font-size:0; background-color:#171717;">&nbsp;</td>
                               </tr>
                             </table>
                           </td>
@@ -100,7 +100,7 @@
                         Se o botão não funcionar, copie este endereço no navegador:
                       </p>
                       <p style="margin:6px 0 0 0; font-family:'Geist Mono',ui-monospace,'SFMono-Regular',Consolas,'Courier New',monospace; font-size:12px; line-height:1.5; word-break:break-all;">
-                        <a href="{{ .ConfirmationURL }}" style="color:#0038FF; text-decoration:underline;">{{ .ConfirmationURL }}</a>
+                        <a href="{{ .ConfirmationURL }}" style="color:#0067FF; text-decoration:underline;">{{ .ConfirmationURL }}</a>
                       </p>
 
                       <!-- ------------------------------------ aviso -->
@@ -110,8 +110,8 @@
                            ler antes de qualquer outra coisa. -->
                       <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-top:28px;">
                         <tr>
-                          <td style="background-color:#FEE2E2; border:2px solid #000000; border-radius:12px; padding:14px 16px;">
-                            <p style="margin:0; font-family:'Inter',-apple-system,'Segoe UI',Roboto,Arial,sans-serif; font-size:14px; line-height:1.6; color:#DC2626;">
+                          <td style="background-color:#FEE2E2; border:2px solid #171717; border-radius:12px; padding:14px 16px;">
+                            <p style="margin:0; font-family:'Inter',-apple-system,'Segoe UI',Roboto,Arial,sans-serif; font-size:14px; line-height:1.6; color:#B2292E;">
                               <strong>Não foi você que pediu?</strong> Ignore este e-mail — sua senha
                               continua a mesma, e ninguém entra na sua conta por causa dele.
                             </p>
@@ -127,7 +127,7 @@
                 <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
                   <tr>
                     <td width="6" style="width:6px; font-size:0; line-height:0;">&nbsp;</td>
-                    <td height="4" style="height:4px; line-height:4px; font-size:0; background-color:#000000;">&nbsp;</td>
+                    <td height="4" style="height:4px; line-height:4px; font-size:0; background-color:#171717;">&nbsp;</td>
                   </tr>
                 </table>
               </td>

@@ -41,29 +41,39 @@ export default defineConfig({
       // service worker em origem insegura, então pelo IP da rede local (http)
       // ele continua ausente — para provar no celular, é HTTPS ou produção.
       devOptions: { enabled: true, type: 'module', navigateFallback: 'index.html' },
-      // `marca.svg` entra junto: é a marca que o cabeçalho do app exibe, e sem
-      // ela em cache o app instalado abriria sem logo quando estivesse offline.
-      includeAssets: ['favicon.svg', 'marca.svg', 'apple-touch-icon.png'],
+      // As três peças da marca entram junto: são o que o cabeçalho do app
+      // exibe, e sem elas em cache o app instalado abriria sem logo quando
+      // estivesse offline. `palavra-escura.svg` inclusive — quem abre o app no
+      // escuro é quem mais sentiria a falta.
+      includeAssets: [
+        'favicon.svg',
+        'marca.svg',
+        'palavra.svg',
+        'palavra-escura.svg',
+        'apple-touch-icon.png',
+      ],
       manifest: {
         name: 'TrocaTCG — quadro de trocas de Pokémon TCG',
         short_name: 'TrocaTCG',
         description:
           'Descubra com quem trocar suas cartas de Pokémon TCG. Ofereço e Procuro, matching automático.',
         lang: 'pt-BR',
-        // O papel creme, não o preto do playmat: estas duas cores são a barra do
+        // O papel bege, não o preto do playmat: estas duas cores são a barra do
         // sistema e a tela de abertura do app instalado, e com o valor antigo o
         // PWA abria numa tela preta que piscava para creme quando a interface
-        // aparecia. Mesmo `#FFFDF5` do `theme-color` do index.html.
-        theme_color: '#FFFDF5',
-        background_color: '#FFFDF5',
+        // aparecia. Mesmo `#F4EEE4` do `theme-color` do index.html — os dois
+        // seguem `--color-papel`, que esquentou com a paleta de 2026-08-19.
+        theme_color: '#F4EEE4',
+        background_color: '#F4EEE4',
         display: 'standalone',
         orientation: 'portrait',
         // Os três saem de `scripts/gerar-icones.mjs`, a partir da mesma arte do
         // favicon e do componente `MarcaTrocaTCG`. Mudou a marca, rode o script.
         //
         // O maskable é arquivo à parte, não o mesmo `pwa-512.png`: o Android
-        // recorta um círculo de 80% do lado, e a carta do desenho passa da zona
-        // segura — reaproveitar o ícone comum decepa o leque. O arquivo maskable
+        // recorta um círculo de 80% do lado, e o desenho passa da zona segura —
+        // reaproveitar o ícone comum decepa os cantos, que na marca nova é onde
+        // estão os dois círculos. O arquivo maskable
         // tem a arte reduzida para caber e o fundo sangrando até a borda, sem
         // canto arredondado, porque quem arredonda é a máscara do sistema.
         icons: [

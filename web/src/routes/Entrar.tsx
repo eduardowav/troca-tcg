@@ -6,7 +6,7 @@ import {
   AcaoSecundaria,
   Cartela,
   LinkNoTexto,
-  MarcaTrocaTCG,
+  LockupTrocaTCG,
 } from '@/components/brutal/Pecas'
 import { Campo } from '@/components/ui/Campo'
 import { Button } from '@/components/ui/Button'
@@ -249,12 +249,7 @@ export default function Entrar() {
  */
 function Lockup() {
   return (
-    <div className="flex items-center justify-center gap-2.5">
-      <MarcaTrocaTCG className="h-9 w-auto shrink-0" />
-      <span className="font-titulo text-[30px] leading-none font-black text-tinta">
-        TrocaTCG
-      </span>
-    </div>
+    <LockupTrocaTCG grande className="justify-center" />
   )
 }
 

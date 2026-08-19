@@ -1,7 +1,7 @@
 # E-mails transacionais
 
 Os dois e-mails que o Supabase Auth manda em nome do TrocaTCG, escritos na
-linguagem do [DESIGN.md](../../DESIGN.md): papel creme, cartela branca com borda
+linguagem do [DESIGN.md](../../DESIGN.md): papel bege, cartela creme com borda
 de 2px e sombra dura, azul só na ação.
 
 | Arquivo | Template no painel | Dispara hoje? |
@@ -81,8 +81,8 @@ do `user_metadata` que o `signUp` grava, e uma conta criada por outro caminho n�
 o tem. Sem o `if`, o Go template escreve `<no value>` e a pessoa lê
 "Oi, `<no value>`." no primeiro e-mail que recebe do app.
 
-**Cor do aviso, e por quê são duas.** No cadastro é âmbar (`#996700` sobre
-`#FFF4E5`) — aviso. Na senha é vermelho (`#DC2626` sobre `#FEE2E2`), porque no
+**Cor do aviso, e por quê são duas.** No cadastro é âmbar (`#8C560F` sobre
+`#FFF4E5`) — aviso. Na senha é vermelho (`#B2292E` sobre `#FEE2E2`), porque no
 sistema `alerta` é reservado ao que não tem volta, e alguém trocando a senha de
 uma conta que não é dele é dessa categoria.
 

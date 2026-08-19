@@ -5,7 +5,7 @@ import {
   IconeCartasBrutal,
   IconeRaio,
   IconeTrocas,
-  MarcaTrocaTCG,
+  LockupTrocaTCG,
 } from '@/components/brutal/Pecas'
 import { NaoAfiliacao } from '@/components/Isencao'
 import { useAuth } from '@/stores/auth'
@@ -51,12 +51,7 @@ export default function Home() {
   return (
     <div className="mx-auto w-full max-w-xl px-6 pb-20">
       <header className="pt-10">
-        <span className="inline-flex items-center gap-2">
-          <MarcaTrocaTCG className="h-7 w-auto shrink-0" />
-          <span className="font-titulo text-[24px] leading-none font-black text-tinta">
-            TrocaTCG
-          </span>
-        </span>
+        <LockupTrocaTCG />
 
         <h1 className="mt-8 font-titulo text-[32px] leading-[1.05] font-black text-balance text-tinta lg:text-[38px]">
           Alguém aí tem a carta que te falta. E quer a que te sobra.

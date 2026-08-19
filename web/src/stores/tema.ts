@@ -62,9 +62,13 @@ function aplicar(tema: Tema) {
   if (efetivo === 'escuro') raiz.dataset.tema = 'escuro'
   else delete raiz.dataset.tema
 
+  // Os dois espelham `--color-papel` de cada tema, e o claro virou bege em
+  // 2026-08-19. Ficam em hexadecimal cravado, e não lidos do CSS, porque isto
+  // roda antes da primeira pintura — mas por isso mesmo precisam ser trocados
+  // junto com o token, aqui e no `index.html`.
   document
     .querySelector('meta[name="theme-color"]')
-    ?.setAttribute('content', efetivo === 'escuro' ? '#0B0B0D' : '#FFFDF5')
+    ?.setAttribute('content', efetivo === 'escuro' ? '#171717' : '#F4EEE4')
 
   useTema.setState({ efetivo })
 }

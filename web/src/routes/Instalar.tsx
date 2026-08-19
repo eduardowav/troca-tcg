@@ -2,7 +2,7 @@ import { type ReactNode, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 
-import { MarcaTrocaTCG } from '@/components/brutal/Pecas'
+import { LockupTrocaTCG } from '@/components/brutal/Pecas'
 import { useConviteDeInstalacao } from '@/hooks/useInstalacao'
 import {
   aceitarConvite,
@@ -43,11 +43,8 @@ export default function Instalar() {
   return (
     <div className="mx-auto w-full max-w-xl px-6 pb-20">
       <header className="pt-10">
-        <Link to="/" className="inline-flex items-center gap-2">
-          <MarcaTrocaTCG className="h-7 w-auto shrink-0" />
-          <span className="font-titulo text-[24px] leading-none font-black text-tinta">
-            TrocaTCG
-          </span>
+        <Link to="/">
+          <LockupTrocaTCG />
         </Link>
 
         <h1 className="mt-8 font-titulo text-[32px] leading-[1.05] font-black text-balance text-tinta lg:text-[38px]">
