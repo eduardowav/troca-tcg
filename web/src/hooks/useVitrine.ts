@@ -60,11 +60,16 @@ export function useQuemTem(cardId: string | undefined) {
  * calculado contra o **meu** Procuro, então mexer nas minhas listas muda esta
  * resposta sem nada ter mudado do lado de lá.
  */
-export function useAcervo(username: string | undefined) {
+export function useAcervo(
+  username: string | undefined,
+  tipo: 'OFERTA' | 'PROCURA' = 'OFERTA',
+) {
   return useQuery({
-    queryKey: [...CHAVE, 'acervo', username],
+    // O `tipo` entra na chave: sem ele, o Ofereço e o Procuro da mesma pessoa
+    // compartilhariam cache e a segunda lista mostraria a primeira.
+    queryKey: [...CHAVE, 'acervo', username, tipo],
     enabled: Boolean(username),
     staleTime: 30 * 1000,
-    queryFn: () => acervoDe(username as string),
+    queryFn: () => acervoDe(username as string, tipo),
   })
 }

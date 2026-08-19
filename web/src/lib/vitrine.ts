@@ -120,8 +120,18 @@ export const listarVitrine = (filtros: FiltrosVitrine = {}) =>
 export const quemTemACarta = (cardId: string) =>
   api.get<OfertaNaVitrine[]>(`/vitrine/carta/${cardId}`)
 
-export const acervoDe = (username: string) =>
-  api.get<CartaDoAcervo[]>(`/vitrine/acervo/${username}`)
+/**
+ * Uma das duas listas de alguém.
+ *
+ * `OFERTA` por padrão, que é o caminho da vitrine — de lá se chega para montar
+ * proposta. `PROCURA` serve ao perfil público, que mostra a pessoa inteira: sem
+ * ele, quem olha um perfil não consegue responder "e o que eu tenho que serve
+ * para essa pessoa?", que é a metade da troca que depende de quem está olhando.
+ */
+export const acervoDe = (username: string, tipo: 'OFERTA' | 'PROCURA' = 'OFERTA') =>
+  api.get<CartaDoAcervo[]>(
+    `/vitrine/acervo/${username}?tipo=${tipo}`,
+  )
 
 /** Cartas por página — o mesmo `TAMANHO_PAGINA` de services/vitrine.py. */
 export const TAMANHO_PAGINA = 24

@@ -1,11 +1,17 @@
+import { useMemo } from 'react'
 import { useParams } from 'react-router-dom'
 
+import { CelulaBrutal, GradeBrutal } from '@/components/brutal/Cartas'
 import { LinkNoTexto } from '@/components/brutal/Pecas'
 import { FichaPerfil } from '@/components/perfil/FichaPerfil'
+import { useCartasPorId } from '@/hooks/useAnuncios'
 import { useMarcaOculta } from '@/hooks/useMundo'
 import { usePerfilPublico } from '@/hooks/usePerfilPublico'
+import { useAcervo } from '@/hooks/useVitrine'
 import { ApiError } from '@/lib/api'
 import { membroDesde, type PerfilPublico } from '@/lib/perfil'
+import type { Carta } from '@/lib/types'
+import type { CartaDoAcervo } from '@/lib/vitrine'
 import { useUsuarioId } from '@/stores/auth'
 
 /**
@@ -76,6 +82,8 @@ export default function PerfilPublicoTela() {
       <FichaPerfil perfil={perfil} />
       <ComoLer perfil={perfil} />
 
+      <Listas username={perfil.username} souEu={souEu} />
+
       {souEu && (
         <p className="mt-8 border-t-2 border-dashed border-tinta/25 pt-6 font-corpo text-[13px] leading-relaxed text-apagado">
           Este é o seu perfil, como a comunidade o vê.{' '}
@@ -86,15 +94,135 @@ export default function PerfilPublicoTela() {
   )
 }
 
+/**
+ * As duas listas da pessoa, que é o que o perfil não mostrava.
+ *
+ * Até 2026-08-18 o perfil público tinha identidade e reputação e parava aí:
+ * dizia **quem** é a pessoa e não dizia **o que ela troca**. Quem chegava por um
+ * `@` numa troca tinha de sair do perfil para descobrir se havia negócio ali.
+ *
+ * Os dois lados, e não só o Ofereço, porque a troca tem dois lados. Ver só o que
+ * alguém oferece responde "o que essa pessoa tem?" e deixa sem resposta "o que
+ * eu tenho que serve para ela?" — que é a metade que depende de quem está
+ * olhando, e a que faz uma proposta nascer.
+ *
+ * O `reciproco` de cada carta inverte junto com a lista (ver `services/vitrine.py`),
+ * então em ambas ele significa a mesma coisa para quem lê: **aqui há troca**.
+ */
+function Listas({ username, souEu }: { username: string; souEu: boolean }) {
+  const { data: oferece, isPending: carregandoOferece } = useAcervo(
+    username,
+    'OFERTA',
+  )
+  const { data: procura, isPending: carregandoProcura } = useAcervo(
+    username,
+    'PROCURA',
+  )
+
+  // Uma consulta de cartas só para as duas listas: são a mesma tela, e duas
+  // chamadas trariam o mesmo catálogo em dois pedaços.
+  const ids = useMemo(
+    () => [...(oferece ?? []), ...(procura ?? [])].map((c) => c.card_id),
+    [oferece, procura],
+  )
+  const { data: cartas } = useCartasPorId(ids)
+
+  if (carregandoOferece || carregandoProcura) return null
+
+  const nada = (oferece?.length ?? 0) === 0 && (procura?.length ?? 0) === 0
+  if (nada) {
+    return (
+      <p className="mt-8 border-t-2 border-dashed border-tinta/25 pt-6 font-corpo text-[14px] leading-relaxed text-apagado">
+        {souEu
+          ? 'Suas listas estão vazias — é o que a comunidade vê quando abre seu perfil.'
+          : 'Esta pessoa ainda não montou as listas dela.'}
+      </p>
+    )
+  }
+
+  return (
+    <div className="mt-8 border-t-2 border-dashed border-tinta/25 pt-6">
+      <ListaDeCartas
+        titulo="Oferece"
+        vazio="Nada anunciado para troca por enquanto."
+        itens={oferece ?? []}
+        cartas={cartas}
+        dica="Marcadas: estão no seu Procuro."
+      />
+      <ListaDeCartas
+        titulo="Procura"
+        vazio="Não declarou o que procura."
+        itens={procura ?? []}
+        cartas={cartas}
+        dica="Marcadas: você tem no seu Ofereço."
+        className="mt-8"
+      />
+    </div>
+  )
+}
+
+function ListaDeCartas({
+  titulo,
+  vazio,
+  itens,
+  cartas,
+  dica,
+  className,
+}: {
+  titulo: string
+  vazio: string
+  itens: CartaDoAcervo[]
+  cartas?: Map<string, Carta>
+  dica: string
+  className?: string
+}) {
+  // Só vale mostrar a dica quando há o que ela explica: "marcadas" sem nenhuma
+  // marcada é instrução para um símbolo que não está na tela.
+  const temReciproco = itens.some((i) => i.reciproco)
+
+  return (
+    <section className={className}>
+      <h2 className="font-titulo text-[17px] font-black text-tinta">{titulo}</h2>
+
+      {itens.length === 0 ? (
+        <p className="mt-2 font-corpo text-[14px] text-apagado">{vazio}</p>
+      ) : (
+        <>
+          {temReciproco && (
+            <p className="mt-1 font-corpo text-[13px] text-apagado">{dica}</p>
+          )}
+          <GradeBrutal className="mt-3">
+            {itens.map((item) => {
+              const carta = cartas?.get(item.card_id)
+              if (!carta) return null
+              return (
+                <CelulaBrutal
+                  key={item.listing_id}
+                  carta={carta}
+                  // O azul-claro é o "isto é meu" do par de cartas, e aqui ele
+                  // diz o mesmo: esta carta encosta na sua lista.
+                  destaque={item.reciproco ? 'OFERTA' : null}
+                  para={`/vitrine/carta/${item.card_id}`}
+                />
+              )
+            })}
+          </GradeBrutal>
+        </>
+      )}
+    </section>
+  )
+}
+
 function Voltar() {
   // -1 e não uma rota fixa: chega-se aqui do detalhe de uma troca, e mandar
   // quem veio de lá para o feed apagaria a troca que a pessoa estava lendo.
   return (
     <button
       onClick={() => window.history.back()}
+      aria-label="Voltar"
       className="voltar mt-5 grid size-9 shrink-0 place-items-center self-start rounded-full border-2 border-tinta bg-cartela font-titulo text-[16px] font-black text-tinta transition-shadow hover:shadow-[var(--shadow-duro-xs)]"
     >
-      ← Voltar
+      ←
     </button>
   )
 }

@@ -73,13 +73,19 @@ async def quem_tem(
 @router.get("/acervo/{username}", response_model=list[CartaDoAcervo])
 async def acervo(
     username: str,
+    tipo: str = Query(default="OFERTA", pattern="^(OFERTA|PROCURA)$"),
     user_id: UUID = Depends(usuario_atual),
     session: AsyncSession = Depends(get_session),
 ) -> list[CartaDoAcervo]:
-    """O OFERTA de uma pessoa — o passo que transforma uma carta numa proposta.
+    """Uma das duas listas de uma pessoa — o passo que vira proposta.
 
-    Chega-se aqui a partir de uma carta, nunca de uma busca por gente: continua
-    não existindo diretório de pessoas (seção 22.2). É também a lista que a
-    contraproposta lê para escolher a substituição.
+    Chega-se aqui a partir de uma carta ou do perfil, nunca de uma busca por
+    gente: continua não existindo diretório de pessoas (seção 22.2). É também a
+    lista que a contraproposta lê para escolher a substituição.
+
+    `tipo` é OFERTA por padrão, que é o caminho da vitrine. PROCURA serve ao
+    perfil público, que mostra a pessoa inteira. O `pattern` do Query é a
+    validação: o valor entra num cast para `listing_kind`, e restringir aqui
+    devolve 422 em vez de deixar o Postgres reclamar de enum inválido.
     """
-    return await vitrine.acervo_de(session, user_id, username)
+    return await vitrine.acervo_de(session, user_id, username, tipo=tipo)

@@ -9,6 +9,7 @@ O que depende de dado real fica para o banco de verdade.
 import inspect
 from uuid import uuid4
 
+import pytest
 from fastapi.testclient import TestClient
 
 from app.core.auth import usuario_atual
@@ -171,8 +172,47 @@ def test_acervo_marca_o_que_esta_no_meu_procuro():
     """`reciproco` é o que transforma uma lista de cartas em sugestão do que
     pedir — a mesma ideia de `_MAIS_CARTAS`, sem o gate de match."""
     sql = vitrine._ACERVO.text
-    assert "meu.tipo = 'PROCURA'" in sql
+    assert "meu.tipo = cast(:tipo_reciproco as listing_kind)" in sql
     assert "order by reciproco desc" in sql
+
+
+@pytest.mark.parametrize(
+    ("tipo", "esperado"), [("OFERTA", "PROCURA"), ("PROCURA", "OFERTA")]
+)
+async def test_acervo_pergunta_sempre_pelo_lado_oposto(tipo, esperado):
+    """O `reciproco` inverte junto com o `tipo`, e é o que o mantém útil.
+
+    Numa lista de OFERTA ele diz "isto está no seu Procuro" — vale a pena pedir.
+    Numa de PROCURA, "isto está no seu Ofereço" — você tem o que essa pessoa
+    quer. É a mesma pergunta, "há troca aqui?", feita do lado certo; casar tipo
+    com tipo responderia sempre que sim, porque a carta é a mesma.
+
+    O teste é de comportamento e não de fonte: confere o parâmetro que chega ao
+    banco, que é o que decide a resposta.
+    """
+    vistos: list[dict] = []
+
+    class SessaoFalsa:
+        async def scalar(self, *_a, **_k):
+            return "d0000001-0000-4000-8000-000000000001"
+
+        async def execute(self, _sql, params=None):
+            vistos.append(params or {})
+
+            class Res:
+                def mappings(self_inner):
+                    class M:
+                        def all(self_m):
+                            return []
+
+                    return M()
+
+            return Res()
+
+    await vitrine.acervo_de(SessaoFalsa(), uuid4(), "alguem", tipo=tipo)  # type: ignore[arg-type]
+
+    assert vistos[0]["tipo"] == tipo
+    assert vistos[0]["tipo_reciproco"] == esperado
 
 
 def test_acervo_bloqueado_some_como_se_nao_existisse():

@@ -252,6 +252,13 @@ async def quem_tem_a_carta(
 # `reciproco` aqui só olha o meu PROCURA porque a lista é só de OFERTA dela —
 # em `_MAIS_CARTAS` as duas direções aparecem porque lá a lista tem os dois
 # tipos. A pergunta é a mesma: isto está no seu Procuro?
+# O `tipo` é parâmetro desde 2026-08-18, quando o perfil público passou a mostrar
+# os dois lados da pessoa em vez de só o que ela oferece.
+#
+# O `reciproco` **inverte junto**, e é o que mantém a coluna útil nos dois casos:
+# numa lista de OFERTA ele diz "isto está no seu Procuro" (vale a pena pedir);
+# numa de PROCURA, "isto está no seu Ofereço" (você tem o que essa pessoa quer).
+# É sempre a mesma pergunta — "há troca aqui?" — feita do lado certo.
 _ACERVO = text("""
     select l.id::text as listing_id, l.card_id::text as card_id,
            l.condicao::text as condicao, l.finish_id, l.quantidade, l.prioridade,
@@ -259,20 +266,30 @@ _ACERVO = text("""
              select 1 from listings meu
              where meu.user_id = cast(:eu as uuid) and meu.ativo
                and meu.card_id = l.card_id
-               and meu.tipo = 'PROCURA'
+               and meu.tipo = cast(:tipo_reciproco as listing_kind)
            ) as reciproco
     from listings l
     where l.user_id = cast(:dono as uuid)
-      and l.ativo and l.tipo = 'OFERTA'
+      and l.ativo and l.tipo = cast(:tipo as listing_kind)
     order by reciproco desc, l.prioridade desc, l.card_id
     limit :limite
 """)
 
 
 async def acervo_de(
-    session: AsyncSession, user_id: UUID, username: str, limite: int = 200
+    session: AsyncSession,
+    user_id: UUID,
+    username: str,
+    tipo: str = "OFERTA",
+    limite: int = 200,
 ) -> list[CartaDoAcervo]:
-    """O OFERTA de uma pessoa, alcançado pelo @ que veio de uma carta.
+    """Uma das duas listas de uma pessoa, alcançada pelo @.
+
+    `tipo` nasceu OFERTA e continua sendo o padrão — é o que a vitrine pede,
+    porque de lá se chega para montar uma proposta. PROCURA entrou em
+    2026-08-18, para o perfil público mostrar a pessoa inteira: quem só vê o que
+    alguém oferece não consegue responder "e o que eu tenho que serve para
+    ela?", que é a metade da troca que depende de quem está olhando.
 
     O 404 de perfil bloqueado é o mesmo de perfil inexistente de propósito:
     confirmar que a conta existe mas está bloqueada é contar sobre a moderação
@@ -292,7 +309,14 @@ async def acervo_de(
     linhas = (
         (
             await session.execute(
-                _ACERVO, {"eu": str(user_id), "dono": dono, "limite": limite}
+                _ACERVO,
+                {
+                    "eu": str(user_id),
+                    "dono": dono,
+                    "tipo": tipo,
+                    "tipo_reciproco": "OFERTA" if tipo == "PROCURA" else "PROCURA",
+                    "limite": limite,
+                },
             )
         )
         .mappings()
