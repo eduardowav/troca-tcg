@@ -125,25 +125,18 @@
      (4,70:1 sobre a cartela) e na etiqueta RARA (4,60:1 sobre
      `meu`, que foi clareado para isso).
 
-     O `azul-claro` **saiu** junto: a paleta oficial tem um azul só, e o
-     segundo tom era do arquivo antigo do Figma. Quem o usava era a aba
-     ativa da navegação, que passou a usar o azul de ação — 4,70:1 sobre
-     a cartela, então ele lê como texto e não só como enfeite. */
-  --color-azul: #0067ff;
-  /* O azul **quando ele é letra**, e não peça.
-     ----------------------------------------------------------
-     No claro é o mesmo azul, e é por isso que ele aponta para o token em
-     vez de repetir o hexadecimal. Existe por causa do escuro: ali o azul
-     da marca sobre a cartela dá 3,40:1 e não se lê, mas clarear o token
-     inteiro clarearia junto o **preenchimento** dos botões — que ficaria
-     ao lado do ícone da marca, chapado no azul de verdade, dando dois
-     azuis quase iguais na mesma tela. Que é exatamente o erro que fez o
-     azul da marca subir para #0067ff em primeiro lugar.
+     **É o único azul do sistema, e isso é regra de marca, não gosto.** O
+     manual (v1.0, 2026) lista o azul claro como descontinuado e proíbe
+     junto "variações de azul, degradês ou tons aproximados" — o checklist
+     de aplicação pergunta, em uma de cinco linhas, se sobrou outro azul na
+     peça. Saíram por isso o `azul-claro #6082ff` da aba ativa e o
+     `azul-texto #3385ff` que este arquivo chegou a ter por meio dia, para
+     resolver o escuro clareando a letra.
 
-     Então o escuro clareia só a letra. Quem troca é uma regra sobre a
-     classe `.text-azul` lá embaixo, como já era feito com `.border-tinta`
-     — assim as dez chamadas espalhadas pelo app não precisam saber. */
-  --color-azul-texto: var(--color-azul);
+     O escuro resolve de outro jeito, e o app já tinha a resposta escrita:
+     onde o azul não alcança 4,5:1, ele **deixa de ser letra** em vez de
+     virar outro azul. Ver a regra de `.text-azul` no bloco do tema. */
+  --color-azul: #0067ff;
   /* O branco da paleta, não o #ffffff: é o mesmo tom da cartela, e o app
      não tem dois brancos. Custa 0,09 de contraste (4,70:1 em vez de
      4,79:1) e continua acima do piso — o que não sobrevive aqui é o bege
@@ -348,18 +341,23 @@
   }
 
   /* A aba ativa era o `azul-claro`, o segundo azul do arquivo antigo do
-     Figma, que a paleta oficial não tem. Passou a ser o azul de ação na
-     forma de letra: 4,70:1 sobre a cartela no claro, 4,61:1 no escuro,
-     onde `azul-texto` já vem clareado. Uma cor a menos, e a única cor de
-     ação do app é a mesma que marca onde a pessoa está.
+     Figma, que a paleta oficial não tem. Passou a ser o azul de ação:
+     4,70:1 sobre a cartela, uma cor a menos, e a única cor de ação do app
+     é a mesma que marca onde a pessoa está.
 
-     O tracinho embaixo dela é peça, não letra, e por isso sai do
-     `--color-azul` cru: no escuro ele fica azul da marca sobre a cartela
-     (3,40:1, acima do piso de 3:1 de elemento não-textual) e continua
-     sendo o mesmo azul do ícone no cabeçalho. */
+     No escuro ela segue a mesma regra do resto e vira tinta — a
+     sobrescrita é a linha logo abaixo, e precisa ser explícita porque o
+     link não carrega a classe `.text-azul`: quem pinta a aba é este
+     seletor. Não fica sem marcação: continua em peso 800 e continua com o
+     tracinho azul embaixo, que é peça e não letra. */
   [data-mundo='brutal'] .nav-app a[aria-current='page'] {
-    color: var(--color-azul-texto);
+    color: var(--color-azul);
     font-weight: 800;
+  }
+
+  [data-tema='escuro'] [data-mundo='brutal'] .nav-app a[aria-current='page'],
+  [data-mundo='brutal'][data-tema='escuro'] .nav-app a[aria-current='page'] {
+    color: var(--color-tinta);
   }
 
   /* O tracinho da aba ativa era `bg-volt` — roxo do playmat. */
@@ -1123,12 +1121,12 @@
     --color-borda: #6b6b6b; /* 3,36:1 sobre o papel, 3,06:1 sobre a cartela */
     --color-apagado: #9a9a9a; /* 5,79:1 sobre a cartela */
 
-    /* O azul de **peça** não muda: é o da marca, o mesmo do ícone que fica
-       no cabeçalho logo acima de qualquer botão. Sobre o papel escuro ele
-       dá 3,74:1, acima do piso de 3:1 de elemento não-textual, e o branco
-       por cima dele segue nos mesmos 4,70:1 do claro. Só a **letra** azul
-       clareia — ver o bloco do token. */
-    --color-azul-texto: #3385ff;
+    /* O azul não muda, e não há sobrescrita nenhuma dele aqui: o manual da
+       marca não admite um segundo tom. Como peça ele funciona — 3,74:1
+       sobre o papel, acima do piso de 3:1 de elemento não-textual, e o
+       branco por cima dele segue nos mesmos 4,70:1 do claro. Como letra
+       ele não funciona, e quem resolve isso é a regra de `.text-azul` mais
+       abaixo. */
 
     /* O vermelho da marca clareado 35% em direção ao branco: puro ele dá
        2,77:1 aqui e reprova. Assim são 5,43:1 sobre o papel e 4,93:1
@@ -1167,16 +1165,30 @@
     border-color: var(--color-borda);
   }
 
-  /* Mesma manobra, e pelo mesmo motivo: as dez chamadas de `text-azul`
-     espalhadas pelo app — o preço do par, a etiqueta RARA, a ênfase de um
-     número — querem o azul que **se lê**, e no escuro ele é mais claro que
-     o azul de peça. Repintar a classe num lugar só resolve as dez sem
-     tocar em arquivo nenhum.
+  /* No escuro, **o azul deixa de ser letra**.
+     ------------------------------------------------------------------
+     Sobre a cartela escura o azul da marca dá 3,40:1: serve de peça e não
+     de texto. A saída óbvia seria clarear, e ela está proibida — o manual
+     não admite um segundo azul no sistema. Sobrou a saída que este app já
+     tinha escolhido uma vez, em 2026-08-13, quando o mesmo problema
+     apareceu nos links: onde o azul não se lê, ele sai e a tinta entra.
 
-     `bg-azul` fica de fora de propósito: preenchimento continua sendo o
-     azul da marca, igual ao do ícone no cabeçalho. */
+     São doze chamadas de `text-azul` espalhadas pelo app — o preço do par,
+     o prazo urgente, a estrela do perfil. Repintar a classe num lugar só
+     resolve as doze sem tocar em arquivo nenhum, que é a mesma manobra de
+     `.border-tinta` logo acima.
+
+     **O que se perde:** no escuro, a estrela e o prazo urgente deixam de
+     ter cor própria e viram texto comum. É o preço de ter um azul só, e o
+     manual cobra esse preço de propósito.
+
+     **O que não se perde:** `bg-azul` fica de fora. Preenchimento continua
+     azul nos dois temas — o botão, a aba selecionada da vitrine, o ponto do
+     sino —, e é ali que a cor de ação continua dizendo o que dizia. A
+     etiqueta RARA sai do azul mas não some da tela: ela é `bg-meu`, o azul
+     de noite, e a tinta por cima dela dá 14,16:1. */
   [data-tema='escuro'] .text-azul {
-    color: var(--color-azul-texto);
+    color: var(--color-tinta);
   }
 
   /* A palavra troca de arquivo no escuro; o ícone não.

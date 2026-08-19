@@ -17,11 +17,16 @@ obscurece a tarefa, o estado ou a afordância.
 
 ## Tokens (fonte: `web/src/index.css`)
 
-A paleta oficial da marca, fechada em 2026-08-19, tem sete cores: azul `#0067FF`,
-bege `#F4EEE4`, escuro `#171717`, branco `#FFFDF5`, cinza `#202020`, vermelho
-`#B2292E` e amarelo `#FF9D1B`. Os tokens abaixo são elas — e, onde uma delas não
-alcança o contraste de texto, uma derivada dela por conta, nunca um vizinho
-escolhido no olho.
+A paleta oficial da marca, fechada em 2026-08-19 e registrada no manual v1.0, tem
+sete cores: azul `#0067FF`, bege `#F4EEE4`, escuro `#171717`, branco `#FFFDF5`,
+cinza `#202020`, vermelho `#B2292E` e amarelo `#FF9D1B`. Os tokens abaixo são elas —
+e, onde uma delas não alcança o contraste de texto, uma derivada dela por conta,
+nunca um vizinho escolhido no olho.
+
+**O azul é a exceção, e a regra é do manual:** ele não admite derivada nenhuma.
+"Não usar azul claro, variações de azul, degradês ou tons aproximados" — e o
+checklist de aplicação pergunta, antes de publicar, se sobrou outro azul na peça.
+Onde o azul não alcança o contraste de texto, ele deixa de ser texto.
 
 Superfícies: `papel #F4EEE4` (fundo da página) · `cartela #FFFDF5` (tudo que se levanta
 dela com borda e sombra) · `meu #F9FAFF` (o que é meu numa troca).
@@ -45,10 +50,12 @@ Cor com significado, e só três:
 No tema escuro o papel é o `#171717` e a cartela é o cinza `#202020`. Dois acentos
 mudam ali, e os dois por conta e não por gosto:
 
-- O **azul clareia só quando é letra** — `azul-texto #3385FF`, 4,61:1 sobre a
-  cartela. O preenchimento continua no azul da marca, porque o botão azul fica na
-  mesma tela que o ícone da marca, que é chapado nele e não muda de tema: clarear o
-  botão poria dois azuis quase iguais lado a lado.
+- O **azul não muda, e deixa de ser letra**. Sobre a cartela escura ele dá 3,40:1:
+  serve de peça e não de texto. Uma versão clareada (`#3385FF`) chegou a entrar e
+  saiu no mesmo dia, porque o manual não admite um segundo azul. No lugar dela vale
+  a regra dos links: no escuro `.text-azul` vira tinta, por uma sobrescrita só. O
+  preenchimento — botão, aba selecionada, ponto do sino — continua azul nos dois
+  temas.
 - O **vermelho clareia 35%** (`#CD7477`): puro ele dá 2,77:1 no papel escuro.
 
 O amarelo entra **puro**, 8,61:1 — no escuro a cor da marca é texto sem ajuste
@@ -57,6 +64,24 @@ nenhum.
 Não existe cor por lista. Ofereço e Procuro se distinguem por aba, rótulo e posição —
 nesta grade o azul já é `RARE` e o âmbar já é `ULTRA RARE` dentro da própria célula, e
 uma terceira cor de região disputaria a leitura.
+
+## A marca
+
+Duas peças: o **ícone** (`public/marca.svg`) e a **palavra** (`palavra.svg` e
+`palavra-escura.svg`). Saem de `idv_troca_tcg/logo_finalizada/SVG` e não se
+reconstroem à mão — o manual é explícito nisso.
+
+O ícone é sempre `#0067FF`, nos dois temas. Quem troca é a palavra: escura no claro,
+clara no escuro. É a regra central do manual, e a única do sistema de marca que o CSS
+precisa saber (`.palavra-svg` no bloco do tema escuro).
+
+**Área de proteção: 25% da altura do ícone**, livre de texto, borda e qualquer outro
+elemento. Onde isso pesa é no ícone de app — `scripts/gerar-icones.mjs` deriva a
+ocupação dessa regra, e ela derruba o desenho para 2/3 do lado do quadro. O ícone
+encolheu em 2026-08-19 por causa dela.
+
+**Mínimos**: 24px para o ícone isolado, 160px para a assinatura horizontal. O lockup
+do cabeçalho tem 28px de ícone e ~178px de largura — passa nos dois.
 
 Raios: `cartela 20px` · `controle 12px` · `imagem 8px` · `etiqueta 6px`.
 
@@ -163,22 +188,32 @@ vinham pintados igual:
 Nas duas o azul sai e a tinta entra: **14,12:1** no escuro, **17,60:1** no claro. O
 `--color-azul` continua inteiro onde sempre funcionou — fundo de peça, tinta branca por
 cima. O `--color-azul-claro` que servia à aba ativa **deixou de existir** em 2026-08-19,
-com a paleta oficial: a aba passou a usar o `azul-texto`, que no claro é o próprio azul
-de ação e no escuro é a versão clareada — sobrescrita dentro de `[data-tema='escuro']`,
-que é o que ela sempre teve de ser, porque `#3385FF` sobre a cartela clara dá 3,2:1 e
-reprovaria.
+com a paleta oficial: a aba passou a usar o azul de ação, e no escuro segue a mesma
+regra desta seção — vira tinta, com o tracinho azul embaixo fazendo a marcação que a
+cor fazia.
 
-## Achado em aberto: azul como texto que não é link
+## Achado fechado: azul como texto que não é link
 
-A passada acima cobriu os 19 links. Sobrou o azul usado como **ênfase de texto**, que
-tem o mesmo número e não foi tocado: o preço no rodapé do par de cartas
-(`Pecas.tsx`), o "· eu procuro" de `MontarProposta`, os valores grandes de `Carta`, o
-prazo urgente de `Matches` e o selo "Troca" do histórico (`border-azul bg-meu
-text-azul`, que sobre o `bg-meu` escuro cai para **2,42:1**, o pior do app).
+A passada acima cobriu os 19 links. Sobrou o azul usado como **ênfase de texto**: o
+preço no rodapé do par de cartas (`Pecas.tsx`), o "· eu procuro" de `MontarProposta`,
+os valores grandes de `Carta`, o prazo urgente de `Matches`, a estrela de
+`FichaPerfil` e o selo "Troca" do histórico. Nenhum é link, então a regra das duas
+formas não os alcançava, e por meses eles ficaram como estavam — o selo do histórico
+sobre `bg-meu` escuro chegava a **2,42:1**, o pior do app.
 
-Nenhum deles é link, então a regra das duas formas não os alcança — e trocá-los por
-tinta apagaria a distinção que eles existem para fazer. É decisão de desenho própria,
-não mecânica.
+Fechou em 2026-08-19, e quem fechou foi o **manual da marca**: com um azul só
+permitido no sistema, clarear deixou de ser opção, e sobrou a mesma saída dos links.
+No tema escuro `.text-azul` vira `--color-tinta`, numa sobrescrita só, e as doze
+chamadas se resolvem sem passada tela a tela.
+
+**O que isso custa, dito na cara:** no escuro a estrela e o prazo urgente perdem cor
+própria e viram texto comum. A distinção que a cor fazia ali passa a ser feita por
+posição e por peso. É o preço de ter um azul só, e o manual cobra esse preço de
+propósito — no claro nada muda, porque lá o azul se lê (4,70:1 sobre a cartela).
+
+A rota `/lab/azul` fica de pé como bancada, agora com a coluna do meio mostrando a
+saída proibida: é o jeito de ver quanto a proibição custa, lado a lado com o que
+entrou no lugar.
 
 ## O que ficou para depois
 

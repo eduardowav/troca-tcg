@@ -37,11 +37,18 @@ const PAPEL = '#F4EEE4'
 const QUADRO = 640
 const RAIO = 100
 /** Quanto do quadro a arte ocupa — a arte, não o desenho: a exportação da
- *  identidade já vem com 7,6% de margem em cada lado, e é o desenho dentro dela
- *  que precisa sobrar 24% de vão para o sistema arredondar sem decepar nada.
- *  0,90 da arte dá 0,76 de desenho, que é a proporção que o ícone tinha antes da
- *  marca nova — mudou a moldura do arquivo, não o enquadramento na tela. */
-const OCUPACAO = 0.9
+ *  identidade já vem com 7,6% de margem em cada lado.
+ *
+ *  O número sai da **área de proteção** do manual da marca (v1.0, 2026):
+ *  "respiro mínimo: 25% da altura do ícone", e essa área tem de ficar livre de
+ *  texto, borda e qualquer outro elemento. Num quadro quadrado isso quer dizer
+ *  desenho + 2 × (0,25 × desenho) ≤ quadro, ou seja, desenho ≤ 2/3 do lado.
+ *  Como a arte carrega os 7,6% próprios, 0,78 dela dá 0,66 de desenho e o
+ *  respiro fica em 26% — pouco acima do mínimo, que é o lado certo de errar.
+ *
+ *  Era 0,90 até 2026-08-19, o que dava 12% de respiro: metade do que o manual
+ *  pede. O ícone encolheu de propósito. */
+const OCUPACAO = 0.78
 
 const marca = (await readFile(join(PUBLICO, 'marca.svg'), 'utf8'))
   .replace(/<!--[\s\S]*?-->/g, '')

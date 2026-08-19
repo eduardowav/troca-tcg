@@ -28,11 +28,15 @@ import { cn } from '@/lib/cn'
  * app **era**.
  *
  * O segundo achado — azul como texto que não é link — fechou em 2026-08-19,
- * pela saída A: o tema escuro passou a ter um `--color-azul-texto` clareado, e
- * com ele o preço do par e a etiqueta RARA passam. A rota fica de pé como
- * bancada: a conta aqui é a mesma, e é onde se julga o próximo tom que alguém
- * queira mexer. O `import.meta.env.DEV` em `App.tsx` garante que ela nunca
- * chegue ao usuário.
+ * e **pela saída B de novo**. A saída A chegou a entrar, na forma de um
+ * `--color-azul-texto` clareado, e saiu no mesmo dia: o manual da marca (v1.0)
+ * proíbe variação de azul no sistema. O que valeu foi a mesma regra dos links —
+ * no escuro o azul deixa de ser letra e a tinta entra, por uma sobrescrita de
+ * `.text-azul` no `index.css`.
+ *
+ * A rota fica de pé como bancada. A coluna do meio mostra a saída proibida, que
+ * é o jeito de ver o que a proibição custa. O `import.meta.env.DEV` em
+ * `App.tsx` garante que ela nunca chegue ao usuário.
  */
 
 /* ------------------------------------------------------------------ contraste
@@ -99,7 +103,7 @@ const COLUNAS: Coluna[] = [
     saida: 'claro',
     nome: 'Saída A — clarear',
     resumo: '#3385FF no escuro — o azul da marca clareado 20%.',
-    custo: 'Foi esta que entrou, em 2026-08-19, como `--color-azul-texto`.',
+    custo: 'Proibida pelo manual da marca: um azul só no sistema.',
   },
   {
     saida: 'etiqueta',
@@ -226,17 +230,17 @@ export default function LabAzul() {
                    regra de `index.css` vale para qualquer elemento que o
                    carregue.
 
-                   Quem sobrescreve, desde 2026-08-19, é a coluna "como está
-                   hoje" — invertido de propósito: a saída A **entrou**, e o
-                   tema escuro já entrega `--color-azul-texto` clareado. Para
-                   mostrar o achado é preciso desfazer a correção neste pedaço
-                   da árvore, não aplicá-la. */
+                   A saída A entra como sobrescrita da variável neste pedaço
+                   da árvore. Ela não está no app — o manual da marca a proíbe
+                   —, e é justamente por isso que a bancada segue de pé: é aqui
+                   que dá para ver quanto a proibição custa, lado a lado com o
+                   que entrou no lugar. */
                 <div
                   key={coluna.saida}
                   data-tema={tema === 'escuro' ? 'escuro' : undefined}
                   style={
-                    coluna.saida === 'atual' && tema === 'escuro'
-                      ? { ['--color-azul-texto' as string]: COR.azul }
+                    coluna.saida === 'claro' && tema === 'escuro'
+                      ? { ['--color-azul' as string]: COR.azul }
                       : undefined
                   }
                   className="rounded-[var(--radius-cartela)] border-2 border-tinta bg-papel p-3"
