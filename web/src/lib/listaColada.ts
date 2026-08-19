@@ -20,6 +20,7 @@ interface LinhaCrua {
   posicao: number
   termo: string
   quantidade: number
+  identificada: boolean
   candidatos: Carta[]
 }
 
@@ -31,7 +32,12 @@ export interface LinhaResolvida {
   quantidade: number
   /** Em ordem: o que veio pelo código do set primeiro, depois por nome. */
   candidatos: Carta[]
-  /** Qual candidato está valendo. `null` quando nada casou. */
+  /**
+   * A linha disse **qual** carta — sigla + número (`OBF 125`) ou a notação
+   * impressa na própria carta (`125/197`). Nome solto nunca identifica.
+   */
+  identificada: boolean
+  /** Qual candidato está valendo. `null` enquanto ninguém escolheu. */
   escolhida: Carta | null
 }
 
@@ -69,9 +75,18 @@ export async function resolverLista(
     // valor fora da faixa da coluna faria o cadastro inteiro falhar no fim.
     quantidade: Math.min(Math.max(linha.quantidade || 1, 1), 99),
     candidatos: linha.candidatos ?? [],
-    // A primeira vem marcada. É o que faz colar cinquenta cartas ser conferir
-    // cinquenta linhas em vez de escolher cinquenta vezes — e trocar continua a
-    // um toque, para as poucas em que a busca errou.
-    escolhida: linha.candidatos?.[0] ?? null,
+    identificada: linha.identificada ?? false,
+    // **Só vem marcada a linha que disse qual carta é.** Antes vinha sempre a
+    // primeira, e era o que fazia `Charizard` virar uma Charizard qualquer
+    // entre 87 — escolhida por ninguém, e conferida por quem estava colando
+    // cinquenta linhas de uma vez, ou seja, por ninguém de novo.
+    //
+    // A carta registrada é a que um desconhecido atravessa a cidade para
+    // buscar. Marcar sozinho o que a linha não disse troca o trabalho de
+    // escolher pelo risco de uma viagem perdida, e esse câmbio é ruim.
+    //
+    // Quem escreveu `OBF 125` ou `125/197` continua com tudo pronto num toque;
+    // quem escreveu só o nome vê os candidatos e escolhe.
+    escolhida: linha.identificada ? (linha.candidatos?.[0] ?? null) : null,
   }))
 }

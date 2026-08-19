@@ -44,6 +44,7 @@ foreign key entre eles (ex.: `listings` referencia `finishes`, `cards` e `profil
 | 30 | `schema/30_assinaturas.sql` | lastro local da assinatura do PRO e dedupe de webhook |
 | 31 | `schema/31_grants_das_tabelas_antigas.sql` | os GRANTs que o 11 não alcançou + tabela nova nasce fechada |
 | 32 | `schema/32_rls_do_match_sem_recursao.sql` | as policies do match, que recursavam infinito desde julho |
+| 33 | `schema/33_resolver_lista_exige_identificacao.sql` | a lista colada lê `xxx/xxx` e diz se identificou a carta ou só chutou |
 
 > **Dependência do Supabase Auth:** `profiles.id` referencia `auth.users(id)`.
 > Aplique este schema em um projeto Supabase (onde o schema `auth` já existe).

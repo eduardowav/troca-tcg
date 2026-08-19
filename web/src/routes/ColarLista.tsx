@@ -91,7 +91,16 @@ export default function ColarLista() {
 
   const total = emLinhas(texto).length
   const reconhecidas = (linhas ?? []).filter((l) => l.escolhida).length
-  const perdidas = (linhas ?? []).length - reconhecidas
+  // Duas ausências diferentes, e confundi-las é o que tornava o aviso mentiroso:
+  // `Charizard` **bate** com cartas do catálogo — bate com 87 —, só não diz com
+  // qual. Dizer "não bateu com nenhuma" para quem está vendo os candidatos logo
+  // abaixo é contradizer a própria tela.
+  const porEscolher = (linhas ?? []).filter(
+    (l) => !l.escolhida && l.candidatos.length > 0,
+  ).length
+  const semCandidatos = (linhas ?? []).filter(
+    (l) => !l.escolhida && l.candidatos.length === 0,
+  ).length
 
   function trocar(posicao: number, indice: number) {
     setLinhas((atual) =>
@@ -147,7 +156,9 @@ export default function ColarLista() {
               onChange={(e) => setTexto(e.target.value)}
               rows={10}
               spellCheck={false}
-              placeholder={'4x Charizard ex OBF 125\n2 Pikachu\nPesquisa de Professores'}
+              placeholder={
+                '4x Charizard ex OBF 125\n2 Umbreon VMAX 215/203\nPesquisa de Professores SVI 189'
+              }
               className="mt-1.5 w-full rounded-[var(--radius-controle)] border-2 border-tinta bg-cartela p-3 font-corpo text-[15px] leading-relaxed text-tinta placeholder:text-apagado/60"
             />
           </label>
@@ -178,14 +189,25 @@ export default function ColarLista() {
             e você pode voltar e corrigir a linha.
           </p>
 
-          {perdidas > 0 && (
+          {porEscolher > 0 && (
             <p className="mt-3 rounded-[var(--radius-controle)] border-2 border-ambar bg-ambar-fraco px-4 py-3 font-corpo text-[14px] leading-relaxed text-ambar">
-              {perdidas === 1
+              {porEscolher === 1
+                ? '1 linha achou mais de uma carta possível e espera você escolher.'
+                : `${porEscolher} linhas acharam mais de uma carta possível e esperam você escolher.`}{' '}
+              O nome sozinho não diz qual é — existem dezenas de Charizards. Toque
+              na carta certa, ou escreva o set e o número (
+              <span className="font-dado">OBF 125</span> ou{' '}
+              <span className="font-dado">125/197</span>) para o app já marcar.
+            </p>
+          )}
+
+          {semCandidatos > 0 && (
+            <p className="mt-3 rounded-[var(--radius-controle)] border-2 border-ambar bg-ambar-fraco px-4 py-3 font-corpo text-[14px] leading-relaxed text-ambar">
+              {semCandidatos === 1
                 ? '1 linha não bateu com nenhuma carta do catálogo.'
-                : `${perdidas} linhas não bateram com nenhuma carta do catálogo.`}{' '}
-              Elas não entram. Escrever o nome como está na carta, ou o código do
-              set (por exemplo <span className="font-dado">OBF 125</span>),
-              costuma resolver.
+                : `${semCandidatos} linhas não bateram com nenhuma carta do catálogo.`}{' '}
+              Elas não entram. Escrever o nome como está na carta costuma
+              resolver.
             </p>
           )}
 
@@ -236,14 +258,23 @@ export default function ColarLista() {
 /**
  * O exemplo é a explicação.
  *
- * Descrever em prosa os formatos aceitos ("quantidade opcional, sigla opcional,
- * número opcional") custa três linhas que ninguém lê. Três linhas de lista de
- * verdade dizem o mesmo e já mostram o que colar.
+ * Descrever em prosa os formatos aceitos custa três linhas que ninguém lê. Três
+ * linhas de lista de verdade dizem o mesmo e já mostram o que colar.
+ *
+ * **As três agora identificam a carta, e é essa a mudança.** O exemplo antigo
+ * trazia `2 Pikachu` e `Pesquisa de Professores` — nome solto —, e ensinava
+ * justamente o formato que produz a carta errada: existem 87 Charizards e
+ * dezenas de Pikachus no catálogo, e nome sozinho não escolhe entre eles.
+ *
+ * As duas formas que identificam estão aqui, uma em cada linha: sigla do set
+ * mais número (`OBF 125`), e a notação impressa na própria carta (`215/203`).
+ * A terceira mostra que carta de treinador segue a mesma regra.
  */
 function Exemplo() {
   return (
     <pre className="mt-4 overflow-x-auto rounded-[var(--radius-controle)] border-2 border-dashed border-tinta/30 bg-papel p-3 font-dado text-[12px] leading-relaxed text-apagado">
-      4x Charizard ex OBF 125{'\n'}2 Pikachu{'\n'}Pesquisa de Professores
+      4x Charizard ex OBF 125{'\n'}2 Umbreon VMAX 215/203{'\n'}Pesquisa de
+      Professores SVI 189
     </pre>
   )
 }
@@ -327,8 +358,15 @@ function Linha({
         )}
 
         <div className="min-w-0 flex-1">
+          {/* "Não encontrada" só vale quando de fato não há candidato. Uma linha
+              com candidatos e sem escolha não é ausência, é pergunta — e chamá-la
+              de não encontrada contradiz as opções logo abaixo. */}
           <p className="truncate font-corpo text-[15px] font-medium text-tinta">
-            {carta ? (carta.nome_pt ?? carta.nome_en) : 'Não encontrada'}
+            {carta
+              ? (carta.nome_pt ?? carta.nome_en)
+              : linha.candidatos.length > 0
+                ? 'Qual destas?'
+                : 'Não encontrada'}
           </p>
           <p className="truncate font-dado text-[11px] uppercase text-apagado">
             {carta
@@ -365,14 +403,18 @@ function Linha({
         )}
       </div>
 
-      {linha.candidatos.length > 1 && (
+      {/* Abre também com um candidato só quando nada está escolhido: ali a lista
+          não é para corrigir, é para decidir — e sem ela a pessoa ficaria com uma
+          linha marcada como pendente e nenhum jeito visível de resolvê-la. */}
+      {(linha.candidatos.length > 1 ||
+        (!carta && linha.candidatos.length > 0)) && (
         <>
           <AcaoSecundaria
             onClick={() => setAbertas((v) => !v)}
             expandido={abertas}
             className="mt-2"
           >
-            {abertas ? 'Fechar' : 'Não é essa carta?'}
+            {abertas ? 'Fechar' : carta ? 'Não é essa carta?' : 'Escolher a carta'}
           </AcaoSecundaria>
 
           {abertas && (
