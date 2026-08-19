@@ -39,6 +39,7 @@ const LabTroca = lazy(() => import('@/routes/LabTroca'))
 const MatchDetalhe = lazy(() => import('@/routes/Match'))
 const Matches = lazy(() => import('@/routes/Matches'))
 const MinhasCartas = lazy(() => import('@/routes/MinhasCartas'))
+const NaoEncontrada = lazy(() => import('@/routes/NaoEncontrada'))
 const Notificacoes = lazy(() => import('@/routes/Notificacoes'))
 const NovaSenha = lazy(() => import('@/routes/NovaSenha'))
 const Recuperar = lazy(() => import('@/routes/Recuperar'))
@@ -153,7 +154,10 @@ function Rotas() {
         </Route>
       </Route>
 
-      <Route path="*" element={<Navigate to="/" replace />} />
+      {/* Endereço que não existe ganha resposta, e não um redirecionamento
+          calado para a Home — que sumia com a pergunta em vez de respondê-la.
+          Ver `routes/NaoEncontrada.tsx`. */}
+      <Route path="*" element={<NaoEncontrada />} />
     </Routes>
   )
 }
