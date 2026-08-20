@@ -19,6 +19,12 @@
 -- key — o buraco que o 11_grants.sql fechou, reaberto em silêncio no pior dia
 -- possível. Os blocos 4 e 5 abaixo existem por causa disso.
 
+-- A lista chega em `:tabelas` e é guardada num parâmetro da sessão, porque o
+-- psql **não** substitui variável dentro de bloco `$$ ... $$` — ali o `:'x'`
+-- chega literal ao servidor e vira erro de sintaxe. Passando por
+-- `set_config`/`current_setting`, quem lê é o Postgres, não o psql.
+select set_config('conferencia.tabelas', :'tabelas', false);
+
 -- --------------------------------------------
 -- 1. Toda tabela do esquema voltou
 -- --------------------------------------------
@@ -27,7 +33,7 @@ declare
   tabela text;
   faltando text[] := '{}';
 begin
-  foreach tabela in array string_to_array(:'tabelas', ',') loop
+  foreach tabela in array string_to_array(current_setting('conferencia.tabelas'), ',') loop
     if to_regclass('public.' || quote_ident(tabela)) is null then
       faltando := faltando || tabela;
     end if;
@@ -38,7 +44,7 @@ begin
   end if;
 
   raise notice 'ok — % tabelas do esquema restauradas',
-    array_length(string_to_array(:'tabelas', ','), 1);
+    array_length(string_to_array(current_setting('conferencia.tabelas'), ','), 1);
 end
 $$;
 
