@@ -28,10 +28,20 @@ jobs:
       # quando o pip-audit não consegue avaliar um pacote: "não sei" sobre
       # dependência não é a mesma coisa que "está limpo", e tratar os dois igual
       # é como um scanner passa a dar falsa paz.
+      # `--ignore-vuln PYSEC-2026-1325` (ecdsa 0.19.2, Minerva) é a única exceção,
+      # e ela é avaliada, não conveniente: o ataque vaza o nonce interno a partir
+      # do **tempo de assinatura** — atinge assinar, gerar chave e ECDH, e o
+      # próprio aviso diz que **verificar assinatura não é afetado**. Este
+      # backend só verifica: `core/auth.py` chama `jwt.decode` com as chaves
+      # públicas do JWKS do Supabase, e não existe uma linha de `jwt.encode` em
+      # `app/`. O projeto ecdsa considera canal lateral fora de escopo e não
+      # planeja corrigir, então a alternativa real seria trocar o `python-jose`.
+      #
+      # Reavaliar se algum dia a API passar a **emitir** token.
       - name: CVEs nas dependências do backend
         run: |
           uv export --frozen --no-dev --no-emit-project --no-hashes -o /tmp/req.txt
-          uvx pip-audit --strict -r /tmp/req.txt
+          uvx pip-audit --strict --ignore-vuln PYSEC-2026-1325 -r /tmp/req.txt
 
   frontend:
     runs-on: ubuntu-latest
