@@ -16,7 +16,17 @@ name: Backup diário
 #
 # Restaurar:
 #   gpg --batch --decrypt --passphrase '<a senha>' -o backup.dump backup.dump.gpg
-#   pg_restore --no-owner --no-acl -d "$DATABASE_URL_DIRECT" backup.dump
+#   psql -d "<o banco novo>" -f db/restauracao/preparo.sql
+#   pg_restore --no-owner -d "<o banco novo>" backup.dump
+#
+# **Sem `--no-acl`**, e isso mudou em 2026-08-20, quando o job `restaurar` abaixo
+# passou a exercitar este caminho. `--no-acl` descarta os GRANTs: o restore volta
+# com todas as linhas, o app sobe, e `profiles.contato_visivel` fica legível pela
+# anon key — o buraco que o `db/schema/11_grants.sql` fechou, reaberto em
+# silêncio justamente no dia em que se restaura um backup. O preço de manter os
+# GRANTs é que os papéis (`anon`, `authenticated`, ...) precisam existir antes;
+# num projeto Supabase novo eles já existem, e o `preparo.sql` é o que cria num
+# Postgres de fábrica.
 on:
   schedule:
     - cron: '0 8 * * *'      # 05:00 BRT
@@ -25,6 +35,13 @@ on:
 jobs:
   dump:
     runs-on: ubuntu-latest
+    # Lidos pelo job `restaurar`. `gerado` existe porque o passo abaixo sai com
+    # zero quando o secret do banco não está configurado — sem ele, a conferência
+    # tentaria restaurar um artifact que não foi criado e falharia dizendo a
+    # coisa errada.
+    outputs:
+      gerado: ${{ steps.dump.outputs.gerado }}
+      cards: ${{ steps.dump.outputs.cards }}
     steps:
       # O runner vem com client 16 e o servidor é 17.6. O pg_dump se recusa a
       # ler servidor mais novo que ele ("server version mismatch") e aborta
@@ -56,12 +73,14 @@ jobs:
       # o certo é não gerar dump nenhum. Gerar e não conseguir cifrar deixaria
       # um arquivo em claro no runner à espera do próximo passo que o suba.
       - name: pg_dump
+        id: dump
         env:
           DATABASE_URL_DIRECT: ${{ secrets.DATABASE_URL_DIRECT }}
           BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
         run: |
           if [ -z "$DATABASE_URL_DIRECT" ]; then
             echo "Secret DATABASE_URL_DIRECT ainda não configurado — backup em espera."
+            echo "gerado=nao" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           if [ -z "$BACKUP_PASSPHRASE" ]; then
@@ -69,13 +88,41 @@ jobs:
             echo "em claro viraria artifact baixável por qualquer um. Abortando."
             exit 1
           fi
-          pg_dump "$DATABASE_URL_DIRECT" --no-owner --no-acl -Fc -f backup.dump
+          # `--no-owner` fica, `--no-acl` **saiu em 2026-08-20**, e é a correção
+          # que o item 14 encontrou no dia em que o backup foi restaurado pela
+          # primeira vez.
+          #
+          # `--no-acl` manda o pg_dump não escrever nenhum GRANT/REVOKE. O dump
+          # que saía daqui trazia os dados e o esquema e **não trazia a camada de
+          # permissão** — o `db/schema/11_grants.sql` inteiro, que revoga a
+          # tabela `profiles` de `anon`/`authenticated` e reconcede coluna a
+          # coluna. Restaurado num projeto Supabase novo, ele nasceria com o
+          # default do Supabase (ALL para anon e authenticated em tudo que o
+          # postgres cria em `public`): `contato_visivel` legível com a anon key,
+          # e escrita direta em `profiles` e `listings` pelo PostgREST. O app
+          # subiria funcionando, e a proteção não estaria lá.
+          #
+          # Quem paga o preço do `--no-acl` é o restore, que passa a exigir os
+          # papéis existindo antes — num Supabase novo eles já existem, e no
+          # banco descartável do job abaixo quem os cria é o `preparo.sql`.
+          pg_dump "$DATABASE_URL_DIRECT" --no-owner -Fc -f backup.dump
           # A senha entra por stdin, não por argumento: argv de processo é
           # legível por qualquer processo do runner, e o secret ficaria lá.
           printf '%s' "$BACKUP_PASSPHRASE" | gpg --batch --yes \
             --symmetric --cipher-algo AES256 \
             --passphrase-fd 0 \
             -o backup.dump.gpg backup.dump
+          # A contagem do catálogo viaja para o job de conferência: lá ela é
+          # comparada com o que voltou do restore, e é a diferença entre "a
+          # tabela tem linhas" e "a tabela tem as linhas certas".
+          #
+          # `cards` e não uma tabela de gente: o número de cartas do catálogo já
+          # é público (está no README), e o de contas não precisa aparecer em log
+          # de repositório aberto. Ela também só muda quando o job de catálogo
+          # roda à mão — vermelho aqui é para desconfiar disso antes do backup.
+          echo "cards=$(psql "$DATABASE_URL_DIRECT" -Atc 'select count(*) from public.cards')" \
+            >> "$GITHUB_OUTPUT"
+          echo "gerado=sim" >> "$GITHUB_OUTPUT"
           # O original sai do disco antes do passo de upload existir.
           shred -u backup.dump 2>/dev/null || rm -f backup.dump
           ls -lh backup.dump.gpg
@@ -87,3 +134,152 @@ jobs:
           name: backup-${{ github.run_id }}
           path: backup.dump.gpg
           retention-days: 30
+
+  # ------------------------------------------------------------------
+  # A prova de que o backup restaura (item 14 da ordem de execução).
+  # ------------------------------------------------------------------
+  # Até 2026-08-20 esta era a única linha do backup nunca exercitada: o dump saía
+  # todo dia, cifrado, e ninguém nunca tinha aberto um. Backup que nunca foi
+  # restaurado não é backup — é um arquivo com nome de backup, e o dia de
+  # descobrir a diferença é o pior dia possível.
+  #
+  # Roda no mesmo workflow, logo depois do dump, e restaura **o artifact que
+  # acabou de ser gerado** — não um dump novo. É o que prova o caminho inteiro: o
+  # `gpg` abre com a senha que está no secret, o `pg_restore` aceita os bytes que
+  # foram parar no artifact, e o banco que sai do outro lado é o do app.
+  #
+  # O banco descartável é um serviço `postgres:17` do runner: nasce vazio, vive
+  # dois minutos e morre com o job. Nada aqui toca a produção — a única conexão
+  # com o Supabase é a do job de cima.
+  restaurar:
+    needs: dump
+    if: ${{ needs.dump.outputs.gerado == 'sim' }}
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          # Banco de dois minutos, alcançável só de dentro do runner. A senha
+          # existe porque o Postgres exige uma, não porque protege algo.
+          POSTGRES_PASSWORD: descartavel
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+
+    env:
+      ALVO: postgresql://postgres:descartavel@localhost:5432/postgres
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Mesma instalação do job de cima, e pelo mesmo motivo: o runner traz o
+      # client 16, o dump é de um servidor 17.6, e o cliente velho recusa arquivo
+      # mais novo. O `GITHUB_PATH` é o que faz os passos seguintes pegarem o
+      # binário do PGDG em vez do 16 do sistema.
+      - name: Cliente PostgreSQL 17
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+            -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \
+            | sudo tee /etc/apt/sources.list.d/pgdg.list > /dev/null
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends postgresql-client-17
+          echo "/usr/lib/postgresql/17/bin" >> "$GITHUB_PATH"
+
+      - name: Baixar o artifact recém-criado
+        uses: actions/download-artifact@v4
+        with:
+          name: backup-${{ github.run_id }}
+
+      # Decifrar é a primeira prova, e a que nada mais substitui: se a senha do
+      # secret não abrir o arquivo, não existe backup nenhum desde o dia em que
+      # ela mudou — e o job de dump não teria como acusar isso, porque cifrar com
+      # a senha errada funciona perfeitamente.
+      - name: Decifrar
+        env:
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          printf '%s' "$BACKUP_PASSPHRASE" | gpg --batch --yes \
+            --decrypt --passphrase-fd 0 \
+            -o backup.dump backup.dump.gpg
+          # `pg_restore -l` lê o índice do arquivo: com entradas ali, o que saiu
+          # do gpg é mesmo um dump em formato custom, e não um punhado de bytes
+          # que o gpg devolveu sem reclamar.
+          entradas=$(pg_restore -l backup.dump | grep -cv '^;' || true)
+          echo "índice do dump: $entradas entradas"
+          [ "$entradas" -gt 100 ] || { echo "dump com índice pequeno demais"; exit 1; }
+
+      - name: Papéis que o dump espera encontrar
+        run: psql -v ON_ERROR_STOP=1 -d "$ALVO" -f db/restauracao/preparo.sql
+
+      # Sem `--exit-on-error` de propósito: um Postgres de fábrica não tem as
+      # extensões que só existem no Supabase (pg_cron, pg_graphql, pgsodium,
+      # supabase_vault), e cada uma gera erro. Parar na primeira esconderia tudo
+      # o que vem depois. O passo seguinte é que separa o erro esperado do que
+      # não é — e erro novo, qualquer que seja, reprova.
+      - name: pg_restore no banco descartável
+        run: |
+          pg_restore --no-owner -d "$ALVO" backup.dump 2> restore.log || true
+          echo "linhas de log: $(wc -l < restore.log)"
+
+      - name: Nenhum erro inesperado
+        run: |
+          grep -E '^pg_restore: (error|warning)' restore.log > erros.txt || true
+          # O que um Postgres sem Supabase não tem como aceitar. Tudo o que não
+          # casar com esta lista é erro de verdade e derruba o job.
+          grep -vEf .github/restauracao-erros-previstos.txt erros.txt \
+            > inesperados.txt || true
+          if [ -s inesperados.txt ]; then
+            echo "::error::o restore produziu erro que não é falta de extensão do Supabase"
+            cat inesperados.txt
+            exit 1
+          fi
+          echo "erros do restore: $(wc -l < erros.txt), todos previstos"
+
+      # A conferência de verdade: esquema, dados, RLS, grants e funções. O
+      # detalhe de cada bloco está em `db/restauracao/conferir.sql`.
+      #
+      # A lista de tabelas é montada aqui a partir do próprio `db/schema` — uma
+      # lista escrita à mão dentro do SQL envelheceria no primeiro `create table`
+      # novo, e envelheceria calada.
+      - name: Conferir o que voltou
+        run: |
+          tabelas=$(grep -rhiE '^[[:space:]]*create table' db/schema/*.sql \
+            | sed -E 's/^[[:space:]]*[cC][rR][eE][aA][tT][eE][[:space:]]+[tT][aA][bB][lL][eE][[:space:]]+([iI][fF][[:space:]]+[nN][oO][tT][[:space:]]+[eE][xX][iI][sS][tT][sS][[:space:]]+)?//' \
+            | sed -E 's/[[:space:](].*//' | sort -u | paste -sd,)
+          echo "tabelas conferidas: $tabelas"
+          psql -v ON_ERROR_STOP=1 -v tabelas="$tabelas" -d "$ALVO" \
+            -f db/restauracao/conferir.sql
+
+      # Contagem, e não só "tem linha": o catálogo é a maior massa do banco, e um
+      # dump truncado no meio ainda deixa `cards` com linhas.
+      - name: O catálogo voltou inteiro
+        env:
+          ESPERADO: ${{ needs.dump.outputs.cards }}
+        run: |
+          voltou=$(psql -Atc 'select count(*) from public.cards' -d "$ALVO")
+          echo "cards: $voltou de $ESPERADO"
+          [ "$voltou" = "$ESPERADO" ] || {
+            echo "::error::o restore trouxe $voltou cartas de $ESPERADO"
+            exit 1
+          }
+
+      - name: Resumo
+        run: |
+          {
+            echo "### Backup restaurado e conferido"
+            echo
+            echo "O artifact \`backup-${{ github.run_id }}\` foi decifrado com o"
+            echo "secret, restaurado num Postgres 17 vazio e conferido:"
+            echo
+            echo "- esquema completo, catálogo com ${{ needs.dump.outputs.cards }} cartas"
+            echo "- RLS e policies de volta nas 9 tabelas de usuário"
+            echo "- \`contato_visivel\` fora do alcance da anon key"
+            echo "- escrita direta pelo PostgREST continua fechada"
+          } >> "$GITHUB_STEP_SUMMARY"

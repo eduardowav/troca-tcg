@@ -133,6 +133,16 @@ services:
       - key: MERCADO_PAGO_BACK_URL
         value: https://trocatcg-web.onrender.com/planos
 
+      # Painel de erro (item 15 da seção 17). Pelo painel (`sync: false`) porque
+      # DSN é endereço de escrita: quem o tem manda evento para a conta do
+      # projeto, e um repositório público não é lugar para isso. Vazio, o
+      # `core/monitoramento.py` não inicializa nada e a API sobe igual.
+      #
+      # O `RENDER_GIT_COMMIT` que acompanha o evento é publicado pela própria
+      # plataforma — não precisa ser declarado aqui.
+      - key: SENTRY_DSN
+        sync: false
+
       - key: ENVIRONMENT
         value: production
 
@@ -192,9 +202,18 @@ services:
       # executa — a alternativa seria hospedar avatar, que o projeto não faz.
       #
       # `connect-src` lista o Supabase (REST, Auth e o `wss` do Realtime, que o
-      # sino usa) e a API. `frame-ancestors 'none'` é o `X-Frame-Options` acima
-      # em versão moderna; os dois ficam, porque navegador velho só entende o
-      # primeiro.
+      # sino usa), a API e o Sentry. `frame-ancestors 'none'` é o
+      # `X-Frame-Options` acima em versão moderna; os dois ficam, porque
+      # navegador velho só entende o primeiro.
+      #
+      # O Sentry entra por curinga de subdomínio porque o host do DSN carrega o
+      # id da organização (`o4508…​.ingest.us.sentry.io`) — o curinga cobre a
+      # criação do projeto sem exigir um deploy só para ajustar o cabeçalho. Os
+      # dois hosts são as duas formas que a Sentry emitiu ao longo do tempo; se
+      # a organização for criada na região europeia, o sufixo vira `.de.` e esta
+      # linha precisa mudar junto, **senão o evento é bloqueado calado** — o
+      # navegador recusa a requisição e o painel fica vazio parecendo silêncio
+      # bom.
       - path: /*
         name: Content-Security-Policy
         value: >-
@@ -203,14 +222,16 @@ services:
           object-src 'none';
           frame-ancestors 'none';
           form-action 'self';
-          script-src 'self' 'sha256-3nClB4VuFwq5sMItVPG9CVcqaAuFDxowwQcD6S4QQIU=';
+          script-src 'self' 'sha256-Mg5tnyEJlEV3POYjJrk82Cx8n71agVsy/WCYbBG5p8Y=';
           style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
           font-src 'self' https://fonts.gstatic.com;
           img-src 'self' data: blob: https:;
           connect-src 'self'
           https://qbdtcpotehvbkozppmyu.supabase.co
           wss://qbdtcpotehvbkozppmyu.supabase.co
-          https://trocatcg-api.onrender.com;
+          https://trocatcg-api.onrender.com
+          https://*.ingest.sentry.io
+          https://*.ingest.us.sentry.io;
           manifest-src 'self';
           worker-src 'self';
           upgrade-insecure-requests
@@ -240,3 +261,16 @@ services:
       # de push. A privada não tem par aqui e nunca terá.
       - key: VITE_VAPID_PUBLIC_KEY
         value: BHQHBKdi7RzxVN3qd76b6AI-JyGxXA_7Uo4tIeLfVhl6GErvWfIe1hnTAL64FRA7iRkyQgl_cOYvr-ujJqt-MSw
+
+      # O DSN do Sentry do PWA — **outro** DSN, não o mesmo da API: são dois
+      # projetos no painel, senão o erro do navegador e o do servidor caem na
+      # mesma lista e param de dizer de onde vieram.
+      #
+      # Vai para o bundle, como todo `VITE_`, e isso é aceitável: DSN é endereço
+      # de escrita, não credencial de leitura — quem o tem pode mandar evento,
+      # não ler nenhum. É por isso que o do backend está em `sync: false` (num
+      # repositório público não convém publicá-lo à toa) e este também: assim o
+      # valor só existe no painel do Render, e um fork do repositório não sai
+      # gastando a cota de 5 mil eventos do projeto.
+      - key: VITE_SENTRY_DSN
+        sync: false

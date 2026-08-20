@@ -7,6 +7,8 @@ interface ImportMetaEnv {
   readonly VITE_API_URL: string
   /** Chave pública VAPID. Ausente, o app não oferece o aviso no celular. */
   readonly VITE_VAPID_PUBLIC_KEY?: string
+  /** DSN do Sentry. Ausente, o SDK nem é baixado — ver `lib/erros.ts`. */
+  readonly VITE_SENTRY_DSN?: string
 }
 
 interface ImportMeta {

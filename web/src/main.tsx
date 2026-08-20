@@ -6,6 +6,7 @@ import { Toaster } from 'sonner'
 
 import App from '@/App'
 import { LimiteDeErro } from '@/components/Falha'
+import { iniciarMonitoramento } from '@/lib/erros'
 import { queryClient } from '@/lib/queryClient'
 import '@/stores/auth' // assina o estado de sessão do Supabase o quanto antes
 // O convite de instalação do Chrome chega logo depois da abertura da página, e
@@ -17,6 +18,11 @@ import '@/lib/instalacao'
 // carregasse, quem nunca abre Configurações ficaria sem as duas coisas.
 import '@/stores/tema'
 import './index.css'
+
+// Antes de montar a árvore: erro na primeira renderização é justamente o que
+// ninguém vê, porque a pessoa fecha o app e não volta. Sem `VITE_SENTRY_DSN`
+// esta chamada não carrega nada — nem o pedaço do bundle.
+iniciarMonitoramento()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

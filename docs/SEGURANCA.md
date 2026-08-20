@@ -462,11 +462,24 @@ e aparece em produção.
 | Segredos | nenhum vazado | igual, verificado por valor | Sim | PASS |
 | CI/CD | sem varredura | SAST + SCA nos dois lados | Sim | **PASS** |
 | Dependências | 2 CVEs não avaliados | avaliados, não alcançáveis | Sim | PASS |
-| Backups | cifrado, restauração nunca exercitada | igual | Não | PENDENTE (item 14) |
-| Logs/alertas | sem Sentry | igual | Não | PENDENTE (item 15) |
+| Backups | cifrado, restauração nunca exercitada | restaurado e conferido todo dia; `--no-acl` fora do dump | Sim | **PASS** |
+| Logs/alertas | sem Sentry | Sentry nos dois lados, sem PII e sem variáveis locais | Sim | **PASS** |
 | Admin | não existe | não existe | — | N/A |
 
-Os dois PENDENTE já estão na fila da seção 17 e não são achados novos.
+Os dois PENDENTE fecharam em 2026-08-20, e nenhum dos dois fechou sozinho — cada
+um trouxe um achado que só apareceu porque a coisa foi exercitada em vez de lida:
+
+- **O dump não levava os grants.** `pg_dump --no-acl` não escreve GRANT nenhum:
+  o backup trazia dados e esquema, e deixava para trás a revogação de `profiles`
+  para `anon`/`authenticated` do `db/schema/11_grants.sql`. Restaurado num
+  projeto Supabase novo, o banco nasceria com o default do Supabase — contato
+  legível com a chave pública e escrita direta pelo PostgREST. A flag saiu.
+- **O Sentry mandaria o `Authorization` inteiro.** Não pelos cabeçalhos, que a
+  denylist limpa, mas pelas variáveis locais de cada quadro do stack: o `scope`
+  do ASGI carrega os cabeçalhos como lista de pares de bytes, onde nenhuma
+  denylist por nome de chave alcança. Corrigido com `include_local_variables=False`.
+
+Detalhe nas seções 15 e 20 da doc técnica.
 
 ---
 

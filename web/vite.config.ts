@@ -122,4 +122,17 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
+  // Duas bandeiras que o SDK do Sentry lê em tempo de compilação para deixar
+  // código de fora. `__SENTRY_DEBUG__` apaga as mensagens de diagnóstico do
+  // próprio SDK — texto que só serve a quem depura o Sentry, e que viaja no
+  // bundle de todo mundo. `__SENTRY_TRACING__` apaga o rastreamento de
+  // desempenho, que este app não liga (`tracesSampleRate: 0` em lib/erros.ts).
+  //
+  // Sem elas o SDK entra inteiro. Com elas, mais o cuidado de guardar só a
+  // função `captureException` em vez do módulo, o pedaço caiu de 153,7 KB
+  // comprimidos para 28,5 KB.
+  define: {
+    __SENTRY_DEBUG__: false,
+    __SENTRY_TRACING__: false,
+  },
 })

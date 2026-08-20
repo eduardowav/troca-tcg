@@ -3,6 +3,7 @@ import { Component, type ReactNode, useEffect, useState } from 'react'
 import { AcaoSecundaria, BotaoBrutal, Selo } from '@/components/brutal/Pecas'
 import { ApiError } from '@/lib/api'
 import { cn } from '@/lib/cn'
+import { capturarErro } from '@/lib/erros'
 
 /**
  * A tela de quando algo dá errado — no mundo do app, não no do navegador.
@@ -292,10 +293,13 @@ export class LimiteDeErro extends Component<
   }
 
   componentDidCatch(erro: unknown, info: unknown) {
-    // Sem serviço de erro contratado ainda (seção 20 da doc prevê o Sentry). O
-    // console é o que existe, e é melhor que engolir: no celular do Eduardo dá
-    // para abrir o inspetor remoto e ler isto.
+    // O console fica, e não é redundância: na máquina de quem desenvolve não há
+    // DSN, e ali ele é o painel inteiro.
     console.error('[TrocaTCG] erro de renderização', erro, info)
+    // E o painel de verdade, quando existe. Este é o erro que mais precisava
+    // dele: quebra de renderização acontece no celular de outra pessoa, que vê
+    // a carta rasgada, recarrega e segue — sem deixar rastro nenhum aqui.
+    capturarErro(erro, { componente: info })
   }
 
   render() {
