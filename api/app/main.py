@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.core.errors import RegraNegocio, regra_negocio_handler
 from app.core.limitador import Limitador
+from app.core.monitoramento import iniciar as iniciar_monitoramento
 from app.db.session import engine
 from app.routers import (
     alertas,
@@ -24,6 +25,11 @@ from app.routers import (
     vitrine,
     webhooks,
 )
+
+# Antes de qualquer coisa, inclusive de o FastAPI existir: erro que acontece na
+# montagem do app é justamente o que ninguém vê, porque o serviço nem chega a
+# responder. Sem `SENTRY_DSN` esta chamada não faz nada.
+iniciar_monitoramento()
 
 
 @asynccontextmanager

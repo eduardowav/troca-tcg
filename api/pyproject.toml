@@ -22,6 +22,10 @@ dependencies = [
     # docstring do módulo.
     "limits>=5.0",
     "structlog>=24.1",
+    # Painel de erro (item 15 da seção 17). O extra `fastapi` traz a integração
+    # que amarra o evento à rota e ao método — sem ela chega o stack sem o
+    # contexto, que é metade do que se procura às três da manhã.
+    "sentry-sdk[fastapi]>=2.20",
 ]
 
 [dependency-groups]

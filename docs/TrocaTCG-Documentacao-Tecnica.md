@@ -2055,13 +2055,42 @@ jobs:
       - uses: actions/checkout@v4
       - run: |
           pg_dump "${{ secrets.DATABASE_URL_DIRECT }}" \
-            --no-owner --no-acl -Fc -f backup.dump
+            --no-owner -Fc -f backup.dump
       - uses: actions/upload-artifact@v4
         with:
           name: backup-${{ github.run_id }}
-          path: backup.dump
+          path: backup.dump.gpg
           retention-days: 30
 ```
+
+O arquivo de verdade tem mais que isto — o dump é cifrado com AES256 antes de
+virar artifact, porque o repositório é público e artifact de repositório público
+é baixável por qualquer um. O `.github/workflows/backup.yml` explica cada linha.
+
+### A restauração, provada (item 14, 2026-08-20)
+
+Um backup que nunca foi restaurado não é backup: é um arquivo com nome de
+backup. Desde 2026-08-20 o mesmo workflow tem um segundo job, `restaurar`, que
+roda logo depois do dump e **abre o artifact que acabou de ser gerado** num
+Postgres 17 descartável (serviço do runner, morre com o job). Ele decifra com o
+secret, restaura e confere: todas as tabelas de `db/schema` de volta, catálogo
+com a mesma contagem de antes, RLS e policies nas nove tabelas de usuário,
+`contato_visivel` fora do alcance da anon key e escrita direta pelo PostgREST
+ainda fechada. As conferências estão em `db/restauracao/conferir.sql`.
+
+**E foi ao escrever isso que apareceu o defeito que o item existia para
+encontrar:** o dump saía com `--no-acl`, que manda o `pg_dump` não escrever
+nenhum GRANT. Os dados voltavam, o esquema voltava, e a camada de permissão do
+`db/schema/11_grants.sql` — que revoga `profiles` de `anon`/`authenticated` e
+reconcede coluna a coluna — não voltava. Restaurado num projeto Supabase novo,
+o banco nasceria com o default do Supabase (ALL para anon e authenticated em
+tudo que o `postgres` cria em `public`): contato legível com a chave pública e
+escrita direta em `profiles` e `listings` pelo PostgREST. O app subiria
+funcionando e sem a proteção — no dia em que menos se olharia para isso.
+
+A flag saiu. O preço é que restaurar passa a exigir os papéis existindo antes;
+num projeto Supabase novo eles já existem, e `db/restauracao/preparo.sql` é o
+que os cria num Postgres de fábrica.
 
 ### Onde o custo aparece primeiro
 
@@ -2620,9 +2649,16 @@ varredura de 2026-08-11, detalhada no bloco "Segurança do app" abaixo.
 
 **Fase 4 — lançar.**
 
-14. Provar a restauração do backup num banco descartável. É a única linha do
-    backup que nunca foi exercitada, e o dia de descobrir não pode ser o dia ruim.
-15. Sentry recebendo eventos.
+14. ✅ **Restauração do backup provada num banco descartável** — feita em
+    2026-08-20, e não uma vez: virou o job `restaurar` do próprio workflow de
+    backup, que todo dia abre o artifact recém-gerado num Postgres 17 vazio e
+    confere esquema, dados, RLS e grants. Achou o que existia para achar — o
+    dump saía com `--no-acl` e não trazia a camada de permissão. Detalhe na
+    seção 15.
+15. ✅ **Sentry recebendo eventos** — feito em 2026-08-20, backend e frontend,
+    com `RegraNegocio` e 4xx fora do painel e o stack sem variáveis locais (o
+    `Authorization` vazava por ali). Falta só o DSN das duas contas, que é
+    operação do Eduardo. Detalhe na seção 20.
 16. PWA instalada testada em Android e iOS.
 17. 30+ usuários pré-cadastrados, com o lançamento tratado como evento e não como
     deploy — ver "O risco número um" na seção 21.
@@ -3496,7 +3532,42 @@ jobs:
 
 ### Erros
 
-Sentry no backend e frontend, free tier. Configure para não capturar exceções de regra de negócio (`RegraNegocio`) — essas são esperadas e vão poluir o painel.
+Sentry no backend e no frontend, free tier — **feito em 2026-08-20** (item 15).
+São dois projetos no painel, e não um: erro de navegador e erro de servidor na
+mesma lista param de dizer de onde vieram.
+
+O backend está em `api/app/core/monitoramento.py`, chamado na primeira linha do
+`main.py` — antes de o `FastAPI(...)` existir, porque a integração entra na
+construção da pilha de middlewares e um app já montado não é instrumentado.
+`tests/test_monitoramento.py` prova essa ordem em vez de comentá-la.
+
+O frontend está em `web/src/lib/erros.ts`, carregado sob demanda: sem
+`VITE_SENTRY_DSN` o `import()` vira código morto e o Rollup remove o SDK inteiro
+do bundle. Com DSN, são 28,5 KB comprimidos — foram 153,7 KB até o módulo parar
+de ser guardado por inteiro (ver o docstring do arquivo).
+
+**O que não vai para o painel**, e cada item custou uma decisão:
+
+- **`RegraNegocio` não é erro.** É o app dizendo "não pode": limite de plano,
+  anúncio repetido, proposta fora do prazo. São centenas por dia num app
+  saudável, e o free tier são 5 mil eventos por mês — uma semana de uso normal
+  gastaria a cota inteira em "não pode".
+- **Resposta 4xx também não.** 404 e 401 são o servidor funcionando.
+- **Nem as variáveis locais do stack.** Esta é a que não estava prevista: o
+  scrubber do Sentry limpa por *nome de chave*, e o `Authorization` chegava
+  inteiro por outro caminho — dentro do `scope` do ASGI, que é variável local de
+  um middleware, os cabeçalhos são uma lista de pares de bytes, sem nome nenhum
+  para uma denylist pegar. Com `include_local_variables=True` (o padrão), todo
+  erro de produção publicaria o token de sessão de quem topou com ele num painel
+  web. Medido e corrigido em 2026-08-20; o teste que pegou está em
+  `test_segredo_de_cabecalho_nao_viaja`.
+
+E o modo de falhar que este projeto já conhece: **painel vazio parece boa
+notícia**. `npm run provar:sentry` sobe o `dist` com o CSP de verdade lido do
+`render.yaml`, quebra a página de propósito e conta o que saiu pelo fio — com
+controle negativo (sem os hosts no `connect-src`, o envio tem de ser bloqueado).
+O `connect-src` importa: o host do ingest carrega o id da organização, e errá-lo
+não quebra nada visível — só bloqueia o envio calado.
 
 ### Métricas de produto
 
@@ -3906,9 +3977,9 @@ não presumido; o que tem ressalva está escrito por quê.
 - [x] Fluxo de exclusão de conta funcionando (exigência da LGPD) — `profiles.excluir_conta`, e desde 2026-08-14 ele cancela a assinatura antes de apagar
 - [x] Denúncia de usuário funcionando, com motivo `USO_PARA_VENDA`
 - [x] Rate limit ativo — feito em 2026-08-16, e provado por rajada: 320 chamadas em 0,4 s, 300 passam e 20 recebem 429
-- [ ] Sentry recebendo eventos — não há dependência de Sentry no projeto
+- [x] Sentry recebendo eventos — backend e frontend desde 2026-08-20, com o filtro de `RegraNegocio` e o stack sem variáveis locais. Só falta colar os dois DSN no painel do Render
 - [x] **Keep-alive rodando** (API + banco) — a cada ~50 min pelo Actions, devolvendo `{"status":"ok","db":"ok"}`. Verificado em 2026-08-14
-- [ ] **Backup diário do banco** rodando e restauração testada uma vez — o backup roda e é cifrado desde `9ef33e1`; **a restauração nunca foi exercitada**. Item 14
+- [x] **Backup diário do banco** rodando e restauração testada — o backup roda e é cifrado desde `9ef33e1`; desde 2026-08-20 a restauração é exercitada **todo dia**, no job `restaurar` do mesmo workflow, com conferência de esquema, dados, RLS e grants
 - [x] Endpoint `/health` consultando o banco de verdade, não só retornando 200 — faz `select 1`
 - [ ] Domínio com HTTPS e HSTS — não haverá domínio próprio (decisão de custo zero em 2026-08-14). O `onrender.com` serve por HTTPS; o HSTS é dele, não nosso
 - [ ] PWA instalável testada em Android e iOS

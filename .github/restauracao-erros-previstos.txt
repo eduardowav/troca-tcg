@@ -1,0 +1,30 @@
+# Erros que um Postgres de fábrica sempre dá ao receber um dump do Supabase.
+#
+# Lido pelo job `restaurar` de .github/workflows/backup.yml como lista de
+# expressões regulares (grep -vEf): o que casa aqui é ruído previsto, o que
+# sobrar é erro de verdade e reprova o backup do dia.
+#
+# A lista é de **ambiente**, não de dado: são extensões e esquemas que só
+# existem num projeto Supabase e que o banco descartável não tem como criar.
+# Nenhuma linha daqui pode falar de tabela, coluna, policy ou grant nossos — o
+# dia em que uma dessas falhar, a conferência tem de ficar vermelha.
+#
+# `role "..." does not exist` está fora da lista de propósito: papel faltando é
+# GRANT perdido, e GRANT perdido é o que este job existe para pegar. Quando um
+# aparecer, o lugar de resolver é `db/restauracao/preparo.sql`, criando o papel —
+# nunca aqui, calando o erro.
+#
+# Linhas começadas por `#` são comentário para quem lê, e o grep as trata como
+# padrão que nunca casa com uma linha de erro do pg_restore (que sempre começa
+# em "pg_restore:").
+extension "[a-z_0-9]+" is not available
+required extension "[a-z_0-9]+" is not installed
+schema "(cron|graphql|graphql_public|vault|pgsodium|pgsodium_masks|net|extensions|public|_realtime|realtime|storage|supabase_functions|supabase_migrations|pgbouncer)" already exists
+must be owner of (extension|schema|event trigger|function|table|type|relation)
+permission denied (to|for) (create|set|schema|extension|table|function)
+unrecognized configuration parameter
+(function|type|schema|relation|operator class|text search) "?(cron|graphql|pgsodium|vault|net|sodium)[._]
+language "[a-z_0-9]+" does not exist
+event trigger "[a-z_0-9]+" already exists
+could not execute query: ERROR:  extension
+warning: errors ignored on restore

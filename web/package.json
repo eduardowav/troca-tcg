@@ -11,11 +11,13 @@
     "gerar:icones": "node scripts/gerar-icones.mjs",
     "gerar:og": "node scripts/gerar-og.mjs",
     "gerar:screenshots": "node scripts/gerar-screenshots.mjs",
-    "conferir:csp": "node scripts/conferir-csp.mjs"
+    "conferir:csp": "node scripts/conferir-csp.mjs",
+    "provar:sentry": "node scripts/provar-sentry.mjs"
   },
   "dependencies": {
     "@base-ui-components/react": "1.0.0-rc.0",
     "@number-flow/react": "^0.6.2",
+    "@sentry/browser": "^10.70.0",
     "@supabase/supabase-js": "^2.45.4",
     "@tanstack/react-query": "^5.59.0",
     "class-variance-authority": "^0.7.1",

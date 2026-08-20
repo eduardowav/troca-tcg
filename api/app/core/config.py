@@ -102,6 +102,19 @@ class Settings(BaseSettings):
     # da assinatura, e em 2026-08-15 com a isenção antes de revelar o contato.
     TERMOS_VERSAO: str = "2026-08-15"
 
+    # Monitoramento de erro (item 15 da seção 17). Vazio é o estado normal: sem
+    # DSN o `core/monitoramento.py` não inicializa nada e o app sobe igual.
+    # Ninguém precisa de conta no Sentry para rodar isto na própria máquina.
+    SENTRY_DSN: str = ""
+    # Zero de propósito. O free tier são 5 mil eventos por mês e o rastreamento
+    # de desempenho tira do mesmo balde que os erros — subir isto antes de ter
+    # gente usando é gastar a cota de achar defeito com gráfico de latência.
+    SENTRY_TRACES_SAMPLE_RATE: float = 0.0
+    # De qual deploy veio o erro. No Render vem preenchida pela plataforma
+    # (`RENDER_GIT_COMMIT`); vazia, o Sentry agrupa todas as versões numa só e a
+    # pergunta "isso começou hoje?" fica sem resposta.
+    RELEASE: str = Field(default="", validation_alias="RENDER_GIT_COMMIT")
+
     # Ambiente
     ENVIRONMENT: str = Field(default="development")
 
