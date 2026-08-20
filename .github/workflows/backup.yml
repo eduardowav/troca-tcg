@@ -240,7 +240,12 @@ jobs:
             cat inesperados.txt
             exit 1
           fi
-          echo "erros do restore: $(wc -l < erros.txt), todos previstos"
+          echo "erros do restore: $(wc -l < erros.txt), todos previstos:"
+          # Impressos para poder ser lidos, e cortados em 200 caracteres para o
+          # caso de um erro futuro vir com dado colado nele. Sem isto, "todos
+          # previstos" é uma afirmação que ninguém tem como conferir — e uma
+          # lista de exceções que ninguém lê é uma lista que cresce sozinha.
+          cut -c1-200 erros.txt | sort | uniq -c | sort -rn
 
       # A conferência de verdade: esquema, dados, RLS, grants e funções. O
       # detalhe de cada bloco está em `db/restauracao/conferir.sql`.
