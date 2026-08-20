@@ -26,5 +26,10 @@ unrecognized configuration parameter
 (function|type|schema|relation|operator class|text search) "?(cron|graphql|pgsodium|vault|net|sodium)[._]
 language "[a-z_0-9]+" does not exist
 event trigger "[a-z_0-9]+" already exists
-could not execute query: ERROR:  extension
+extension "[a-z_0-9]+" does not exist
 warning: errors ignored on restore
+#
+# O que a realidade produziu na primeira execução (2026-08-20): 28 erros, e
+# todos de duas peças só — `pg_cron` e `supabase_vault`. Nenhum encostou em
+# tabela, coluna, policy ou grant nossos, que é exatamente o corte que esta
+# lista precisa manter.
