@@ -4,6 +4,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import { LayoutApp } from '@/components/Navegacao'
 import { ExigePerfil, ExigeSessao } from '@/components/RotaProtegida'
 import { usePerfil } from '@/hooks/usePerfil'
+import { tutorialJaVisto } from '@/lib/tutorial'
 import Entrar from '@/routes/Entrar'
 import Home from '@/routes/Home'
 
@@ -44,6 +45,7 @@ const Notificacoes = lazy(() => import('@/routes/Notificacoes'))
 const ConfirmarEmail = lazy(() => import('@/routes/ConfirmarEmail'))
 const NovaSenha = lazy(() => import('@/routes/NovaSenha'))
 const Recuperar = lazy(() => import('@/routes/Recuperar'))
+const ComoFunciona = lazy(() => import('@/routes/ComoFunciona'))
 const Onboarding = lazy(() => import('@/routes/Onboarding'))
 const Acervo = lazy(() => import('@/routes/Acervo'))
 const PerfilTela = lazy(() => import('@/routes/Perfil'))
@@ -117,6 +119,10 @@ function Rotas() {
 
         <Route element={<ExigePerfil />}>
           <Route path="/app" element={<Inicio />} />
+          {/* O passo zero do onboarding: o que o app faz, antes de pedir o
+              trabalho de montar as listas. Continua alcançável depois de vista,
+              para quem quiser reler. */}
+          <Route path="/como-funciona" element={<ComoFunciona />} />
           <Route path="/onboarding" element={<Onboarding />} />
           <Route path="/pronto" element={<Pronto />} />
           <Route element={<LayoutApp />}>
@@ -173,5 +179,9 @@ function Rotas() {
  */
 function Inicio() {
   const { data: perfil } = usePerfil()
-  return <Navigate to={perfil?.onboarding_ok ? '/matches' : '/onboarding'} replace />
+  if (perfil?.onboarding_ok) return <Navigate to="/matches" replace />
+  // Quem ainda não montou as listas passa pela explicação antes de ver a grade
+  // de cartas — mas só na primeira vez. O momento de dizer o que o app faz é
+  // antes de pedir trabalho, não durante. Ver `routes/ComoFunciona.tsx`.
+  return <Navigate to={tutorialJaVisto() ? '/onboarding' : '/como-funciona'} replace />
 }

@@ -23,6 +23,7 @@ import { useDebounced } from '@/hooks/useDebounced'
 import { criarAnunciosEmLote } from '@/lib/anuncios'
 import { ApiError } from '@/lib/api'
 import { cn } from '@/lib/cn'
+import { PASSOS } from '@/lib/comoFunciona'
 import {
   type Carta,
   type FiltrosBusca,
@@ -149,13 +150,19 @@ function Cabecalho({ total }: { total: number }) {
       <h1 className="font-titulo text-[26px] leading-[1.1] font-black text-tinta lg:text-[30px]">
         Comece pela carta que você mais quer.
       </h1>
+      {/* Curto de propósito desde 2026-08-21: o bloco de "como funciona" logo
+          abaixo passou a explicar o modelo inteiro, e o parágrafo que estava
+          aqui dizia a mesma coisa com outras palavras. Duas explicações
+          seguidas não explicam o dobro — fazem quem lê pular as duas. O que
+          sobra é só o que esta tela precisa: o que fazer agora. */}
       <p className="mt-2 font-corpo text-[15px] leading-relaxed text-apagado">
-        Tudo que você colocar aqui fica disponível para troca. Monte suas listas
-        de <strong className="font-bold text-tinta">Ofereço</strong> e{' '}
-        <strong className="font-bold text-tinta">Procuro</strong> — o app acha
-        com quem trocar. Uma carta já basta para começar; o resto você acrescenta
-        quando quiser.
+        Busque uma carta e diga se ela é{' '}
+        <strong className="font-bold text-tinta">Ofereço</strong> ou{' '}
+        <strong className="font-bold text-tinta">Procuro</strong>. Uma de cada já
+        basta; o resto você acrescenta quando quiser.
       </p>
+
+      <ResumoComoFunciona total={total} />
 
       {/* Contagem só aparece depois da 1ª escolha: com a lista vazia ela não
           informa nada, e um "0" fixo no alto da tela lê como cobrança. */}
@@ -166,6 +173,71 @@ function Cabecalho({ total }: { total: number }) {
         </p>
       )}
     </header>
+  )
+}
+
+/* ---------- Os três passos, à mão ---------- */
+
+/**
+ * A explicação de como o app funciona, dentro da tela que pede o trabalho.
+ *
+ * A tela de boas-vindas (`/como-funciona`) já contou isso — mas ela aparece uma
+ * vez, e é lida no instante em que a pessoa ainda não tem o que fazer com a
+ * informação. Aqui os três passos ficam ao lado da ação, para quem chegou na
+ * grade e travou.
+ *
+ * **Ela se retrai sozinha na primeira carta escolhida.** Quem já entendeu não
+ * precisa fechar nada, e um bloco de texto permanente competindo com a grade
+ * seria o oposto do que ele existe para resolver: a tela é sobre as cartas.
+ * Depois disso vira um botão discreto, porque quem esqueceu precisa de um jeito
+ * de voltar a ler sem sair da tela.
+ */
+function ResumoComoFunciona({ total }: { total: number }) {
+  // Três estados, e não um booleano: `auto` é "ainda não me disseram nada", e é
+  // ele que deixa a primeira carta escolhida retrair o bloco sozinha. Com um
+  // booleano só, ou o bloco não se retrai sozinho, ou quem clicasse para reabrir
+  // depois da primeira carta não conseguiria — o `total` venceria a escolha da
+  // pessoa, que é a coisa que uma tela nunca deve fazer.
+  const [modo, setModo] = useState<'auto' | 'aberto' | 'fechado'>('auto')
+  const mostrar = modo === 'aberto' || (modo === 'auto' && total === 0)
+
+  if (!mostrar) {
+    return (
+      <AcaoSecundaria
+        onClick={() => setModo('aberto')}
+        expandido={false}
+        className="mt-4"
+      >
+        Como funciona
+      </AcaoSecundaria>
+    )
+  }
+
+  return (
+    <Cartela className="mt-4 p-4">
+      <ol className="flex flex-col gap-3">
+        {PASSOS.map((passo) => (
+          <li key={passo.numero} className="flex gap-3">
+            <span
+              aria-hidden
+              className="grid size-6 shrink-0 place-items-center rounded-[var(--radius-etiqueta)] border-2 border-tinta bg-azul font-titulo text-[12px] font-black text-azul-tinta"
+            >
+              {passo.numero}
+            </span>
+            <p className="font-corpo text-[14px] leading-relaxed text-apagado">
+              <strong className="font-titulo font-extrabold text-tinta">
+                {passo.titulo}.
+              </strong>{' '}
+              {passo.texto}
+            </p>
+          </li>
+        ))}
+      </ol>
+
+      <div className="mt-4 flex justify-end">
+        <AcaoSecundaria onClick={() => setModo('fechado')}>Entendi</AcaoSecundaria>
+      </div>
+    </Cartela>
   )
 }
 
