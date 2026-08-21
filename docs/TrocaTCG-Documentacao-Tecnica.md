@@ -2657,8 +2657,9 @@ varredura de 2026-08-11, detalhada no bloco "Segurança do app" abaixo.
     seção 15.
 15. ✅ **Sentry recebendo eventos** — feito em 2026-08-20, backend e frontend,
     com `RegraNegocio` e 4xx fora do painel e o stack sem variáveis locais (o
-    `Authorization` vazava por ali). Falta só o DSN das duas contas, que é
-    operação do Eduardo. Detalhe na seção 20.
+    `Authorization` vazava por ali). **Provado em produção no mesmo dia**: os DSN
+    entraram no Render e o PWA no ar enviou evento com `200` do ingest. Detalhe
+    na seção 20.
 16. PWA instalada testada em Android e iOS.
 17. 30+ usuários pré-cadastrados, com o lançamento tratado como evento e não como
     deploy — ver "O risco número um" na seção 21.
@@ -3569,6 +3570,36 @@ controle negativo (sem os hosts no `connect-src`, o envio tem de ser bloqueado).
 O `connect-src` importa: o host do ingest carrega o id da organização, e errá-lo
 não quebra nada visível — só bloqueia o envio calado.
 
+### No ar, e o que a ligação ensinou (2026-08-20)
+
+Duas contas na organização `o4511945690447872`, região **US** — é o que o
+`connect-src` autoriza por curinga. Os DSN vivem só no painel do Render
+(`sync: false` nos dois serviços) e foram provados em produção no mesmo dia: o
+PWA no ar quebrado de propósito, `200` do ingest, zero bloqueio de CSP.
+
+Três armadilhas que custaram tempo e não são óbvias na segunda vez:
+
+- **Variável `sync: false` não é criada pelo `blueprint_sync`** e nem aparece no
+  painel — tem de ser criada à mão em Environment, no serviço certo. A mesma
+  pegadinha do webhook do Mercado Pago (seção 16).
+- **Cada serviço tem sua própria página de Environment**, e `VITE_SENTRY_DSN` no
+  serviço da API não faz nada: variável `VITE_` só existe no instante em que o
+  PWA é compilado, e quem compila o PWA é o outro serviço. O sinal de que o build
+  pegou é o nome do arquivo em `dist/assets/index-*.js` **mudar** — o nome é
+  derivado do conteúdo.
+- **`DSN`, não `DNS`.** A chave nasceu como `VITE_SENTRY_DNS` e nada quebrou: sem
+  a variável, o `import()` do SDK vira código morto, o Rollup o remove, e o
+  painel fica vazio parecendo silêncio bom. É o mesmo modo de falhar do rate
+  limit que passou um mês inerte, e é por isso que a conferência olha o fio e não
+  a configuração.
+
+**Bloqueador de anúncio derruba o envio, e isso é limitação do modelo.** Num dos
+navegadores do teste, toda requisição para `ingest.us.sentry.io` voltava `503`
+sintético — do mesmo computador, o terminal e um Chromium limpo recebiam `200`.
+Quem usa o app com bloqueador não reporta erro, e nenhum ajuste nosso muda isso;
+o contorno seria enviar o evento por uma rota da nossa API em vez do domínio do
+Sentry, o que custa uma rota e não se paga antes de haver volume.
+
 ### Métricas de produto
 
 Grave em `match_events` e consulte por SQL. Não precisa de ferramenta paga.
@@ -3977,7 +4008,7 @@ não presumido; o que tem ressalva está escrito por quê.
 - [x] Fluxo de exclusão de conta funcionando (exigência da LGPD) — `profiles.excluir_conta`, e desde 2026-08-14 ele cancela a assinatura antes de apagar
 - [x] Denúncia de usuário funcionando, com motivo `USO_PARA_VENDA`
 - [x] Rate limit ativo — feito em 2026-08-16, e provado por rajada: 320 chamadas em 0,4 s, 300 passam e 20 recebem 429
-- [x] Sentry recebendo eventos — backend e frontend desde 2026-08-20, com o filtro de `RegraNegocio` e o stack sem variáveis locais. Só falta colar os dois DSN no painel do Render
+- [x] Sentry recebendo eventos — backend e frontend desde 2026-08-20, com o filtro de `RegraNegocio` e o stack sem variáveis locais. DSN no Render e envio do PWA em produção provado no mesmo dia (`200` do ingest, zero bloqueio de CSP)
 - [x] **Keep-alive rodando** (API + banco) — a cada ~50 min pelo Actions, devolvendo `{"status":"ok","db":"ok"}`. Verificado em 2026-08-14
 - [x] **Backup diário do banco** rodando e restauração testada — o backup roda e é cifrado desde `9ef33e1`; desde 2026-08-20 a restauração é exercitada **todo dia**, no job `restaurar` do mesmo workflow, com conferência de esquema, dados, RLS e grants
 - [x] Endpoint `/health` consultando o banco de verdade, não só retornando 200 — faz `select 1`
