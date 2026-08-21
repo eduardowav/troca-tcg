@@ -127,7 +127,13 @@ const pagina = `<!doctype html>
   <div class="texto">
     <h1>Troque cartas<br>sem procurar</h1>
     <p>Você diz o que tem e o que quer. O app acha com quem trocar.</p>
-    <div class="selo">Pokémon TCG · Belém</div>
+    <!-- O selo passa a carregar o slogan (2026-08-21), no lugar de
+         "Pokémon TCG · Belém". A manchete continua explicando o produto, que é
+         o que a prévia precisa fazer para quem nunca ouviu falar do app — o
+         slogan entra como assinatura, não como explicação (ver DESIGN.md).
+         O jogo e a cidade não somem da prévia: eles estão no og:title e na
+         og:description, que o WhatsApp mostra em texto ao lado da imagem. -->
+    <div class="selo">Achou. Combinou. Trocou.</div>
   </div>
   <div class="faixa"></div>
 </div>
