@@ -43,10 +43,19 @@ export function mensagemAuth(bruta: string): string {
   if (m.includes('unable to validate email') || m.includes('invalid email')) {
     return 'E-mail inválido.'
   }
-  // O limite de envio de e-mail é outro problema, e a frase de "muitas
-  // tentativas" mandaria a pessoa tentar de novo em um minuto — o que não
-  // resolve. O remetente padrão do Supabase libera poucos e-mails por hora, e
-  // quem esbarra nisso precisa saber que a espera é longa e não é culpa dela.
+  // **Dois limites diferentes, e dizer o errado é pior que não dizer nada.**
+  //
+  // O primeiro é o intervalo entre dois envios seguidos — 15 segundos, medido
+  // em 2026-08-21 pedindo dois cadastros em sequência. Quem clica em "reenviar"
+  // duas vezes bate nele, e mandá-la esperar uma hora faria abandonar uma espera
+  // de quinze segundos. O Supabase diz quantos segundos faltam; a frase repete
+  // o número dele em vez de inventar um.
+  const segundos = bruta.match(/after (\d+) seconds?/i)
+  if (segundos) {
+    return `Espere ${segundos[1]} segundos e peça de novo.`
+  }
+  // O segundo é a cota do remetente, que é por hora. Aí a espera é longa mesmo,
+  // e quem esbarra precisa saber que não é culpa dela.
   if (m.includes('email rate limit') || m.includes('over_email_send_rate')) {
     return 'Muitos e-mails pedidos em pouco tempo. Tente de novo em uma hora.'
   }

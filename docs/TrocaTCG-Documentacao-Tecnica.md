@@ -3202,9 +3202,30 @@ então o e-mail é só o login. Quando a recuperação subir (item 8), ela funci
 sem a confirmação de volta — o clique no link prova a caixa naquele momento. O
 que fica descoberto é só o e-mail digitado errado, que vira caso de suporte.
 
-**Feito em 2026-08-12.** O interruptor foi desligado no painel e a tela
-`ConfirmeEmail` saiu do `Entrar.tsx` junto — cadastrar agora devolve sessão e a
-pessoa entra direto. Verificado contra a API do Supabase com contas
+**Revertido em 2026-08-21: a confirmação de e-mail voltou.** A decisão foi do
+Eduardo, ao perguntar se dava para lançar sem a verificação de número. Dá — o
+item 5 não trava nada, e nenhuma tela o chama —, mas as duas coisas não se
+substituem: e-mail prova a **caixa**, e o que a troca usa é o **WhatsApp**. O que
+a volta compra é o R-1 da `docs/SEGURANCA.md` (enumeração e squatting), e o que
+custa é um passo a mais no cadastro — inclusive no dia do lançamento-evento, com
+gente abrindo o e-mail no celular ali mesmo.
+
+O que entrou junto, porque o estado ligado nunca tinha tido tela: `emailRedirectTo`
+no `signUp` (montado da origem atual, como na recuperação de senha), a tela
+"Confirme seu e-mail" com o endereço por extenso e um reenviar, a volta do link
+tratada por evento `SIGNED_IN`, e a leitura do fragmento de erro para quem clica
+num link vencido. Detalhe em `web/src/lib/confirmacao.ts`.
+
+Três coisas medidas contra a API no dia, e não lidas na documentação: o
+`redirect_to` é respeitado nos dois ambientes (`auth_logs`); o intervalo entre
+dois envios é de **15 segundos**, não de uma hora — a frase do `authMensagens.ts`
+mandava esperar uma hora e foi corrigida para repetir o número que o Supabase
+manda; e o segundo cadastro no mesmo endereço **não** troca a senha nem o
+metadata do primeiro, o que muda a forma do squatting (ver R-1).
+
+**Histórico — feito em 2026-08-12.** O interruptor foi desligado no painel e a
+tela `ConfirmeEmail` saiu do `Entrar.tsx` junto — cadastrar devolvia sessão e a
+pessoa entrava direto. Verificado contra a API do Supabase com contas
 descartáveis, apagadas em seguida: antes o cadastro voltava sem sessão e com
 `confirmation_sent_at`; depois, com `access_token` no corpo.
 

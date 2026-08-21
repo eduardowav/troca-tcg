@@ -206,8 +206,11 @@ informação sobre pessoas, não sobre contas.
 **Correção aplicada.** Mensagem ambígua entre "já existe" e "não deu para criar",
 sem a sugestão "entre em vez de criar" — era a sugestão que confirmava a conta.
 
-**Status:** ⚠️ mitigado na tela. **A causa raiz continua aberta** — ver
-§6, risco residual R-1.
+**Status:** ✅ **fechado em 2026-08-21**, quando a confirmação de e-mail voltou:
+com ela ligada, o `signup` devolve usuário ofuscado para conta confirmada e nem
+quem chama a API direto distingue os dois casos. A mensagem ambígua da tela
+continua no lugar, porque ela é a única proteção se o interruptor for desligado
+de novo. Ver §6, R-1, inclusive para a borda que sobrou.
 
 ---
 
@@ -376,15 +379,35 @@ Nenhuma destas se resolve com um commit. Todas são do Eduardo.
 
 Declarados, e não escondidos.
 
-**R-1 · UNRESOLVED SECURITY RISK — enumeração de e-mail continua possível.**
-A correção do F-03 fecha o que a *tela* diz. A causa raiz é a confirmação de
-e-mail estar desligada, e quem chamar `supabase.co` direto continua distinguindo
-"já existe" de "criado". **O front não é a fronteira.** Junto vem o account
-squatting: hoje dá para criar conta no e-mail de outra pessoa, e ela só descobre
-ao tentar se cadastrar. Fechar os dois é o mesmo interruptor — ligar a
-confirmação de e-mail —, e o custo é o funil: quem se cadastra deixa de entrar na
-hora. Decisão de produto do Eduardo, tomada em 2026-08-16 para o lado de deixar
-como está; fica registrada para ser revista com dados de uso.
+**R-1 · Enumeração de e-mail — FECHADA em 2026-08-21, com uma borda que fica.**
+A correção do F-03 fechava o que a *tela* dizia; a causa raiz era a confirmação
+de e-mail estar desligada, e quem chamasse o `supabase.co` direto continuava
+distinguindo "já existe" de "criado". **O front nunca é a fronteira.** O
+interruptor foi religado em 2026-08-21 (decisão do Eduardo, revendo a de
+2026-08-16), e o resultado foi medido contra a API, não lido na documentação:
+
+- **Conta confirmada** — `signup` devolve um usuário **falso**: id novo,
+  `role` vazio, `identities: []`, `created_at` de agora e o metadata que o
+  chamador mandou. Nenhum e-mail sai. Não há como distinguir de um cadastro
+  novo. É o caso do mundo real, e é o que fecha a enumeração.
+- **Conta que existe e nunca foi confirmada** — o `signup` devolve o usuário
+  **verdadeiro**, com o metadata do primeiro cadastro, e reenvia a confirmação.
+  Quem comparar o que mandou com o que voltou sabe que a conta existe. É uma
+  janela estreita (só endereços cadastrados e nunca confirmados) e é
+  comportamento do GoTrue, não configuração nossa.
+
+**O account squatting muda de forma, e não desaparece.** Ainda dá para criar
+conta no e-mail de outra pessoa; o que muda é que a conta nasce inerte e a dona
+do endereço **é avisada na hora**, porque o e-mail de confirmação chega a ela.
+Medido junto: segundo cadastro no mesmo endereço **não troca a senha nem o
+metadata** — o primeiro é que valem. Ou seja, se a dona do e-mail se cadastrar
+por cima e clicar no link, ela confirma a conta *de quem chegou antes*, com o
+`username` e o `contato_visivel` de quem chegou antes, e não consegue entrar com
+a senha que ela escolheu. **A saída existe e é o "esqueci minha senha"**: o
+reset devolve o controle e derruba o squatter. Isso precisa estar no suporte, e
+é o motivo de a recuperação de senha (item 8) ter vindo antes desta mudança.
+
+O custo aceito é o funil: quem se cadastra deixa de entrar na hora.
 
 **R-2 · A senha não é nossa.** Não há Argon2id neste projeto porque não há
 armazenamento de senha: o hash é do Supabase Auth, e o algoritmo dele não é
