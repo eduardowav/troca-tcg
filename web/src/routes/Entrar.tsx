@@ -10,9 +10,15 @@ import {
 } from '@/components/brutal/Pecas'
 import { Campo } from '@/components/ui/Campo'
 import { Button } from '@/components/ui/Button'
+import { ForcaSenha } from '@/components/ui/ForcaSenha'
 import { mensagemAuth } from '@/lib/authMensagens'
 import { cn } from '@/lib/cn'
 import { destinoDaConfirmacao, erroDoLinkNaUrl } from '@/lib/confirmacao'
+import {
+  avaliarSenha,
+  MINIMO_SENHA,
+  pedacosPessoais,
+} from '@/lib/forcaSenha'
 import { usernameDisponivel } from '@/lib/perfil'
 import { supabase } from '@/lib/supabase'
 import { formatarTelefone, telefoneSchema } from '@/lib/telefone'
@@ -31,31 +37,52 @@ const esquemaEntrar = z.object({
   senha: z.string().min(1, 'Informe sua senha.'),
 })
 
-const esquemaCriar = z.object({
-  nome_exibicao: z
-    .string()
-    .trim()
-    .min(2, 'Como querem te chamar na troca?')
-    .max(60, 'No máximo 60 caracteres.'),
-  username: z
-    .string()
-    .trim()
-    .regex(
-      /^[a-z0-9_]{3,20}$/,
-      'De 3 a 20 caracteres: letras minúsculas, números ou _',
-    ),
-  email,
-  telefone: telefoneSchema,
-  senha: z.string().min(8, 'Use ao menos 8 caracteres.'),
-  aceite: z
-    .boolean()
-    .refine((v) => v, 'É preciso aceitar os termos para criar a conta.'),
-})
+const esquemaCriar = z
+  .object({
+    nome_exibicao: z
+      .string()
+      .trim()
+      .min(2, 'Como querem te chamar na troca?')
+      .max(60, 'No máximo 60 caracteres.'),
+    username: z
+      .string()
+      .trim()
+      .regex(
+        /^[a-z0-9_]{3,20}$/,
+        'De 3 a 20 caracteres: letras minúsculas, números ou _',
+      ),
+    email,
+    telefone: telefoneSchema,
+    senha: z.string().min(MINIMO_SENHA, `Use ao menos ${MINIMO_SENHA} caracteres.`),
+    aceite: z
+      .boolean()
+      .refine((v) => v, 'É preciso aceitar os termos para criar a conta.'),
+  })
+  // A senha é o único campo que só pode ser julgado depois dos outros: o que
+  // reprova "eduardo2026" não está na senha, está no nome logo acima. Daí o
+  // `superRefine` no objeto, e não um `refine` no campo.
+  //
+  // Ele só roda se os campos passarem um a um — então uma senha de seis
+  // caracteres mostra "use ao menos 8", que é o recado certo, e não o do
+  // medidor. Ver `lib/forcaSenha.ts` para o que exatamente barra aqui.
+  .superRefine((dados, ctx) => {
+    const veredito = avaliarSenha(
+      dados.senha,
+      pedacosPessoais([dados.nome_exibicao, dados.username, dados.email]),
+    )
+    if (veredito.aceitavel) return
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['senha'],
+      message: veredito.dica ?? 'Escolha uma senha mais difícil de adivinhar.',
+    })
+  })
 
 export default function Entrar() {
   const [modo, setModo] = useState<Modo>('entrar')
   const [erros, setErros] = useState<Erros>({})
   const [enviando, setEnviando] = useState(false)
+  const [forca, setForca] = useState(() => avaliarSenha(''))
 
   const navigate = useNavigate()
   const location = useLocation()
@@ -224,9 +251,42 @@ export default function Entrar() {
             type="password"
             autoComplete={modo === 'criar' ? 'new-password' : 'current-password'}
             placeholder="••••••••"
-            dica={modo === 'criar' ? 'Ao menos 8 caracteres.' : undefined}
+            // A dica fixa só serve enquanto não há o que medir: assim que a
+            // pessoa digita a primeira letra, o medidor abaixo diz a mesma
+            // coisa e mais — e duas linhas de conselho embaixo de um campo é
+            // uma a mais do que ela vai ler.
+            dica={
+              modo === 'criar' && !forca.preenchida
+                ? `Ao menos ${MINIMO_SENHA} caracteres.`
+                : undefined
+            }
             erro={erros.senha}
+            // Mede nos dois modos, de propósito, e o medidor só aparece em
+            // "criar": o campo é o mesmo elemento nas duas abas e o React o
+            // reaproveita com o valor dentro. Medir só em "criar" deixaria o
+            // medidor apagado para quem digitou a senha antes de trocar de aba.
+            //
+            // O campo continua não-controlado (o envio lê por `FormData`) — o
+            // estado aqui é espelho, não fonte, e por isso o cursor não pula.
+            onChange={(e) => {
+              const dono = e.currentTarget.form
+              const dados = dono ? new FormData(dono) : null
+              setForca(
+                avaliarSenha(
+                  e.currentTarget.value,
+                  pedacosPessoais([
+                    dados?.get('nome_exibicao') as string | null,
+                    dados?.get('username') as string | null,
+                    dados?.get('email') as string | null,
+                  ]),
+                ),
+              )
+            }}
           />
+
+          {modo === 'criar' && (
+            <ForcaSenha forca={forca} erro={erros.senha} />
+          )}
 
           {/* Só em "entrar", e alinhado à direita, embaixo do campo de senha:
               é a saída de quem acabou de errar a senha, e ela não pode estar

@@ -37,6 +37,20 @@ export function mensagemAuth(bruta: string): string {
     // mesma tela, a um toque.
     return 'Não foi possível criar a conta com esses dados. Confira o e-mail, ou entre se já tiver conta.'
   }
+  // A senha está numa base de vazamento — o Supabase compara com o
+  // HaveIBeenPwned quando a proteção do painel está ligada (pendência §5.1 de
+  // `docs/SEGURANCA.md`; conferida como **desligada** em 2026-08-21).
+  //
+  // A frase entra antes do interruptor, e não depois: o dia em que ele for
+  // ligado, quem esbarrar nele vê a explicação em português em vez do
+  // "Não foi possível concluir" genérico — que é o pior recado possível aqui,
+  // porque manda tentar de novo exatamente o que nunca vai passar.
+  //
+  // Não é o mesmo caso do medidor de `lib/forcaSenha.ts`: lá a senha é fraca
+  // por construção, aqui ela pode ser ótima no papel e estar num vazamento.
+  if (m.includes('known to be weak') || m.includes('pwned')) {
+    return 'Essa senha apareceu em vazamentos conhecidos na internet. Escolha outra.'
+  }
   if (m.includes('password should be')) {
     return 'Senha muito curta. Use ao menos 8 caracteres.'
   }

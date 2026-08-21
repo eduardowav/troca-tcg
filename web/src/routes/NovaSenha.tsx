@@ -6,20 +6,51 @@ import { z } from 'zod'
 import { AcaoSecundaria, Cartela } from '@/components/brutal/Pecas'
 import { Button } from '@/components/ui/Button'
 import { Campo } from '@/components/ui/Campo'
+import { ForcaSenha } from '@/components/ui/ForcaSenha'
 import { mensagemAuth } from '@/lib/authMensagens'
+import {
+  avaliarSenha,
+  MINIMO_SENHA,
+  pedacosPessoais,
+} from '@/lib/forcaSenha'
 import { definirNovaSenha } from '@/lib/recuperacao'
 import { Moldura } from '@/routes/Recuperar'
 import { useAuth } from '@/stores/auth'
 
-const esquema = z
-  .object({
-    senha: z.string().min(8, 'Use ao menos 8 caracteres.'),
-    repetida: z.string(),
-  })
-  .refine((d) => d.senha === d.repetida, {
-    path: ['repetida'],
-    message: 'As duas senhas precisam ser iguais.',
-  })
+/**
+ * Fábrica, e não constante, por um motivo só: os pedaços do e-mail de quem
+ * está trocando a senha entram na avaliação, e eles só existem em tempo de
+ * execução. As mesmas regras do cadastro, em `lib/forcaSenha.ts`.
+ */
+function esquemaDe(pessoais: string[]) {
+  return z
+    .object({
+      senha: z
+        .string()
+        .min(MINIMO_SENHA, `Use ao menos ${MINIMO_SENHA} caracteres.`),
+      repetida: z.string(),
+    })
+    .superRefine((dados, ctx) => {
+      const veredito = avaliarSenha(dados.senha, pessoais)
+      if (!veredito.aceitavel) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['senha'],
+          message:
+            veredito.dica ?? 'Escolha uma senha mais difícil de adivinhar.',
+        })
+      }
+      // Depois da força, e não antes: quem digitou a mesma senha fraca duas
+      // vezes precisa saber que o problema é a senha, não a repetição.
+      if (dados.senha !== dados.repetida) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['repetida'],
+          message: 'As duas senhas precisam ser iguais.',
+        })
+      }
+    })
+}
 
 /**
  * A senha nova — o destino do link do e-mail.
@@ -50,13 +81,18 @@ export default function NovaSenha() {
 
   const [erros, setErros] = useState<Record<string, string>>({})
   const [salvando, setSalvando] = useState(false)
+  const [forca, setForca] = useState(() => avaliarSenha(''))
+
+  // O e-mail é o único dado da pessoa que esta tela tem — e é o suficiente
+  // para barrar a senha feita do próprio endereço, que é o caso comum.
+  const pessoais = pedacosPessoais([session?.user.email])
 
   async function aoEnviar(evento: React.FormEvent<HTMLFormElement>) {
     evento.preventDefault()
     setErros({})
 
     const form = new FormData(evento.currentTarget)
-    const analise = esquema.safeParse({
+    const analise = esquemaDe(pessoais).safeParse({
       senha: form.get('senha'),
       repetida: form.get('repetida'),
     })
@@ -138,9 +174,17 @@ export default function NovaSenha() {
             type="password"
             autoComplete="new-password"
             placeholder="••••••••"
-            dica="Ao menos 8 caracteres."
+            dica={
+              forca.preenchida
+                ? undefined
+                : `Ao menos ${MINIMO_SENHA} caracteres.`
+            }
             erro={erros.senha}
+            onChange={(e) =>
+              setForca(avaliarSenha(e.currentTarget.value, pessoais))
+            }
           />
+          <ForcaSenha forca={forca} erro={erros.senha} />
           <Campo
             rotulo="Repita a senha"
             name="repetida"
