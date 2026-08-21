@@ -1610,13 +1610,13 @@ faz rollback e devolve 409, e não pode avisar ninguém de algo que não existe.
 **Enfileirar dentro do `_notificar` é o que faz as guardas valerem para os dois
 canais.** Quem não recebe linha na caixa — porque foi quem agiu, ou porque a
 dedupe de sete dias pegou — também não recebe vibração. Se cada evento
-disparasse o push por conta própria, essa simetria dependeria de quinze lugares
+disparasse o push por conta própria, essa simetria dependeria de dezesseis lugares
 lembrarem dela.
 
-**Nove dos quinze eventos vibram**, e é a coluna Push da matriz abaixo: o que
+**Dez dos dezesseis eventos vibram**, e é a coluna Push da matriz abaixo: o que
 espera resposta de alguém, mais as duas cartas e a queda de plano. O resto —
 recusada, retirada, vencida, furada, cancelada — é registro do que aconteceu e
-fica na caixa. Um app que vibra quinze vezes por dia perde a permissão que levou
+fica na caixa. Um app que vibra dezesseis vezes por dia perde a permissão que levou
 meses para conseguir.
 
 **Inscrição morta é apagada na hora.** 404 e 410 do serviço de push querem dizer
@@ -1727,7 +1727,8 @@ ele que `TIPOS_COM_PUSH` consulta para decidir se o celular vibra.
 | Proposta vencida (72h) | `PROPOSTA_EXPIRADA` | ✅ | — | — |
 | Troca nova sugerida pelo motor | `NOVO_MATCH` | ✅ | ✅ | — |
 | Alguém aceitou a troca | `MATCH_ACEITO` | ✅ | ✅ | — |
-| Conclusão confirmada (um lado ou os dois) | `MATCH_CONCLUIDO` | ✅ | ✅ | — |
+| O outro confirmou — **falta você** | `MATCH_CONFIRME` | ✅ | ✅ | — |
+| Os dois confirmaram: troca concluída | `MATCH_CONCLUIDO` | ✅ | ✅ | — |
 | Troca marcada como furada | `MATCH_FURADO` | ✅ | — | — |
 | Desistência | `MATCH_CANCELADO` | ✅ | — | — |
 | Troca combinada venceu | `MATCH_EXPIRADO` | ✅ | — | — |
@@ -3276,6 +3277,41 @@ mensagem só por quem troca de verdade. O pré-requisito é o item 1 do bloco de
 segurança: endpoint que dispara mensagem paga sem rate limit é torneira aberta,
 tanto para o saldo quanto para o limite diário da Meta.
 
+**O que a passagem de 21/08 achou** — com a fila de código quase vazia, o
+caminho crítico foi percorrido **contra a produção**, e não contra os dublês:
+duas contas descartáveis (`@trocatcg.invalid`, criadas pela Admin API com o
+e-mail já confirmado), o fluxo inteiro pela API — perfil, anúncios, match,
+aceite dos dois lados, contato, conclusão, reputação, notificações, vitrine,
+proposta — e depois o mesmo caminho pela tela, no navegador. Vinte e nove
+verificações da API passaram, e a tela fez o aceite, revelou o contato e
+confirmou a conclusão sem erro de console.
+
+Duas coisas quebradas apareceram, e nenhuma delas era achável por leitura:
+
+1. **Apagar a conta respondia 500** — o direito da LGPD, marcado como pronto no
+   Apêndice C desde 14/08 porque tinha sido conferido no código. Duas chaves
+   apontam sem `ON DELETE` para coisas que a própria exclusão derruba:
+   `term_acceptances.match_id → matches` e `propostas.vez_de → profiles`. A
+   primeira quebra em quem **revelou um contato**, a segunda em quem
+   **negociou** — ou seja, as duas telas que mais provam que a pessoa usou o app
+   eram as que a impediam de sair dele. Uma conta recém-criada apagava sem
+   reclamar, e foi por isso que o item passou. Corrigido no `db/schema/34`
+   (o aceite passa a soltar o match com `set null`, preservando o registro legal
+   de quem fica) e em `profiles.excluir_conta`, que agora apaga as propostas
+   antes dos matches. Provado nas duas pontas: com a FK velha, quatro contas de
+   teste responderam 500; depois da migração e da ordem nova, 204.
+2. **A troca concluída chegava marcada como "sua vez"** — `MATCH_CONCLUIDO`
+   servia aos dois desfechos da confirmação ("falta você" e "os dois
+   confirmaram"), e a caixa destaca o que pede ação lendo só o tipo. A última
+   linha do fluxo, quando não falta nada a ninguém, pedia ação. Separado em
+   `MATCH_CONFIRME` (pedido) e `MATCH_CONCLUIDO` (notícia); os dois continuam
+   vibrando o celular.
+
+A lição de método é a mesma que o bug do aceite deixou em 21/08: **item de
+checklist conferido no código não está conferido.** O que os dois tinham em
+comum é que a suíte cobria o caminho bom de uma conta nova e o caminho ruim
+inteiro — e não o caminho bom de uma conta que já tinha vivido.
+
 **Esperando o olho do Eduardo** — três coisas subiram sem ele ter visto rodando,
 e nenhuma é bug conhecido; são julgamentos visuais:
 
@@ -4026,7 +4062,7 @@ não presumido; o que tem ressalva está escrito por quê.
 - [x] Aceite de termos obrigatório no cadastro, com registro em `term_acceptances` — contexto `CADASTRO`, com IP
 - [x] Modal de disclaimer bloqueante antes de revelar contato, com registro — feito em 2026-08-15, com a trava no servidor e não no modal (seção 4.2)
 - [x] Disclaimer de não-afiliação com Nintendo / Creatures / GAME FREAK / The Pokémon Company — rodapé da Home, fim de Configurações e fim dos termos
-- [x] Fluxo de exclusão de conta funcionando (exigência da LGPD) — `profiles.excluir_conta`, e desde 2026-08-14 ele cancela a assinatura antes de apagar
+- [x] Fluxo de exclusão de conta funcionando (exigência da LGPD) — `profiles.excluir_conta`, e desde 2026-08-14 ele cancela a assinatura antes de apagar. **Estava quebrado em produção e foi consertado em 2026-08-21**: quem tinha revelado um contato ou aberto uma proposta recebia 500, e o item estava marcado porque tinha sido conferido no código e nunca contra uma conta que usou o app. Ver a seção 17, "O que a passagem de 21/08 achou"
 - [x] Denúncia de usuário funcionando, com motivo `USO_PARA_VENDA`
 - [x] Rate limit ativo — feito em 2026-08-16, e provado por rajada: 320 chamadas em 0,4 s, 300 passam e 20 recebem 429
 - [x] Sentry recebendo eventos — backend e frontend desde 2026-08-20, com o filtro de `RegraNegocio` e o stack sem variáveis locais. DSN no Render e envio do PWA em produção provado no mesmo dia (`200` do ingest, zero bloqueio de CSP)

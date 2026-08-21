@@ -20,6 +20,7 @@ export type TipoNotificacao =
   | 'PROPOSTA_EXPIRADA'
   | 'NOVO_MATCH'
   | 'MATCH_ACEITO'
+  | 'MATCH_CONFIRME'
   | 'MATCH_CONCLUIDO'
   | 'MATCH_FURADO'
   | 'MATCH_CANCELADO'
@@ -86,11 +87,16 @@ export function iconeDe(tipo: TipoNotificacao): 'proposta' | 'troca' | 'carta' {
  * Só três pedem, e são as que o produto existe para entregar: é a sua vez de
  * responder uma proposta, e a confirmação da troca que o outro já confirmou.
  * A tela destaca essas; o resto é notícia.
+ *
+ * `MATCH_CONFIRME` é o pedido; `MATCH_CONCLUIDO` é a notícia de que os dois
+ * confirmaram. Eram o mesmo tipo até 2026-08-21, e por isso a linha que
+ * anunciava a troca fechada — a última do fluxo, quando não falta nada a
+ * ninguém — vinha marcada como "sua vez".
  */
 export function pedeResposta(tipo: TipoNotificacao): boolean {
   return (
     tipo === 'PROPOSTA_RECEBIDA' ||
     tipo === 'PROPOSTA_SUA_VEZ' ||
-    tipo === 'MATCH_CONCLUIDO'
+    tipo === 'MATCH_CONFIRME'
   )
 }

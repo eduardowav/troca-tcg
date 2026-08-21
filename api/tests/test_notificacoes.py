@@ -155,6 +155,40 @@ async def test_lista_so_nao_lidas_quando_pedem():
     assert not any("and lida = false" in sql for sql in outra.sqls)
 
 
+# --------------------------------------------------- conclusão: pedido x notícia
+
+
+async def test_conclusao_de_um_lado_pede_a_do_outro():
+    """Falta um lado: é pedido, e o tipo tem de dizer isso.
+
+    A caixa destaca o que pede ação lendo só o `tipo` — texto ela não interpreta.
+    Enquanto os dois desfechos compartilharam `MATCH_CONCLUIDO`, a linha da troca
+    fechada aparecia marcada como "sua vez".
+    """
+    sessao = SessaoFalsa()
+    await notificacoes.match_concluido(
+        sessao, para="alguem", de="outra", quem="outra", match_id="m", fechou=False
+    )
+    assert sessao.params[-1]["tipo"] == notificacoes.TIPO_MATCH_CONFIRME
+
+
+async def test_conclusao_dos_dois_e_noticia():
+    """Ninguém tem o que fazer depois desta: é o fim do fluxo."""
+    sessao = SessaoFalsa()
+    await notificacoes.match_concluido(
+        sessao, para="alguem", de="outra", quem="outra", match_id="m", fechou=True
+    )
+    assert sessao.params[-1]["tipo"] == notificacoes.TIPO_MATCH_CONCLUIDO
+
+
+def test_os_dois_desfechos_da_conclusao_vibram():
+    """Um pede ação, o outro é a recompensa da troca que fechou — e o push do
+    segundo é anterior à separação dos tipos, então some sem querer se a lista
+    não for conferida."""
+    assert notificacoes.TIPO_MATCH_CONFIRME in notificacoes.TIPOS_COM_PUSH
+    assert notificacoes.TIPO_MATCH_CONCLUIDO in notificacoes.TIPOS_COM_PUSH
+
+
 # ------------------------------------------------------------------ catálogo
 
 

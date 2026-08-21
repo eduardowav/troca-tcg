@@ -40,6 +40,11 @@ TIPO_PROPOSTA_RETIRADA = "PROPOSTA_RETIRADA"
 TIPO_PROPOSTA_EXPIRADA = "PROPOSTA_EXPIRADA"
 TIPO_NOVO_MATCH = "NOVO_MATCH"
 TIPO_MATCH_ACEITO = "MATCH_ACEITO"
+#: Um lado confirmou e falta o outro. Pede ação de quem recebe, e por isso é um
+#: tipo próprio: quando os dois já confirmaram, o que sai é TIPO_MATCH_CONCLUIDO,
+#: que é notícia. Os dois eram o mesmo tipo até 2026-08-21, e a caixa marcava a
+#: troca fechada como "sua vez".
+TIPO_MATCH_CONFIRME = "MATCH_CONFIRME"
 TIPO_MATCH_CONCLUIDO = "MATCH_CONCLUIDO"
 TIPO_MATCH_FURADO = "MATCH_FURADO"
 TIPO_MATCH_CANCELADO = "MATCH_CANCELADO"
@@ -52,7 +57,7 @@ TIPO_PLANO_EXPIROU = "PLANO_EXPIROU"
 #: espera resposta de alguém, mais a carta procurada, que é a única varredura e
 #: a que traz gente de volta. O resto — recusada, retirada, vencida, furada,
 #: cancelada, expirada — é registro do que aconteceu e fica na caixa. Um app que
-#: vibra treze vezes por dia perde a permissão que levou meses para conseguir.
+#: vibra dezesseis vezes por dia perde a permissão que levou meses para conseguir.
 TIPOS_COM_PUSH = frozenset(
     {
         TIPO_PROPOSTA_RECEBIDA,
@@ -60,6 +65,7 @@ TIPOS_COM_PUSH = frozenset(
         TIPO_PROPOSTA_ACEITA,
         TIPO_NOVO_MATCH,
         TIPO_MATCH_ACEITO,
+        TIPO_MATCH_CONFIRME,
         TIPO_MATCH_CONCLUIDO,
         TIPO_CARTA_PROCURADA,
         # A carta que a pessoa **pediu** para ser avisada. É o único aviso que
@@ -469,18 +475,24 @@ async def match_concluido(
 
     Quando só um confirmou, a notificação é um pedido: a reputação dos dois
     depende da confirmação do outro, e é aqui que ela é cobrada.
+
+    São **dois tipos**, e não um com dois textos: a caixa destaca o que pede
+    ação, e um tipo só fazia a linha "Troca concluída" — a última do fluxo,
+    quando não falta nada a ninguém — aparecer marcada como "sua vez".
     """
     if fechou:
+        tipo = TIPO_MATCH_CONCLUIDO
         titulo = "Troca concluída"
         corpo = f"Você e @{quem} confirmaram. A reputação de vocês dois subiu."
     else:
+        tipo = TIPO_MATCH_CONFIRME
         titulo = f"@{quem} confirmou a troca"
         corpo = "Confirme também para a troca contar para vocês dois."
     await _notificar(
         session,
         para=para,
         de=de,
-        tipo=TIPO_MATCH_CONCLUIDO,
+        tipo=tipo,
         titulo=titulo,
         corpo=corpo,
         link=_link_match(match_id),
