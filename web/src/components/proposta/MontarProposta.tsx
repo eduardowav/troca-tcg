@@ -10,7 +10,11 @@ import { useAcervo } from '@/hooks/useVitrine'
 import { type Acabamento, precoDoAcabamento } from '@/lib/acabamentos'
 import { cn } from '@/lib/cn'
 import { type ItensDaProposta, MAX_ITENS } from '@/lib/propostas'
-import { formatarMoeda, type PrecoTCGplayer } from '@/lib/types'
+import {
+  formatarMoeda,
+  type PrecoTCGplayer,
+  valorDoPreco,
+} from '@/lib/types'
 
 /**
  * A mesa onde a proposta é montada, em dois passos: primeiro o que vem, depois
@@ -409,7 +413,7 @@ function totalEscolhido(
         precos?.get(anuncio.cardId),
         acabamentoPorId(anuncio.finishId),
       )
-    const numero = escolhido?.preco.mercado ?? escolhido?.preco.baixo
+    const numero = valorDoPreco(escolhido?.preco)
     if (numero == null) {
       exato = false
       continue

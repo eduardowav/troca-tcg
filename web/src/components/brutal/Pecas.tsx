@@ -23,7 +23,12 @@ import {
   type PrecoEscolhido,
 } from '@/lib/acabamentos'
 import { cn } from '@/lib/cn'
-import { type Carta, formatarMoeda, formatarPreco } from '@/lib/types'
+import {
+  type Carta,
+  formatarMoeda,
+  formatarPreco,
+  valorDoPreco,
+} from '@/lib/types'
 
 /* ------------------------------------------------------------------ ícones */
 
@@ -892,7 +897,7 @@ export function totalDoLote(itens: CartaDoLote[]): {
   let temPreco = false
 
   for (const item of itens) {
-    const numero = item.preco?.preco.mercado ?? item.preco?.preco.baixo
+    const numero = valorDoPreco(item.preco?.preco)
     if (numero == null) {
       exato = false
       continue

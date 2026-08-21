@@ -18,6 +18,7 @@ import '@/lib/instalacao'
 // sistema e mantém a `theme-color` em dia. Se só a tela de Configurações o
 // carregasse, quem nunca abre Configurações ficaria sem as duas coisas.
 import '@/stores/tema'
+import { carregarCotacao } from '@/stores/preferencias'
 import './index.css'
 
 // Antes de montar a árvore: erro na primeira renderização é justamente o que
@@ -29,6 +30,12 @@ iniciarMonitoramento()
 // dentro de uma tela, porque quem precisa do aviso é justamente quem deixou o
 // app aberto numa tela qualquer — ver `lib/atualizacao.ts`.
 iniciarAtualizacao()
+
+// A cotação do dólar, para quem escolheu ler preço em real. Uma leitura por
+// sessão, e falha em silêncio: sem ela a tela escreve em dólar, que é a moeda da
+// fonte — ver `stores/preferencias.ts`. Fora de componente porque o preço
+// aparece em meia dúzia de telas e nenhuma delas deveria ser a dona disso.
+void carregarCotacao()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

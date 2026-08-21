@@ -11,6 +11,11 @@ import { useAnuncios, useCartasPorId, usePrecosPorId } from '@/hooks/useAnuncios
 import { useCatalogo } from '@/hooks/useCatalogo'
 import { useMarcaOculta } from '@/hooks/useMundo'
 import { precoDoAcabamento } from '@/lib/acabamentos'
+import {
+  notaDeConversao,
+  rotuloDaBase,
+  usePreferencias,
+} from '@/stores/preferencias'
 import { cn } from '@/lib/cn'
 import {
   formatarPreco,
@@ -50,6 +55,13 @@ export default function CartaDetalhe() {
   const { data: catalogo } = useCatalogo()
   const { data: anuncios } = useAnuncios()
   const [aAdicionar, setAAdicionar] = useState<ListingKind | null>(null)
+  // Assinadas de propósito: mudar moeda ou base em Configurações tem de
+  // repintar esta tela, e não só o rótulo dela.
+  const base = usePreferencias((s) => s.base)
+  const nota = notaDeConversao(
+    usePreferencias((s) => s.moeda),
+    usePreferencias((s) => s.cotacao),
+  )
 
   const carta = id ? cartas?.get(id) : undefined
   const lista = id ? precos?.get(id) : undefined
@@ -147,8 +159,15 @@ export default function CartaDetalhe() {
               de uma linha — uma por acabamento. */}
           <Cartela className="mt-4 flex flex-col gap-2 p-3.5">
             <p className="font-dado text-[10px] uppercase text-apagado">
-              Preço de referência · TCGplayer
+              {rotuloDaBase(base)} · TCGplayer
             </p>
+            {/* A conversão dita em voz alta. Sem esta linha, "R$ 312" passa por
+                preço da Liga Pokémon — que costuma ser bem mais alto. */}
+            {nota && (
+              <p className="font-corpo text-[11px] leading-snug text-apagado">
+                {nota}
+              </p>
+            )}
             {porAcabamento.length > 0 ? (
               porAcabamento.map(({ acabamento, escolha }) => (
                 <p

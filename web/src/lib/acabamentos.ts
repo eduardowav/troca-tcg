@@ -1,4 +1,4 @@
-import type { PrecoTCGplayer } from '@/lib/types'
+import { type PrecoTCGplayer, valorDoPreco } from '@/lib/types'
 
 /**
  * Acabamento — nunca "variante".
@@ -109,6 +109,6 @@ export function precoComum(
   // assumir a impressão comum — e é determinístico, ao contrário da ordem em que
   // o banco devolveu as linhas.
   return [...precos].sort(
-    (a, b) => (a.mercado ?? a.baixo ?? 0) - (b.mercado ?? b.baixo ?? 0),
+    (a, b) => (valorDoPreco(a) ?? 0) - (valorDoPreco(b) ?? 0),
   )[0]
 }

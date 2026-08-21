@@ -13,6 +13,14 @@ import { cn } from '@/lib/cn'
 import { estaInstalado } from '@/lib/instalacao'
 import { excluirConta, type Perfil } from '@/lib/perfil'
 import { sair } from '@/stores/auth'
+import {
+  type BaseDePreco,
+  definirBase,
+  definirMoeda,
+  type Moeda,
+  notaDeConversao,
+  usePreferencias,
+} from '@/stores/preferencias'
 import { definirTema, useTema } from '@/stores/tema'
 
 /**
@@ -60,6 +68,10 @@ export default function Configuracoes() {
       <Grupo titulo="App">
         <AvisoNoCelular />
         <ModoEscuro />
+      </Grupo>
+
+      <Grupo titulo="Preços">
+        <ComoLerPreco />
       </Grupo>
 
       <Grupo titulo="Sobre">
@@ -242,6 +254,120 @@ function ModoEscuro() {
         </button>
       )}
     </>
+  )
+}
+
+/**
+ * Como a pessoa quer ler preço: em que moeda, e por qual base.
+ *
+ * **Não é interruptor, é escolha entre dois nomes.** Ligado/desligado serve a
+ * "modo escuro", onde uma das posições é a ausência da outra. "Menor" e "médio"
+ * são dois valores igualmente legítimos, e um interruptor obrigaria a pessoa a
+ * decidir qual dos dois é o "ligado" — que é uma pergunta que a tela não deveria
+ * fazer.
+ *
+ * A regra e o porquê dos padrões estão em `stores/preferencias.ts`. O texto
+ * embaixo existe porque o número em real é convertido: preço da TCGplayer é
+ * mercado americano, e quem lê "R$ 312" precisa saber que aquilo não é o preço
+ * da Liga Pokémon.
+ */
+function ComoLerPreco() {
+  const base = usePreferencias((s) => s.base)
+  const moeda = usePreferencias((s) => s.moeda)
+  const cotacao = usePreferencias((s) => s.cotacao)
+  const nota = notaDeConversao(moeda, cotacao)
+
+  return (
+    <>
+      <Ficha
+        controle={
+          <Escolha<Moeda>
+            rotulo="Moeda"
+            valor={moeda}
+            opcoes={[
+              { valor: 'BRL', nome: 'R$' },
+              { valor: 'USD', nome: 'US$' },
+            ]}
+            onEscolher={definirMoeda}
+          />
+        }
+      >
+        Moeda
+      </Ficha>
+
+      <Ficha
+        controle={
+          <Escolha<BaseDePreco>
+            rotulo="Base do preço"
+            valor={base}
+            opcoes={[
+              { valor: 'menor', nome: 'Menor' },
+              { valor: 'medio', nome: 'Médio' },
+            ]}
+            onEscolher={definirBase}
+          />
+        }
+      >
+        Base do preço
+      </Ficha>
+
+      <p className="font-corpo text-[13px] leading-relaxed text-apagado">
+        {base === 'menor'
+          ? 'O menor preço é o piso dos anúncios da TCGplayer — o que custaria comprar a carta hoje.'
+          : 'O preço médio é a média do que foi vendido na TCGplayer — a referência que a maioria conhece.'}{' '}
+        {moeda === 'BRL'
+          ? cotacao
+            ? `Em real ele vem ${nota}. É preço americano convertido, e não o da Liga Pokémon, que costuma cobrar mais.`
+            : 'A cotação do dia ainda não chegou, então os preços aparecem em dólar.'
+          : 'Em dólar, exatamente como a fonte publica.'}
+      </p>
+    </>
+  )
+}
+
+/**
+ * Duas opções lado a lado, no vocabulário do mundo: borda de 2px, canto de
+ * etiqueta, e a escolhida em azul cheio — o mesmo "este é o valor ativo" que as
+ * folhas de condição e acabamento já usam.
+ *
+ * `aria-pressed` e não `role="radio"`: são dois botões que valem por si, sem a
+ * navegação por setas que um grupo de rádio promete e esta tela não entrega.
+ */
+function Escolha<T extends string>({
+  rotulo,
+  valor,
+  opcoes,
+  onEscolher,
+}: {
+  rotulo: string
+  valor: T
+  opcoes: ReadonlyArray<{ valor: T; nome: string }>
+  onEscolher: (valor: T) => void
+}) {
+  return (
+    <span role="group" aria-label={rotulo} className="flex shrink-0 gap-1.5">
+      {opcoes.map((opcao) => {
+        const ativa = opcao.valor === valor
+        return (
+          <button
+            key={opcao.valor}
+            type="button"
+            aria-pressed={ativa}
+            onClick={() => onEscolher(opcao.valor)}
+            className={cn(
+              'rounded-[var(--radius-etiqueta)] border-2 border-tinta px-3 py-1.5',
+              'font-dado text-[12px] font-bold uppercase',
+              'transition-[box-shadow,transform] active:translate-y-px',
+              ativa
+                ? 'bg-azul text-[var(--color-azul-tinta)]'
+                : 'bg-cartela text-tinta shadow-[var(--shadow-duro-xs)]',
+            )}
+          >
+            {opcao.nome}
+          </button>
+        )
+      })}
+    </span>
   )
 }
 

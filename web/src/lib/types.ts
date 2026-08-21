@@ -1,3 +1,5 @@
+import { preferenciasAgora } from '@/stores/preferencias'
+
 /** Espelha a tabela `cards` do catálogo (ver db/schema/02_cards.sql). */
 export interface Carta {
   id: string
@@ -78,9 +80,14 @@ export function temFiltro(f: FiltrosBusca): boolean {
 /**
  * Preço de referência da TCGplayer, espelhando `card_prices`.
  *
- * Em dólar porque a fonte é americana e não existe preço em real ali —
- * converter exigiria uma fonte de câmbio, que vence junto e daria falsa
- * precisão a um número que já é estimativa.
+ * Em dólar porque a fonte é americana e não existe preço em real ali. **O que
+ * vem do banco continua em dólar**; a conversão para real, quando a pessoa
+ * escolhe, acontece só na hora de escrever na tela (`formatarMoeda`), com a
+ * cotação da PTAX — ver `stores/preferencias.ts` e `db/schema/35_cotacao.sql`.
+ *
+ * Guardar em dólar não é detalhe de implementação: os pisos da regra de troca
+ * desigual são em dólar, e compará-los contra reais faria o alerta mudar de
+ * comportamento conforme o câmbio do dia.
  */
 export interface PrecoTCGplayer {
   card_id: string
@@ -96,19 +103,59 @@ export const COLUNAS_PRECO = 'card_id, tipo_tcgplayer, moeda, baixo, mercado'
 // depende do acabamento anunciado, e mora em lib/acabamentos.ts junto com a
 // ponte entre as duas taxonomias.
 
-const MOEDA = new Intl.NumberFormat('pt-BR', {
+const EM_DOLAR = new Intl.NumberFormat('pt-BR', {
   style: 'currency',
   currency: 'USD',
 })
 
-/** "US$ 5,27". */
-export function formatarMoeda(valor: number): string {
-  return MOEDA.format(valor)
+const EM_REAL = new Intl.NumberFormat('pt-BR', {
+  style: 'currency',
+  currency: 'BRL',
+})
+
+/**
+ * O número que representa a carta, na base que a pessoa escolheu.
+ *
+ * **É aqui que "menor" e "médio" viram um número só**, e é de propósito que
+ * exista um lugar só: enquanto cada tela escolhia com um `mercado ?? baixo`
+ * próprio, trocar a base significaria caçar seis linhas iguais espalhadas.
+ *
+ * A reserva cruzada existe porque as duas colunas falham em casos diferentes:
+ * medido no catálogo em 2026-08-21, `baixo` está em todas as 24.607 linhas e
+ * `mercado` falta em 17. Quem pede "menor" e recebe o médio numa carta rara está
+ * melhor servido do que quem recebe um traço.
+ *
+ * Continua em **dólar**: converter é trabalho de quem exibe, não de quem
+ * escolhe. A regra de troca desigual depende disso — os pisos dela são em
+ * dólar, e comparar em real faria o alerta mudar de comportamento conforme o
+ * câmbio do dia.
+ */
+export function valorDoPreco(preco?: PrecoTCGplayer | null): number | null {
+  if (!preco) return null
+  const { base } = preferenciasAgora()
+  const escolhido = base === 'menor' ? preco.baixo : preco.mercado
+  const reserva = base === 'menor' ? preco.mercado : preco.baixo
+  return escolhido ?? reserva ?? null
+}
+
+/**
+ * "US$ 5,27" ou "R$ 27,21", conforme a escolha em Configurações.
+ *
+ * Recebe **sempre dólar** — é a moeda da fonte, e é a única em que os números do
+ * app são comparáveis entre si. A conversão acontece no último instante, aqui.
+ *
+ * Sem cotação carregada, escreve em dólar em vez de esconder: número na moeda
+ * da fonte é pior que na moeda de casa, e muito melhor que um traço.
+ */
+export function formatarMoeda(valorEmDolar: number): string {
+  const { moeda, cotacao } = preferenciasAgora()
+  if (moeda === 'BRL' && cotacao) return EM_REAL.format(valorEmDolar * cotacao.valor)
+  return EM_DOLAR.format(valorEmDolar)
 }
 
 /** Devolve null quando não há número — preço ausente não vira "—". */
 export function formatarPreco(preco?: PrecoTCGplayer): string | null {
-  const valor = preco?.mercado ?? preco?.baixo
+  const valor = valorDoPreco(preco)
   return valor == null ? null : formatarMoeda(valor)
 }
 
@@ -123,9 +170,39 @@ export function formatarPreco(preco?: PrecoTCGplayer): string | null {
  *
  * `null` quando falta preço de algum lado — não dá para afirmar desequilíbrio
  * sem os dois números, e chutar seria pior que calar.
+ *
+ * ## Por que duas faixas, e não um par de números
+ *
+ * Até 2026-08-21 a regra era uma só: 3x **e** US$ 5. Ela tinha um buraco do
+ * tamanho do produto — **US$ 300 por US$ 600 passava calado**, porque é "só" 2x.
+ * Trezentos dólares de distância é a troca mais desigual que este app vai ver, e
+ * era justamente a que ele não comentava. Baixar tudo para 2x consertaria essa
+ * e criaria a praga oposta: US$ 5 por US$ 10 viraria alerta, e alerta que
+ * aparece em briga pequena é alerta que se aprende a fechar sem ler.
+ *
+ * Daí as faixas: **quanto mais dinheiro em jogo, menos desproporção é preciso
+ * para valer um aviso.** Uma troca de dez dólares de distância já merece
+ * comentário com o dobro de valor; abaixo disso, só o triplo.
+ *
+ * O que cada faixa faz, com os casos que decidiram os números:
+ *
+ *     0,05 x 0,20     4,0x    0,15    cala   (centavos, e é o caso do dia a dia)
+ *     0,50 x 2,00     4,0x    1,50    cala
+ *     2,00 x 6,00     3,0x    4,00    cala   (3x, mas quatro dólares)
+ *     3,00 x 12,00    4,0x    9,00    AVISA  (faixa de baixo)
+ *     8,00 x 16,00    2,0x    8,00    cala   (2x sem dinheiro suficiente)
+ *    15,00 x 30,00    2,0x   15,00    AVISA  (faixa de cima)
+ *   300,00 x 600,00   2,0x  300,00    AVISA  (o buraco que existia)
+ *
+ * Mexer nestes quatro números muda o que o app diz a duas pessoas prestes a
+ * atravessar a cidade. Mexer com a tabela acima na frente.
  */
-const RAZAO_MINIMA = 3
-const DIFERENCA_MINIMA = 5
+const FAIXAS: ReadonlyArray<{ razao: number; diferenca: number }> = [
+  // Dinheiro grande: o dobro já basta.
+  { razao: 2, diferenca: 10 },
+  // Dinheiro pequeno: precisa do triplo para não virar ruído.
+  { razao: 3, diferenca: 5 },
+]
 
 export interface Desequilibrio {
   /** Quantas vezes o lado caro cabe no barato. */
@@ -141,10 +218,7 @@ export function desequilibrio(
   precoDou?: PrecoTCGplayer,
   precoRecebo?: PrecoTCGplayer,
 ): Desequilibrio | null {
-  return desequilibrioDeValores(
-    precoDou?.mercado ?? precoDou?.baixo,
-    precoRecebo?.mercado ?? precoRecebo?.baixo,
-  )
+  return desequilibrioDeValores(valorDoPreco(precoDou), valorDoPreco(precoRecebo))
 }
 
 /**
@@ -165,7 +239,10 @@ export function desequilibrioDeValores(
   const menor = Math.min(dou, recebo)
   const razao = maior / menor
   const diferenca = maior - menor
-  if (razao < RAZAO_MINIMA || diferenca < DIFERENCA_MINIMA) return null
+  const alguma = FAIXAS.some(
+    (faixa) => razao >= faixa.razao && diferenca >= faixa.diferenca,
+  )
+  if (!alguma) return null
 
   return {
     razao,

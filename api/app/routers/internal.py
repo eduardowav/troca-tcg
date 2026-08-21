@@ -16,7 +16,14 @@ from app.core.config import settings
 from app.db.session import get_session
 from app.jobs.catalog.sync import sincronizar_sets
 from app.jobs.catalog.tcgdex import TCGdex
-from app.services import alertas, assinaturas, matching, propostas, triangular
+from app.services import (
+    alertas,
+    assinaturas,
+    cambio,
+    matching,
+    propostas,
+    triangular,
+)
 
 router = APIRouter(prefix="/internal/jobs", tags=["internal"])
 
@@ -159,5 +166,23 @@ async def reconciliar_assinaturas(
     Desligada sem credencial, responde `{"desligado": 1}` sem tocar no banco.
     """
     resultado = await assinaturas.reconciliar(session)
+    await session.commit()
+    return resultado
+
+
+@router.post("/cambio", dependencies=[Depends(_verifica_secret)])
+async def atualizar_cambio(
+    session: AsyncSession = Depends(get_session),
+) -> dict[str, object]:
+    """Busca a PTAX do dia e guarda a cotação do dólar.
+
+    Diário e barato: uma requisição, uma linha. O preço da TCGplayer é em dólar,
+    e quem escolheu ver em real lê esta cotação — ver `services/cambio.py` e o
+    `db/schema/35`.
+
+    Indisponibilidade do Banco Central devolve `{"mantida": 1}` e não apaga o
+    número anterior: câmbio de ontem serve, câmbio nenhum tira o preço da tela.
+    """
+    resultado = await cambio.atualizar(session)
     await session.commit()
     return resultado

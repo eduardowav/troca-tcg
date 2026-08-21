@@ -5,6 +5,10 @@ import { toast } from 'sonner'
 
 import { LinkNoTexto, ParDeCartas } from '@/components/brutal/Pecas'
 import { ModalIsencao } from '@/components/Isencao'
+import {
+  ModalTrocaDesigual,
+  ResumoDesigual,
+} from '@/components/TrocaDesigual'
 import { Denunciar } from '@/components/perfil/Denunciar'
 import { Button, estiloBotao } from '@/components/ui/Button'
 import { useAcabamentoPorId } from '@/hooks/useAcabamentos'
@@ -38,9 +42,6 @@ import {
   type Carta,
   codigoSet,
   desequilibrio,
-  type Desequilibrio,
-  formatarMoeda,
-  formatarRazao,
   nomeCarta,
 } from '@/lib/types'
 import { useUsuarioId } from '@/stores/auth'
@@ -65,6 +66,12 @@ export default function MatchDetalhe() {
   const { data: precos } = usePrecosPorId(ids)
   const acabamentoPorId = useAcabamentoPorId()
   const selagem = useSelagem(match?.status)
+
+  // O aceite passa pela caixa de troca desigual quando há desequilíbrio. O
+  // estado mora aqui, e não dentro de `Combinar`, porque quem manda a resposta é
+  // esta tela — e o botão precisa continuar sendo um botão só, com um caminho
+  // só, para não haver "aceitar" que escapa do aviso.
+  const [avisandoDesigual, setAvisandoDesigual] = useState(false)
 
   if (isPending) {
     return (
@@ -198,18 +205,35 @@ export default function MatchDetalhe() {
     )
   }
 
+  /**
+   * O clique nos dois botões de resposta.
+   *
+   * Aceitar com desequilíbrio não manda nada: abre a caixa, que é quem chama
+   * `enviarResposta` depois do segundo clique. Recusar passa direto — o aviso
+   * existe para segurar quem está prestes a fechar, não quem está saindo.
+   */
   function decidir(aceitou: boolean) {
+    if (aceitou && desigual) {
+      setAvisandoDesigual(true)
+      return
+    }
+    enviarResposta(aceitou)
+  }
+
+  function enviarResposta(aceitou: boolean) {
     responder.mutate(
       { id: match!.id, aceitou },
       {
-        onSuccess: (novo) =>
+        onSuccess: (novo) => {
+          setAvisandoDesigual(false)
           toast.success(
             novo.status === 'ACEITO'
               ? 'Troca combinada! O contato está liberado.'
               : aceitou
                 ? 'Interesse marcado. Falta a outra pessoa.'
                 : 'Troca recusada.',
-          ),
+          )
+        },
         onError: (erro) =>
           toast.error(
             erro instanceof ApiError
@@ -335,7 +359,7 @@ export default function MatchDetalhe() {
         }
       />
 
-      {desigual && <AvisoDesequilibrio dados={desigual} />}
+      {desigual && <ResumoDesigual dados={desigual} />}
 
       {match.status === 'CONCLUIDO' ? (
         <Encerrado
@@ -400,6 +424,15 @@ export default function MatchDetalhe() {
       />
 
       <Rodape match={match} />
+
+      {/* Fora do fluxo da página, como a isenção: é uma parada, não uma seção. */}
+      <ModalTrocaDesigual
+        aberto={avisandoDesigual}
+        dados={desigual}
+        salvando={responder.isPending}
+        onAceitar={() => enviarResposta(true)}
+        onVoltar={() => setAvisandoDesigual(false)}
+      />
     </Moldura>
   )
 }
@@ -517,65 +550,6 @@ function Detalhe({
           </span>
         )}
       </dd>
-    </div>
-  )
-}
-
-/**
- * Aviso de troca desigual.
- *
- * Não bloqueia e não julga: troca desigual é legítima — gente dá carta cara para
- * fechar amizade, para desencalhar, ou porque quer muito a outra. O que não pode
- * é a pessoa descobrir a diferença só na hora do encontro, porque aí ela some, e
- * some contando como furo na métrica-mãe.
- *
- * O aviso fala mais alto para quem entrega mais valor, mas aparece dos dois
- * lados: quem está levando vantagem também precisa saber, porque é do outro lado
- * que vem a desistência.
- *
- * "Mais alto" é a moldura, nunca a legibilidade. O lado de quem recebe mais já
- * foi pintado inteiro na cor da letra miúda, e a frase principal saía mais apagada
- * que o parágrafo de apoio logo abaixo dela — hierarquia ao contrário justamente
- * na tela que a pessoa precisa ler antes de marcar um encontro. Agora quem
- * entrega mais leva a moldura de Procuro e a frase na cor dela; quem recebe mais
- * leva a cartela neutra do resto da tela, com a frase em `paper`. Os dois casos
- * se leem; só um deles interrompe.
- */
-function AvisoDesequilibrio({ dados }: { dados: Desequilibrio }) {
-  const alerta = dados.euEntregoMais
-
-  return (
-    <div
-      role="status"
-      data-tom={alerta ? 'atencao' : undefined}
-      className={cn(
-        'cartela mt-5 rounded-[var(--radius-card)] border p-4',
-        alerta
-          ? 'border-[color-mix(in_oklab,var(--color-want)_40%,transparent)] bg-[color-mix(in_oklab,var(--color-want)_8%,transparent)]'
-          : 'border-edge bg-surface',
-      )}
-    >
-      <p
-        className={cn(
-          'titulo-tom text-[15px] font-medium',
-          alerta ? 'text-want' : 'text-paper',
-        )}
-      >
-        {alerta
-          ? `Você entrega cerca de ${formatarRazao(dados.razao)} mais valor do que recebe.`
-          : `Você recebe cerca de ${formatarRazao(dados.razao)} mais valor do que entrega.`}
-      </p>
-      <p className="mt-2 text-[14px] leading-relaxed text-muted">
-        Pela referência da TCGplayer, {formatarMoeda(dados.valorDou)} de um lado
-        e {formatarMoeda(dados.valorRecebo)} do outro.{' '}
-        {dados.euEntregoMais
-          ? 'Se não for de propósito, vale combinar uma compensação antes de fechar — mais cartas do outro lado, por exemplo.'
-          : 'A outra pessoa pode pedir uma compensação, e troca muito desigual costuma furar no dia do encontro.'}
-      </p>
-      <p className="mt-2 text-[12px] leading-relaxed text-faint">
-        Preço é referência de mercado americano, não regra: condição, idioma e
-        vontade de cada um valem mais do que a tabela.
-      </p>
     </div>
   )
 }

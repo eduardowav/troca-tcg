@@ -41,3 +41,13 @@ jobs:
             # as carências vencidas. Diário porque assinatura muda em dias.
             chamar reconciliar-assinaturas || echo "reconciliar-assinaturas falhou"
           fi
+          # Câmbio: na janela das 11:30 BRT, e mais tarde de propósito. Pega
+          # carona no disparo de 15 em 15 minutos, que já passa por aqui — uma
+          # entrada de cron própria só faria dois workflows rodarem no mesmo
+          # minuto. A PTAX do dia sai por volta das 13h UTC; às 09:00 UTC o
+          # boletim ainda não existe e o job guardaria sempre a cotação da
+          # véspera. Falha aqui não apaga a linha anterior — ver
+          # services/cambio.py.
+          if [ "$(date -u +%H:%M)" = "14:30" ]; then
+            chamar cambio || echo "cambio falhou"
+          fi

@@ -11,6 +11,10 @@ import {
   totalDoLote,
 } from '@/components/brutal/Pecas'
 import { paraLote } from '@/components/proposta/lote'
+import {
+  ModalTrocaDesigual,
+  ResumoDesigual,
+} from '@/components/TrocaDesigual'
 import { MontarProposta } from '@/components/proposta/MontarProposta'
 import { Button, estiloBotao } from '@/components/ui/Button'
 import { useAcabamentoPorId } from '@/hooks/useAcabamentos'
@@ -46,8 +50,6 @@ import {
   type Carta,
   desequilibrioDeValores,
   type Desequilibrio,
-  formatarMoeda,
-  formatarRazao,
   type PrecoTCGplayer,
 } from '@/lib/types'
 
@@ -71,6 +73,7 @@ export default function PropostaDetalhe() {
   const retirar = useRetirarProposta()
   const contrapor = useContrapor()
   const [contrapondo, setContrapondo] = useState(false)
+  const [avisandoDesigual, setAvisandoDesigual] = useState(false)
 
   const ids = useMemo(
     () =>
@@ -128,12 +131,28 @@ export default function PropostaDetalhe() {
     toast.error(e instanceof ApiError ? e.message : alternativa)
   }
 
+  /**
+   * O clique nos botões de resposta.
+   *
+   * Aceitar com desequilíbrio abre a caixa em vez de mandar — é ela que chama
+   * `enviarResposta` depois do segundo clique. Recusar e retirar passam direto:
+   * o aviso segura quem está prestes a fechar, não quem está saindo.
+   */
   function responder(acao: 'aceitar' | 'recusar' | 'retirar') {
+    if (acao === 'aceitar' && desigual) {
+      setAvisandoDesigual(true)
+      return
+    }
+    enviarResposta(acao)
+  }
+
+  function enviarResposta(acao: 'aceitar' | 'recusar' | 'retirar') {
     const mutacao =
       acao === 'aceitar' ? aceitar : acao === 'recusar' ? recusar : retirar
 
     mutacao.mutate(proposta!.id, {
       onSuccess: (nova) => {
+        setAvisandoDesigual(false)
         if (acao === 'aceitar' && nova.match_id) {
           // O aceite não termina aqui: ele cria a troca, e é lá que a pessoa
           // combina o encontro e vê o contato. Mandar para a troca é continuar
@@ -282,7 +301,7 @@ export default function PropostaDetalhe() {
         </ol>
       </section>
 
-      {aberta && desigual && <AvisoDesequilibrio dados={desigual} />}
+      {aberta && desigual && <ResumoDesigual dados={desigual} />}
 
       {aberta && !contrapondo && (
         <Acoes
@@ -314,6 +333,17 @@ export default function PropostaDetalhe() {
           </div>
         </section>
       )}
+
+      {/* Fora do fluxo da página: é uma parada antes do único passo
+          irreversível desta tela, e não mais uma seção dela. */}
+      <ModalTrocaDesigual
+        aberto={avisandoDesigual}
+        dados={desigual}
+        contexto="proposta"
+        salvando={aceitar.isPending}
+        onAceitar={() => enviarResposta('aceitar')}
+        onVoltar={() => setAvisandoDesigual(false)}
+      />
     </Moldura>
   )
 }
@@ -490,44 +520,6 @@ function desequilibrioDaRodada(
   if (!dou.exato || !recebo.exato) return null
 
   return desequilibrioDeValores(dou.valor, recebo.valor)
-}
-
-/**
- * A mesma notícia do detalhe da troca, na língua da proposta.
- *
- * Aqui ela pesa mais do que lá: a troca sugerida foi montada pelo motor, que já
- * pesa preço no score, e esta foi montada por uma pessoa pedindo o que quer.
- * Não é acusação — o texto não diz que alguém está tentando levar vantagem —,
- * mas quem vai apertar "aceitar" precisa ver os dois números antes.
- */
-function AvisoDesequilibrio({ dados }: { dados: Desequilibrio }) {
-  const alerta = dados.euEntregoMais
-
-  return (
-    <Cartela
-      className={cn('mt-5 p-4', alerta && 'bg-meu')}
-      // `status` e não `alert`: a informação chega junto com a tela, não
-      // interrompe nada. Quem usa leitor de tela ouve na vez dela.
-      role="status"
-    >
-      <p className="font-titulo text-[15px] font-bold text-tinta">
-        {alerta
-          ? `Você entrega cerca de ${formatarRazao(dados.razao)} mais valor do que recebe.`
-          : `Você recebe cerca de ${formatarRazao(dados.razao)} mais valor do que entrega.`}
-      </p>
-      <p className="mt-2 font-corpo text-[14px] leading-relaxed text-apagado">
-        Pela referência da TCGplayer, {formatarMoeda(dados.valorDou)} de um lado
-        e {formatarMoeda(dados.valorRecebo)} do outro.{' '}
-        {alerta
-          ? 'Se não for de propósito, "trocar o que vem" resolve sem encerrar a conversa — dá para pedir mais uma carta em vez de recusar.'
-          : 'A outra pessoa pode voltar pedindo compensação, e troca muito desigual costuma furar no dia do encontro.'}
-      </p>
-      <p className="mt-2 font-corpo text-[12px] leading-relaxed text-apagado">
-        Preço é referência de mercado americano, não regra: condição, idioma e
-        vontade de cada um valem mais do que a tabela.
-      </p>
-    </Cartela>
-  )
 }
 
 function RodadaNaTela({

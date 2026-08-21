@@ -2012,6 +2012,119 @@ Se cadastrar as cartas for chato, ninguém usa e não existe rede. Objetivo: 10 
 - [ ] Skeleton em toda tela que carrega dados
 - [ ] Funciona offline para leitura (service worker cacheia as listas)
 
+### 14.6 Aviso de troca desigual
+
+Reformulado em 2026-08-21, por decisão do Eduardo. Antes era uma cartela parada
+no meio da tela da troca, com três parágrafos. Ela era honesta e era ignorada:
+chegava junto com a tela, antes de a pessoa ter decidido qualquer coisa, e no
+momento da decisão — o dedo em "Tenho interesse" — já tinha rolado para fora do
+campo de visão. **Aviso que não está na frente na hora da decisão é rodapé.**
+
+**A regra** mora em `web/src/lib/types.ts` (`desequilibrio` para a troca
+sugerida, que é 1×1, e `desequilibrioDeValores` para a proposta, que compara o
+total de dois lotes). São **duas faixas**, e qualquer uma delas basta:
+
+| Faixa | Razão | Diferença | Para que serve |
+|---|---|---|---|
+| Dinheiro grande | ≥ 2x | ≥ US$ 10 | O dobro já é muito quando há dezenas de dólares em jogo |
+| Dinheiro pequeno | ≥ 3x | ≥ US$ 5 | Abaixo disso, só o triplo justifica interromper alguém |
+
+O que cada uma faz, com os casos que decidiram os números:
+
+```
+  0,05 x 0,20     4,0x     0,15    cala    (centavos, e é o caso do dia a dia)
+  0,50 x 2,00     4,0x     1,50    cala
+  2,00 x 6,00     3,0x     4,00    cala    (3x, mas quatro dólares)
+  3,00 x 12,00    4,0x     9,00    AVISA   (faixa de baixo)
+  8,00 x 16,00    2,0x     8,00    cala    (2x sem dinheiro suficiente)
+ 15,00 x 30,00    2,0x    15,00    AVISA   (faixa de cima)
+300,00 x 600,00   2,0x   300,00    AVISA   (o buraco que existia)
+```
+
+Até 21/08 a regra era uma só — 3x **e** US$ 5 —, e ela tinha um buraco do
+tamanho do produto: **US$ 300 por US$ 600 passava calado**, porque é "só" 2x.
+Baixar tudo para 2x consertaria essa e criaria a praga oposta: US$ 5 por US$ 10
+viraria alerta, e alerta que aparece em briga pequena é alerta que se aprende a
+fechar sem ler.
+
+Cala quando falta preço de qualquer lado. Na proposta isso é mais comum, porque
+um lote de cinco cartas só precisa de uma sem cotação para o total virar chute —
+e afirmar "você entrega 4x mais" com um lado incompleto é pior que não dizer
+nada.
+
+**As duas formas** ficam em `web/src/components/TrocaDesigual.tsx`, usadas pelo
+detalhe da troca e pela proposta:
+
+- `ResumoDesigual` — uma linha na página (`role="status"`), para quem só está
+  olhando perceber o sinal. Não argumenta; aponta.
+- `ModalTrocaDesigual` — a folha inferior que abre **no lugar** do aceite, com os
+  dois valores lado a lado e o argumento inteiro, e exige um segundo clique.
+
+O aceite é o que libera o contato e marca o encontro: é o último ponto barato de
+arrependimento, porque desfazer depois custa uma conversa com um desconhecido.
+Não bloqueia e não acusa — troca desigual é legítima, e preço da TCGplayer é
+referência de mercado americano, não regra. O que muda é que o botão passa a ser
+apertado com os dois números na frente.
+
+A caixa **fecha no Esc e no clique fora**, ao contrário da `ModalIsencao`. Lá as
+saídas fáceis transformariam "aceito" em "consegui contornar", porque o registro
+é legal; aqui a saída fácil **é** a opção conservadora — fechar sem escolher
+deixa a troca como estava.
+
+Uma armadilha que ficou registrada: a pele brutal pinta de tinta o fundo de
+qualquer `[aria-hidden]` dentro de `.folha-inferior` (é a regra do puxador e das
+divisórias, no `index.css`). A razão ("30x") nasceu marcada como decorativa e
+virou um retângulo preto na tela.
+
+### 14.7 Como a pessoa lê preço: moeda e base
+
+Decidido pelo Eduardo em 2026-08-21. Duas escolhas em Configurações, guardadas no
+`localStorage` como o tema — preferência de leitura, resolvida antes da primeira
+pintura, e uma ida ao banco para saber em que moeda escrever um número faria a
+tela piscar dólar antes de virar real. Custo assumido: quem troca de aparelho
+escolhe de novo.
+
+**Base do preço.** A TCGplayer publica dois números por carta, e os dois já
+estavam no banco desde a migração 15:
+
+- `menor` (`lowPrice`) — o piso dos anúncios: o que custaria comprar a carta hoje.
+- `medio` (`marketPrice`) — a média do que foi vendido: a referência conhecida.
+
+O **padrão é `menor`**. Medido no catálogo inteiro em 21/08: o menor é, em média,
+**metade** do médio (razão 0,502 sobre 24.607 linhas; `baixo` está em todas as
+linhas, `mercado` falta em 17). Isso muda o aviso de troca desigual, e de
+propósito — a razão entre as duas cartas quase não se mexe, mas a diferença
+absoluta cai pela metade, e os pisos em dólar da regra filtram mais. Um aviso que
+fala do preço médio enquanto a tela mostra o menor estaria discordando de si
+mesmo.
+
+A escolha vira um número só em `valorDoPreco` (`lib/types.ts`), com reserva
+cruzada: quem pede "menor" e cai numa das 17 cartas sem `baixo` recebe o médio,
+porque um número da outra base serve melhor que um traço.
+
+**Moeda.** Dólar é a fonte; real é conversão pela PTAX do Banco Central, guardada
+na tabela `cotacoes` (migração 35) e atualizada pelo job `cambio`, diário, na
+janela das 11:30 BRT — mais tarde que os outros de propósito, porque o boletim do
+dia só sai por volta das 13h UTC. Falha do Banco Central devolve `{"mantida": 1}`
+e **não apaga** a linha anterior: câmbio de ontem serve, câmbio nenhum tiraria o
+preço da tela de todo mundo.
+
+O padrão é real, porque é nele que se julga se uma troca é justa por aqui. Sem
+cotação carregada a tela cai para dólar sozinha, em vez de esconder o preço.
+
+**A ressalva do 15 continua de pé, e virou texto na tela.** Aquele arquivo
+decidiu manter dólar porque converter "daria falsa precisão a um número que já é
+estimativa". A decisão foi revista, não revogada: preço da TCGplayer convertido
+**não é preço brasileiro** — a Liga Pokémon costuma cobrar bem mais que a
+conversão do dólar. Por isso Configurações e a tela da carta dizem "convertido do
+dólar · câmbio de dd/mm/aaaa", com a data da cotação **na fonte** (a PTAX de
+sábado é a de sexta), e não a do dia em que o job rodou.
+
+**O que vem do banco continua em dólar.** A conversão acontece no último
+instante, em `formatarMoeda`. Não é detalhe de implementação: os pisos da regra
+de troca desigual são em dólar, e compará-los contra reais faria o alerta mudar
+de comportamento conforme o câmbio do dia.
+
 ---
 
 ## 15. Custos operacionais
