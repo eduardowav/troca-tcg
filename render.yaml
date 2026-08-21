@@ -22,6 +22,15 @@ services:
     healthCheckPath: /v1/health
     autoDeployTrigger: commit
 
+    # O domínio próprio. O `onrender.com` não some por declarar isto — ele
+    # continua respondendo, e é o que segura quem instalou o PWA antes.
+    #
+    # O Render emite o certificado sozinho, mas **só depois** de o DNS apontar
+    # para cá: até lá o domínio aparece no painel como pendente, e é o estado
+    # normal, não erro. O CNAME está em `docs/INFRA.md`.
+    domains:
+      - api.trocatcg.com
+
     # O projeto usa uv, que o runtime Python do Render não conhece — ele
     # detecta `pyproject.toml` e assume Poetry, que não é o caso. Exportar o
     # lock para requirements e instalar com pip resolve sem depender dessa
@@ -90,9 +99,15 @@ services:
       - key: TERMOS_VERSAO
         value: '2026-08-15'
 
-      # A origem do PWA. Some o domínio próprio aqui quando ele existir.
+      # As origens do PWA. **As duas ficam**, e isso não é indecisão: o endereço
+      # do Render continua no ar depois que o domínio entra, e quem instalou o
+      # app antes da troca tem um PWA preso à origem antiga — trocar o domínio
+      # não migra ninguém. Tirar `onrender.com` daqui quebraria esse aparelho
+      # sem aviso, com um erro de CORS que a tela não sabe explicar.
+      #
+      # Sai no dia em que ninguém mais chegar por lá, e não antes.
       - key: CORS_ORIGINS
-        value: https://trocatcg-web.onrender.com
+        value: https://trocatcg.com,https://www.trocatcg.com,https://trocatcg-web.onrender.com
 
       # Web Push. A pública é a mesma do `VITE_VAPID_PUBLIC_KEY` do PWA e pode
       # ficar aqui — é ela que o navegador guarda para reconhecer o remetente
@@ -129,9 +144,10 @@ services:
         sync: false
       - key: MERCADO_PAGO_PLANO_ANUAL
         sync: false
-      # Para onde o Mercado Pago devolve quem terminou o checkout.
+      # Para onde o Mercado Pago devolve quem terminou o checkout. Endereço
+      # único, e por isso o novo: quem volta do checkout volta para o domínio.
       - key: MERCADO_PAGO_BACK_URL
-        value: https://trocatcg-web.onrender.com/planos
+        value: https://trocatcg.com/planos
 
       # Painel de erro (item 15 da seção 17). Pelo painel (`sync: false`) porque
       # DSN é endereço de escrita: quem o tem manda evento para a conta do
@@ -154,6 +170,16 @@ services:
     autoDeployTrigger: commit
     buildCommand: npm ci && npm run build
     staticPublishPath: dist
+
+    # O apex é o endereço do app — é o que se fala em voz alta e o que as
+    # pessoas digitam. O `www` entra junto porque metade do mundo o escreve por
+    # hábito; o Render redireciona um para o outro sozinho.
+    #
+    # O apex é o único que não usa CNAME: pede `A` (ou `ALIAS`, se o provedor
+    # de DNS tiver). Ver `docs/INFRA.md`.
+    domains:
+      - trocatcg.com
+      - www.trocatcg.com
 
     buildFilter:
       paths:
@@ -202,7 +228,11 @@ services:
       # executa — a alternativa seria hospedar avatar, que o projeto não faz.
       #
       # `connect-src` lista o Supabase (REST, Auth e o `wss` do Realtime, que o
-      # sino usa), a API e o Sentry. `frame-ancestors 'none'` é o
+      # sino usa), a API e o Sentry. **Os dois endereços da API ficam**: este
+      # cabeçalho vale para os dois hosts que servem o mesmo build, e um PWA
+      # instalado antes do domínio continua chamando de `onrender.com`. Se
+      # `api.trocatcg.com` faltar aqui, o app carrega inteiro e requisição
+      # nenhuma sai — falha calada, console cheio. `frame-ancestors 'none'` é o
       # `X-Frame-Options` acima em versão moderna; os dois ficam, porque
       # navegador velho só entende o primeiro.
       #
@@ -229,6 +259,7 @@ services:
           connect-src 'self'
           https://qbdtcpotehvbkozppmyu.supabase.co
           wss://qbdtcpotehvbkozppmyu.supabase.co
+          https://api.trocatcg.com
           https://trocatcg-api.onrender.com
           https://*.ingest.sentry.io
           https://*.ingest.us.sentry.io;
@@ -254,7 +285,7 @@ services:
       # Render, e a propriedade `host` devolveria o hostname interno — que o
       # navegador de quem usa o app não alcança.
       - key: VITE_API_URL
-        value: https://trocatcg-api.onrender.com/v1
+        value: https://api.trocatcg.com/v1
 
       # A mesma chave pública VAPID da API. Entra no bundle de propósito: é o
       # que o navegador precisa ter em mãos na hora de se inscrever no serviço

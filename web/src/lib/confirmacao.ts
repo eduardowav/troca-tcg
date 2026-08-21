@@ -32,6 +32,12 @@ import { supabase } from '@/lib/supabase'
  * `auth_logs`: `http://localhost:5173` e `https://trocatcg-web.onrender.com`
  * estão as duas na lista.
  *
+ * **`https://trocatcg.com` precisa entrar na lista antes de o DNS apontar para
+ * cá** — é painel, não código, e está em `docs/INFRA.md`. Se o domínio subir
+ * primeiro, quem se cadastrar por ele recebe o e-mail, clica, e cai no endereço
+ * do Render: a conta confirma, mas a pessoa some do fluxo em que estava. E o
+ * `www` conta como outra origem, então entra junto.
+ *
  * O destino é `/entrar` porque é de lá que a pessoa saiu, e é a tela que sabe
  * explicar o link vencido. Quando o link é bom, ela nem chega a aparecer: a
  * sessão nasce da URL e a tela manda para dentro do app.

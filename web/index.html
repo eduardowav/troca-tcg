@@ -30,9 +30,16 @@
 
       A `og:image` é absoluta de propósito: caminho relativo funciona no
       navegador e falha em todo raspador de prévia, que busca a imagem sem ter
-      uma página base. Como o app não tem domínio próprio (decisão de custo zero,
-      2026-08-14), o endereço é o do Render — e é ele que precisa mudar no dia em
-      que um domínio entrar.
+      uma página base.
+
+      **Estas duas linhas apontam para `trocatcg.com`, e elas só ficam certas
+      quando o DNS estiver no ar.** Enquanto o domínio não resolver, um link
+      compartilhado — mesmo o do `onrender.com` — chega sem prévia nenhuma: o
+      raspador vai buscar a imagem no endereço daqui, não no da página que ele
+      abriu. Não é erro que apareça em log; é a caixa do WhatsApp vindo cinza.
+
+      Ou seja: apontar o DNS e compartilhar o primeiro link são a mesma tarefa,
+      nesta ordem. Ver `docs/INFRA.md`.
 
       `summary_large_image` é o formato de cartão grande do Twitter/X. Sem esta
       linha ele usa a miniatura quadrada e recorta o meio da arte.
@@ -47,8 +54,8 @@
       property="og:description"
       content="Você diz o que tem e o que quer. O app acha com quem trocar, aqui em Belém."
     />
-    <meta property="og:url" content="https://trocatcg-web.onrender.com" />
-    <meta property="og:image" content="https://trocatcg-web.onrender.com/og.png" />
+    <meta property="og:url" content="https://trocatcg.com" />
+    <meta property="og:image" content="https://trocatcg.com/og.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <!-- Lida por leitor de tela quando a prévia é anunciada, e é o único texto

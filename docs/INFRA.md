@@ -323,6 +323,84 @@ gente o free tier aguenta ao mesmo tempo, não a RAM.
   privada do Render, e `property: host` devolveria o hostname interno, que o
   navegador de quem usa o app não alcança.
 
+## Domínio próprio — `trocatcg.com`
+
+Decidido em 2026-08-21: o **apex** serve o app, `www` redireciona para ele, e a
+API fica em `api.trocatcg.com`. O apex ganhou a disputa contra `app.trocatcg.com`
+por um motivo de boca, não de técnica — no dia do lançamento o endereço vai ser
+ditado em voz alta para quarenta pessoas numa loja, e "app ponto" é uma palavra a
+mais para cada uma delas errar.
+
+**O código já está pronto** (commit desta data). O que falta é painel.
+
+### Por que antes do lançamento, e não depois
+
+PWA é presa à origem. Quem instalar pelo `trocatcg-web.onrender.com` fica com um
+app apontando para lá **para sempre** — trocar o domínio depois não migra
+ninguém, e não há tela que avise. Mesma coisa para link colado em grupo de
+WhatsApp. Se o domínio vai entrar, ele entra antes de haver gente instalada.
+
+O endereço do Render **não sai** por isso: ele continua no ar, e é o que segura
+quem já instalou. Por isso o `CORS_ORIGINS` lista os dois, e o `connect-src` do
+CSP lista as duas APIs.
+
+### DNS, no provedor do domínio
+
+```
+trocatcg.com       A  ou ALIAS  ->  o IP/alvo que o Render mostrar
+www.trocatcg.com   CNAME        ->  trocatcg-web.onrender.com
+api.trocatcg.com   CNAME        ->  trocatcg-api.onrender.com
+```
+
+O apex é o único que não aceita CNAME — é limitação do DNS, não do Render. Se o
+provedor oferecer `ALIAS` (ou `ANAME`), use: ele acompanha mudança de IP
+sozinho. Só com `A` é preciso voltar aqui se o Render trocar o endereço.
+
+O certificado TLS é emitido pelo Render sozinho, **depois** que o DNS resolve.
+Até lá o domínio fica "pendente" no painel: é o estado normal, não erro.
+
+### Supabase → Authentication → URL Configuration
+
+Acrescentar às **Redirect URLs**, antes de apontar o DNS:
+
+```
+https://trocatcg.com/**
+https://www.trocatcg.com/**
+```
+
+Fora da lista, o Supabase **não recusa** — responde 200 e usa a Site URL calado.
+Na prática: a pessoa se cadastra pelo domínio novo, recebe o e-mail, clica, e
+cai no endereço do Render. A conta confirma e ela some do fluxo em que estava.
+O painel esconde a lista; para conferir o que está lá de verdade, ver a receita
+do `auth_logs` na seção do Supabase acima.
+
+A **Site URL** também muda para `https://trocatcg.com` — é ela que o Supabase
+usa quando não tem para onde voltar.
+
+### A ordem importa
+
+1. Redirect URLs no Supabase (não quebra nada estando adiantado).
+2. DNS apontado.
+3. Esperar o certificado sair no painel do Render.
+4. Só então compartilhar o primeiro link.
+
+O passo 4 depende do 2 por um motivo que não aparece em log nenhum: a `og:image`
+do `web/index.html` é absoluta e aponta para `trocatcg.com`. Enquanto o DNS não
+resolver, **todo** link compartilhado chega sem prévia — inclusive o do
+`onrender.com` —, porque o raspador busca a imagem no endereço do meta, não no
+da página que abriu. A caixa do WhatsApp vem cinza e ninguém toca.
+
+### O que fica para depois
+
+O e-mail transacional continua saindo pelo SMTP do Gmail. Com domínio próprio dá
+para ter remetente `nao-responda@trocatcg.com` com SPF e DKIM, o que tira o app
+da pasta de promoções — mas é outra tarefa, e o teto de envio do Supabase
+(30/hora neste projeto) continua sendo o limite real no dia do lançamento.
+
+`web/src/routes/Termos.tsx` ainda cita `contato@trocatcg.com.br`, que é de outra
+pessoa. Com o `.com` na mão, esse endereço passa a ter para onde ir — está na
+lista abaixo desde antes e agora deixa de depender de terceiro.
+
 ## A configurar ainda (Fase 1)
 
 - [ ] **Empurrar o repo** — o `main` local está muito à frente do `origin`, e o
