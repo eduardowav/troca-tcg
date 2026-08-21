@@ -30,7 +30,14 @@ const esquema = z.object({
       'De 3 a 20 caracteres: letras minúsculas, números ou _',
     ),
   telefone: telefoneSchema,
+  // O teto é o do banco (`char_length(bio) <= 200` no 04_profiles.sql) e o
+  // mesmo do schema da API. Um limite menor só na tela seria uma terceira
+  // verdade, e a que primeiro sairia de sincronia.
+  bio: z.string().trim().max(200, 'No máximo 200 caracteres.'),
 })
+
+/** O teto da bio, repetido aqui só para o contador da tela. */
+const BIO_MAX = 200
 
 /**
  * Os campos editáveis do perfil, em tela própria.
@@ -77,6 +84,8 @@ export default function EditarPerfil() {
 
 function Formulario({ perfil }: { perfil: Perfil }) {
   const [erros, setErros] = useState<Record<string, string>>({})
+  // Só para o contador da dica; o valor que vale é o do formulário.
+  const [bio, setBio] = useState(perfil.bio ?? '')
   const queryClient = useQueryClient()
   const navegar = useNavigate()
 
@@ -107,6 +116,7 @@ function Formulario({ perfil }: { perfil: Perfil }) {
         .trim()
         .toLowerCase(),
       telefone: form.get('telefone'),
+      bio: form.get('bio') ?? '',
     })
     if (!analise.success) {
       const saida: Record<string, string> = {}
@@ -124,6 +134,12 @@ function Formulario({ perfil }: { perfil: Perfil }) {
     }
     if (dados.telefone !== perfil.contato_visivel) {
       mudou.contato_visivel = dados.telefone
+    }
+    // Apagar a bio é uma edição como outra qualquer, e precisa chegar como
+    // `null` — string vazia viraria uma bio em branco no banco, que é diferente
+    // de não ter bio e apareceria como um espaço solto na ficha.
+    if (dados.bio !== (perfil.bio ?? '')) {
+      mudou.bio = dados.bio === '' ? null : dados.bio
     }
     if (dados.username !== perfil.username) {
       if (!(await usernameDisponivel(dados.username))) {
@@ -158,6 +174,20 @@ function Formulario({ perfil }: { perfil: Perfil }) {
         dica="Mudar o @ muda como te encontram. O antigo fica livre para outra pessoa."
         erro={erros.username}
       />
+      {/* Uma linha, e não um parágrafo: o campo é `input` de propósito. O que
+          serve aqui é "coleciono Eevees" ou "só troco carta de jogar" — uma
+          frase que quem lê a ficha absorve sem parar para ler. */}
+      <Campo
+        rotulo="Uma frase sua"
+        name="bio"
+        defaultValue={perfil.bio ?? ''}
+        maxLength={BIO_MAX}
+        placeholder="Coleciono Eevees"
+        dica={`Aparece no seu perfil, para todo mundo. ${BIO_MAX - bio.length} caracteres restantes.`}
+        erro={erros.bio}
+        onChange={(e) => setBio(e.currentTarget.value)}
+      />
+
       <Campo
         rotulo="Seu WhatsApp"
         name="telefone"

@@ -77,6 +77,16 @@ export function FichaPerfil({
         </div>
       </div>
 
+      {/* A frase da pessoa, quando existe. Fica **dentro da ficha**, entre o @ e
+          os números: ela é identidade, não conteúdo — quem lê está decidindo se
+          quer trocar com alguém, e "coleciono Eevees" ajuda nessa decisão tanto
+          quanto a nota. Vazia, não deixa buraco nenhum. */}
+      {perfil.bio && (
+        <p className="mt-4 font-corpo text-[14px] leading-relaxed whitespace-pre-line text-tinta">
+          {perfil.bio}
+        </p>
+      )}
+
       <div className="mt-4 flex gap-3">
         <Placar valor={String(desfechos)} rotulo="Trocas" />
         {cartas != null && <Placar valor={String(cartas)} rotulo="Cartas" />}

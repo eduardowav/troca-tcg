@@ -73,12 +73,9 @@ export default function PerfilPublicoTela() {
     <Moldura>
       <Voltar />
       <Identidade perfil={perfil} />
-      {perfil.bio && (
-        <p className="mt-5 text-[15px] leading-relaxed whitespace-pre-line text-paper">
-          {perfil.bio}
-        </p>
-      )}
-
+      {/* A bio saiu daqui em 2026-08-21 e foi para dentro da `FichaPerfil`, que
+          é a peça que as duas telas de perfil compartilham. Escrita nos dois
+          lugares, ela apareceria duas vezes aqui — e um dia divergiria. */}
       <FichaPerfil perfil={perfil} />
       <ComoLer perfil={perfil} />
 
