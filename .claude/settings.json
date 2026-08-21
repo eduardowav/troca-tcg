@@ -1,5 +1,5 @@
 {
   "enabledPlugins": {
-    "mercadopago@mercadopago-claude-marketplace": true
+    "mercadopago@mercadopago-claude-marketplace": false
   }
 }
