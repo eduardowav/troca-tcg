@@ -192,6 +192,19 @@ async def excluir_conta(session: AsyncSession, user_id: UUID) -> None:
     participou resolve — e faz sentido de produto, porque uma troca combinada com
     quem saiu não vai acontecer.
 
+    **As propostas saem antes dos matches**, e não por gosto: `propostas.vez_de`
+    também aponta para `profiles` sem ON DELETE. As propostas da pessoa sumiriam
+    de qualquer forma, por cascade de `autor_id` e `destinatario_id` — mas a
+    conferência de `vez_de` acontece na mesma instrução, sem ordem garantida
+    entre as duas, e era ela que derrubava a exclusão de quem já tinha negociado.
+    Explícito aqui, o cascade nunca chega a ser posto à prova. Ver o
+    `db/schema/34`, que fecha a outra ponta: o aceite da isenção prendia o match.
+
+    Isto foi medido em produção em 2026-08-21, com `DELETE /v1/me` respondendo
+    500 para as duas contas de teste que percorreram o caminho normal do
+    produto. O item estava no checklist como pronto porque tinha sido conferido
+    no código, e nunca contra uma conta que usou o app.
+
     A reputação de quem fica não é afetada: `trocas_concluidas` e `trocas_furadas`
     são contadores na própria linha do perfil, não uma soma dos matches.
 
@@ -204,6 +217,13 @@ async def excluir_conta(session: AsyncSession, user_id: UUID) -> None:
     aqui. Falha no provedor não interrompe a exclusão — ver `cancelar_ao_sair`.
     """
     await assinaturas.cancelar_ao_sair(session, user_id)
+    await session.execute(
+        text("""
+            delete from propostas
+            where autor_id = :id or destinatario_id = :id or vez_de = :id
+        """),
+        {"id": str(user_id)},
+    )
     await session.execute(
         text("""
             delete from matches

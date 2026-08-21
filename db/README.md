@@ -45,6 +45,7 @@ foreign key entre eles (ex.: `listings` referencia `finishes`, `cards` e `profil
 | 31 | `schema/31_grants_das_tabelas_antigas.sql` | os GRANTs que o 11 não alcançou + tabela nova nasce fechada |
 | 32 | `schema/32_rls_do_match_sem_recursao.sql` | as policies do match, que recursavam infinito desde julho |
 | 33 | `schema/33_resolver_lista_exige_identificacao.sql` | a lista colada lê `xxx/xxx` e diz se identificou a carta ou só chutou |
+| 34 | `schema/34_exclusao_de_conta_nao_trava.sql` | o aceite da isenção deixa de prender o match, e apagar a conta volta a funcionar |
 
 > **Dependência do Supabase Auth:** `profiles.id` referencia `auth.users(id)`.
 > Aplique este schema em um projeto Supabase (onde o schema `auth` já existe).

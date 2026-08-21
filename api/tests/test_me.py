@@ -47,3 +47,46 @@ def test_me_exige_autenticacao():
     client = TestClient(app)
     resp = client.get("/v1/me")
     assert resp.status_code in (401, 403)
+
+
+class SessaoQueAnota:
+    """Dublê de sessão que só guarda o SQL, na linha do test_notificacoes."""
+
+    def __init__(self) -> None:
+        self.sqls: list[str] = []
+
+    async def execute(self, sql, params=None):
+        self.sqls.append(" ".join(str(sql).split()))
+        return type("Res", (), {"rowcount": 0})()
+
+    async def scalar(self, sql, params=None):
+        self.sqls.append(" ".join(str(sql).split()))
+        return None
+
+    async def commit(self) -> None:
+        pass
+
+
+async def test_excluir_conta_limpa_o_que_trava_a_fk(monkeypatch):
+    """A ordem das três instruções é o teste, e ela custou um 500 em produção.
+
+    `match_items`, `match_events`, `term_acceptances.match_id` e
+    `propostas.vez_de` apontam sem ON DELETE. Enquanto as propostas e os matches
+    não saíam antes, apagar a conta de quem tinha negociado — ou só revelado um
+    contato — respondia 500. Ver `db/schema/34`.
+    """
+
+    async def _nada(*args, **kwargs):
+        return None
+
+    monkeypatch.setattr(profiles.assinaturas, "cancelar_ao_sair", _nada)
+
+    sessao = SessaoQueAnota()
+    await profiles.excluir_conta(sessao, uuid4())  # type: ignore[arg-type]
+
+    escritas = [s for s in sessao.sqls if s.startswith("delete")]
+    assert escritas[0].startswith("delete from propostas")
+    assert escritas[1].startswith("delete from matches")
+    assert escritas[2].startswith("delete from auth.users")
+    # `vez_de` é a coluna que ninguém lembra, e é a que travava.
+    assert "vez_de = :id" in escritas[0]
