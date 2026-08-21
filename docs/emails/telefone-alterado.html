@@ -41,10 +41,16 @@
             <!-- ---------------------------------------------- marca -->
             <tr>
               <td align="center" style="padding-bottom: 24px;">
+                <!-- A assinatura horizontal da marca, sem fundo. Sai de
+                     `web/scripts/gerar-assinatura-email.mjs`, e o arquivo tem o
+                     dobro do tamanho declarado aqui: sem isso a marca sai
+                     borrada na tela do celular, que é onde quase todo mundo lê.
+                     PNG porque cliente de e-mail não renderiza SVG: o Gmail
+                     bloqueia, e o que some é a primeira coisa que se vê. -->
                 <img
-                  src="https://trocatcg-web.onrender.com/pwa-192.png"
-                  width="56" height="56" alt="TrocaTCG"
-                  style="display:block; width:56px; height:56px; border-radius:12px;"
+                  src="https://trocatcg-web.onrender.com/assinatura-email.png"
+                  width="220" height="36" alt="TrocaTCG"
+                  style="display:block; width:220px; height:36px;"
                 />
               </td>
             </tr>

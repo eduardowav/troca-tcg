@@ -1,22 +1,49 @@
 # E-mails transacionais
 
-Os dois e-mails que o Supabase Auth manda em nome do TrocaTCG, escritos na
+Os cinco e-mails que o Supabase Auth manda em nome do TrocaTCG, escritos na
 linguagem do [DESIGN.md](../../DESIGN.md): papel bege, cartela creme com borda
 de 2px e sombra dura, azul só na ação.
 
 | Arquivo | Template no painel | Dispara hoje? |
 |---|---|---|
-| `confirmar-cadastro.html` | **Confirm sign up** | ❌ confirmação desligada em 2026-08-12 |
+| `confirmar-cadastro.html` | **Confirm sign up** | ✅ desde 2026-08-21, quando a confirmação voltou |
 | `recuperar-senha.html` | **Reset password** | ✅ sim |
 | `senha-alterada.html` | **Password changed** | ✅ sim, a cada reset concluído |
 | `email-alterado.html` | **Email address changed** | ❌ não há tela de trocar e-mail |
 | `telefone-alterado.html` | **Phone number changed** | ❌ **nunca** — ver abaixo |
 
-### Por que três não disparam, e são três motivos diferentes
+## A marca no topo
 
-Confundir os três é o caminho para achar que a conta está avisada quando não está.
+Os cinco abrem com a **assinatura horizontal** — ícone e palavra lado a lado,
+sem fundo. É a composição principal do manual ("na dúvida, use a horizontal") e a
+mesma que o cabeçalho do app usa: o e-mail precisa parecer a mesma marca que abre
+depois do clique.
 
-**Confirm sign up** — desligado por configuração. Um interruptor no painel liga.
+O arquivo é `web/public/assinatura-email.png`, gerado por
+`web/scripts/gerar-assinatura-email.mjs` a partir de `marca.svg` e `palavra.svg`
+— nunca desenhado à mão, pelo mesmo motivo dos ícones e da `og.png`: cópia de
+arte é como uma marca vira cinco marcas parecidas. **Mudou a marca, rode o
+script**, e o e-mail acompanha sem ninguém lembrar dele.
+
+Três detalhes que parecem gosto e não são:
+
+- **PNG, não SVG.** Nenhum cliente grande renderiza SVG — o Gmail bloqueia. Não
+  dá erro: a marca simplesmente some, na primeira coisa que a pessoa vê.
+- **O arquivo tem o dobro do tamanho declarado** (440 px de largura para um
+  `width="220"`). Sem isso a marca sai borrada em tela de celular, que é onde
+  quase todo mundo lê.
+- **Sem fundo**, porque a assinatura não tem caixa. Quem desenha o papel bege é o
+  próprio e-mail. Em troca, os cinco declaram `color-scheme: light`: a tinta é
+  escura, e sem essa linha o modo escuro do Apple Mail inverteria o papel e
+  apagaria a marca junto.
+
+Antes de 2026-08-21 o topo era o ícone do PWA num quadrado de 56 px com canto
+arredondado — o ícone de aplicativo fazendo papel de assinatura, que o manual não
+prevê.
+
+### Por que dois não disparam, e são dois motivos diferentes
+
+Confundi-los é o caminho para achar que a conta está avisada quando não está.
 
 **Email address changed** — falta *funcionalidade*. Nada no app chama
 `supabase.auth.updateUser({ email })`; o único `updateUser` do código é o de
