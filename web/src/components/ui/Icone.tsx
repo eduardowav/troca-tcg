@@ -83,9 +83,8 @@ export function IconeTroca(props: IconeProps) {
   )
 }
 
-/** Envelope. Sem uso desde que a confirmação de e-mail saiu (2026-08-12);
- *  fica para o "esqueci minha senha", que é a próxima tela a falar de caixa de
- *  entrada — ver item 8 da seção 17. */
+/** Envelope. Nas duas telas que mandam alguém à caixa de entrada: o "esqueci
+ *  minha senha" e, desde 2026-08-21, a confirmação de e-mail no cadastro. */
 export function IconeEnvelope(props: IconeProps) {
   return (
     <Base {...props}>

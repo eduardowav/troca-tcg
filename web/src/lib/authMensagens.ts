@@ -11,9 +11,14 @@
  * contas.
  *
  * Ver `docs/SEGURANCA.md`: o texto daqui fecha o que a tela mostra, e **não**
- * fecha o buraco. A causa raiz é a confirmação de e-mail estar desligada no
- * Supabase, e quem chamar `supabase.co` direto continua distinguindo os dois
- * casos. Está registrado lá como risco residual, com o custo de fechá-lo.
+ * fecha o buraco — o front nunca é a fronteira. Quem fechou a causa raiz foi a
+ * **volta da confirmação de e-mail em 2026-08-21** (risco residual R-1): com
+ * ela ligada, o `signUp` devolve usuário ofuscado em vez de "já existe", e nem
+ * quem chama o `supabase.co` direto distingue mais os dois casos.
+ *
+ * A frase ambígua abaixo continua, e continua de propósito: ela é a única
+ * proteção se a confirmação for desligada de novo pelo painel, que é uma
+ * decisão de produto e não de código.
  */
 export function mensagemAuth(bruta: string): string {
   const m = bruta.toLowerCase()

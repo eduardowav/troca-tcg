@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { z } from 'zod'
 
@@ -10,8 +10,14 @@ import {
 } from '@/components/brutal/Pecas'
 import { Campo } from '@/components/ui/Campo'
 import { Button } from '@/components/ui/Button'
+import { IconeEnvelope } from '@/components/ui/Icone'
 import { mensagemAuth } from '@/lib/authMensagens'
 import { cn } from '@/lib/cn'
+import {
+  destinoDaConfirmacao,
+  erroDoLinkNaUrl,
+  reenviarConfirmacao,
+} from '@/lib/confirmacao'
 import { usernameDisponivel } from '@/lib/perfil'
 import { supabase } from '@/lib/supabase'
 import { formatarTelefone, telefoneSchema } from '@/lib/telefone'
@@ -55,10 +61,29 @@ export default function Entrar() {
   const [modo, setModo] = useState<Modo>('entrar')
   const [erros, setErros] = useState<Erros>({})
   const [enviando, setEnviando] = useState(false)
+  /** Preenchido quando o cadastro volta sem sessão: a conta existe e espera o clique. */
+  const [confirmarPara, setConfirmarPara] = useState<string | null>(null)
 
   const navigate = useNavigate()
   const location = useLocation()
   const destino = (location.state as { de?: string } | null)?.de ?? '/'
+
+  // Lido no primeiro render, antes de o `supabase-js` limpar o fragmento da URL.
+  const [erroDoLink] = useState(erroDoLinkNaUrl)
+
+  // Quem clica no link do e-mail volta para cá com a sessão no fragmento da
+  // URL. O `supabase-js` a lê sozinho e emite `SIGNED_IN`; sem este ouvinte, a
+  // pessoa confirmaria a conta e ficaria olhando a tela de entrar já logada.
+  //
+  // Por evento, e não por "tem sessão?": quem já estava logado e abriu
+  // `/entrar` de propósito — para trocar de conta, por exemplo — continua
+  // vendo o formulário.
+  useEffect(() => {
+    const { data } = supabase.auth.onAuthStateChange((evento, sessao) => {
+      if (evento === 'SIGNED_IN' && sessao) navigate(destino, { replace: true })
+    })
+    return () => data.subscription.unsubscribe()
+  }, [destino, navigate])
 
   function trocarModo(novo: Modo) {
     setModo(novo)
@@ -116,6 +141,11 @@ export default function Entrar() {
       email: dados.email,
       password: dados.senha,
       options: {
+        // Para onde o link do e-mail devolve a pessoa. Sem isto o Supabase usa
+        // a Site URL do painel, que é do projeto inteiro e não do aparelho de
+        // quem se cadastrou: quem criou a conta pelo celular abriria o link e
+        // cairia em outro endereço. Ver `lib/confirmacao.ts`.
+        emailRedirectTo: destinoDaConfirmacao(),
         data: {
           username: dados.username,
           nome_exibicao: dados.nome_exibicao,
@@ -128,18 +158,29 @@ export default function Entrar() {
 
     if (error) return setErros({ form: mensagemAuth(error.message) })
 
-    // Sem confirmação de e-mail (desligada no painel do Supabase em
-    // 2026-08-12), o cadastro já volta com sessão e a pessoa entra direto. A
-    // guarda existe para o dia em que a confirmação voltar junto com o "esqueci
-    // minha senha": ali o `signUp` devolve sessão nula, e sem esta linha a tela
-    // ficaria parada sem dizer nada — que é o pior desfecho possível para quem
-    // acabou de preencher tudo.
-    if (!data.session) {
-      return setErros({
-        form: 'Conta criada. Confirme seu e-mail e volte para entrar.',
-      })
-    }
+    // **Sessão nula não é erro: é a confirmação de e-mail ligada** (voltou em
+    // 2026-08-21). O `signUp` cria a conta e segura a sessão até o clique no
+    // link, e o que a pessoa precisa nesse instante não é uma frase vermelha
+    // embaixo do formulário — é a tela dizendo para onde ela deve ir agora.
+    //
+    // O código aguenta os dois estados sem mudança: com a confirmação
+    // desligada, `data.session` vem preenchida e esta linha nem é alcançada.
+    // Foi assim de 12/08 a 21/08, e é o que permite desligá-la de novo pelo
+    // painel se o atrito no cadastro se provar caro demais.
+    if (!data.session) return setConfirmarPara(dados.email)
     navigate(destino, { replace: true })
+  }
+
+  if (confirmarPara) {
+    return (
+      <ConfirmePorEmail
+        email={confirmarPara}
+        aoVoltar={() => {
+          setConfirmarPara(null)
+          trocarModo('entrar')
+        }}
+      />
+    )
   }
 
   return (
@@ -213,12 +254,15 @@ export default function Entrar() {
 
           {modo === 'criar' && <AceiteTermos erro={erros.aceite} />}
 
-          {erros.form && (
+          {/* O erro do link vencido só aparece enquanto não houver erro do
+              formulário: quem clicou num link velho precisa saber disso, mas na
+              hora em que ela erra a senha o assunto passou a ser outro. */}
+          {(erros.form ?? erroDoLink) && (
             <p
               role="alert"
               className="rounded-[var(--radius-controle)] border-2 border-alerta bg-alerta-fraco px-3.5 py-3 text-[14px] font-medium text-alerta"
             >
-              {erros.form}
+              {erros.form ?? erroDoLink}
             </p>
           )}
 
@@ -234,6 +278,102 @@ export default function Entrar() {
           </Button>
         </form>
       </Cartela>
+    </div>
+  )
+}
+
+/* ---------- A espera pelo clique no e-mail ---------- */
+
+/**
+ * A tela de quem acabou de criar a conta e ainda não confirmou o e-mail.
+ *
+ * Ela existe porque este é o único ponto do cadastro em que **nada acontece na
+ * tela** — a conta foi criada, e a pessoa não entrou. Sem uma tela dizendo
+ * isso, o desfecho é ela achar que o cadastro falhou e tentar de novo.
+ *
+ * De 12/08 a 21/08 este momento não existia (a confirmação estava desligada), e
+ * antes disso ele era uma frase vermelha embaixo do formulário — a mesma
+ * moldura de "senha incorreta". Erro e "está tudo certo, vá ao seu e-mail" não
+ * podem ter a mesma cara.
+ *
+ * O endereço aparece por extenso de propósito: e-mail digitado errado é o
+ * defeito mais comum daqui, e é o único que a pessoa consegue notar sozinha
+ * antes de esperar por um link que nunca chega.
+ */
+function ConfirmePorEmail({
+  email,
+  aoVoltar,
+}: {
+  email: string
+  aoVoltar: () => void
+}) {
+  const [reenviando, setReenviando] = useState(false)
+  const [reenviado, setReenviado] = useState(false)
+  const [erro, setErro] = useState<string | null>(null)
+
+  async function reenviar() {
+    setErro(null)
+    setReenviando(true)
+    try {
+      await reenviarConfirmacao(email)
+      setReenviado(true)
+    } catch (falha) {
+      setErro(mensagemAuth(falha instanceof Error ? falha.message : ''))
+    } finally {
+      setReenviando(false)
+    }
+  }
+
+  return (
+    <div className="mx-auto flex min-h-[100dvh] w-full max-w-sm flex-col justify-center gap-6 px-5 py-10">
+      <Lockup />
+
+      <Cartela className="p-6 text-center">
+        <div className="mx-auto grid size-14 place-items-center rounded-[var(--radius-controle)] border-2 border-tinta bg-azul text-azul-tinta shadow-[var(--shadow-duro-xs)]">
+          <IconeEnvelope className="size-7" />
+        </div>
+        <h1 className="mt-5 font-titulo text-[24px] leading-[1.15] font-black text-tinta">
+          Confirme seu e-mail
+        </h1>
+        <p className="mt-3 font-corpo text-[15px] leading-relaxed text-apagado">
+          Sua conta está criada. Mandamos um link para{' '}
+          <span className="font-medium text-tinta">{email}</span> — abra e você
+          entra direto no app.
+        </p>
+
+        {erro && (
+          <p
+            role="alert"
+            className="mt-5 rounded-[var(--radius-controle)] border-2 border-alerta bg-alerta-fraco px-3.5 py-3 font-corpo text-[14px] font-medium text-alerta"
+          >
+            {erro}
+          </p>
+        )}
+
+        {reenviado ? (
+          <p className="mt-6 font-corpo text-[14px] leading-relaxed text-tinta">
+            Mandamos outro. Se nenhum chegar, confira o spam.
+          </p>
+        ) : (
+          // `AcaoSecundaria` e não o botão cheio: o caminho principal daqui não
+          // é clicar em nada nesta tela — é abrir o e-mail. Um botão grande e
+          // azul competiria com o link que já está na caixa de entrada.
+          <AcaoSecundaria
+            onClick={reenviando ? undefined : reenviar}
+            className="mt-6"
+          >
+            {reenviando ? 'Reenviando…' : 'Reenviar o link'}
+          </AcaoSecundaria>
+        )}
+
+        <p className="mt-6 font-dado text-[11px] uppercase text-apagado">
+          Não chegou? Confira o spam antes de pedir de novo.
+        </p>
+      </Cartela>
+
+      <AcaoSecundaria onClick={aoVoltar} className="self-center">
+        Voltar para entrar
+      </AcaoSecundaria>
     </div>
   )
 }
