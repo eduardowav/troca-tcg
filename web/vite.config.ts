@@ -18,7 +18,16 @@ export default defineConfig({
       strategies: 'injectManifest',
       srcDir: 'src',
       filename: 'sw.ts',
-      registerType: 'autoUpdate',
+      // `prompt`, e não `autoUpdate`: quem decide a hora de trocar de versão é
+      // quem está usando. O `autoUpdate` trocava o worker no meio do uso sem
+      // recarregar a tela, e a aba continuava rodando o código velho — com os
+      // pedaços de rota daquela versão já apagados do cache e do servidor.
+      // Ver `src/lib/atualizacao.ts` e o comentário no `src/sw.ts`.
+      registerType: 'prompt',
+      // O registro é nosso, em `lib/atualizacao.ts`, porque é ele que precisa
+      // devolver o gancho de "tem versão nova". Sem esta linha o plugin injeta
+      // um segundo registro no `index.html` e passam a existir dois.
+      injectRegister: null,
       // A mesma lista que o modo gerado usava por padrão. Declarada porque no
       // `injectManifest` o padrão é mais curto, e sem ela as artes e o ícone
       // sairiam do precache sem ninguém decidir isso.

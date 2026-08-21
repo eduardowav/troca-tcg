@@ -6,6 +6,7 @@ import { Toaster } from 'sonner'
 
 import App from '@/App'
 import { LimiteDeErro } from '@/components/Falha'
+import { iniciarAtualizacao } from '@/lib/atualizacao'
 import { iniciarMonitoramento } from '@/lib/erros'
 import { queryClient } from '@/lib/queryClient'
 import '@/stores/auth' // assina o estado de sessão do Supabase o quanto antes
@@ -23,6 +24,11 @@ import './index.css'
 // ninguém vê, porque a pessoa fecha o app e não volta. Sem `VITE_SENTRY_DSN`
 // esta chamada não carrega nada — nem o pedaço do bundle.
 iniciarMonitoramento()
+
+// Registra o service worker e passa a vigiar versão nova. Fica aqui, e não
+// dentro de uma tela, porque quem precisa do aviso é justamente quem deixou o
+// app aberto numa tela qualquer — ver `lib/atualizacao.ts`.
+iniciarAtualizacao()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

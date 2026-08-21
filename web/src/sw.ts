@@ -35,11 +35,22 @@ interface AvisoPush {
   link?: string | null
 }
 
-// `autoUpdate` no plugin significa: a versão nova assume assim que chega, sem
-// esperar todas as abas fecharem. Sem estas duas linhas o modo `injectManifest`
-// não faz isso sozinho, e o app ficaria preso na versão anterior até a pessoa
-// fechar tudo — que num PWA instalado quase nunca acontece.
-self.skipWaiting()
+// **A versão nova espera ser chamada.** Até 2026-08-21 aqui havia um
+// `self.skipWaiting()` solto: a versão nova assumia sozinha, no meio do uso.
+// Assumir não recarrega a aba — o JavaScript que já estava rodando continua o
+// mesmo —, então a pessoa ficava com a tela velha e o worker novo, que é o pior
+// dos dois mundos: os pedaços de rota da versão antiga somem do cache e do
+// servidor, e a primeira tela nova que ela abrisse quebrava sem explicação.
+//
+// Agora quem decide a hora é o app: ele avisa, a pessoa toca em "Atualizar", e
+// só então esta mensagem chega. Ver `lib/atualizacao.ts`.
+self.addEventListener('message', (evento) => {
+  if (evento.data?.type === 'SKIP_WAITING') self.skipWaiting()
+})
+
+// Continua valendo: assim que a versão nova assume, ela passa a controlar as
+// abas abertas sem esperar que todas fechem — o que num PWA instalado quase
+// nunca acontece.
 clientsClaim()
 
 precacheAndRoute(self.__WB_MANIFEST)
