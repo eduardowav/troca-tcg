@@ -10,14 +10,9 @@ import {
 } from '@/components/brutal/Pecas'
 import { Campo } from '@/components/ui/Campo'
 import { Button } from '@/components/ui/Button'
-import { IconeEnvelope } from '@/components/ui/Icone'
 import { mensagemAuth } from '@/lib/authMensagens'
 import { cn } from '@/lib/cn'
-import {
-  destinoDaConfirmacao,
-  erroDoLinkNaUrl,
-  reenviarConfirmacao,
-} from '@/lib/confirmacao'
+import { destinoDaConfirmacao, erroDoLinkNaUrl } from '@/lib/confirmacao'
 import { usernameDisponivel } from '@/lib/perfil'
 import { supabase } from '@/lib/supabase'
 import { formatarTelefone, telefoneSchema } from '@/lib/telefone'
@@ -61,8 +56,6 @@ export default function Entrar() {
   const [modo, setModo] = useState<Modo>('entrar')
   const [erros, setErros] = useState<Erros>({})
   const [enviando, setEnviando] = useState(false)
-  /** Preenchido quando o cadastro volta sem sessão: a conta existe e espera o clique. */
-  const [confirmarPara, setConfirmarPara] = useState<string | null>(null)
 
   const navigate = useNavigate()
   const location = useLocation()
@@ -167,20 +160,13 @@ export default function Entrar() {
     // desligada, `data.session` vem preenchida e esta linha nem é alcançada.
     // Foi assim de 12/08 a 21/08, e é o que permite desligá-la de novo pelo
     // painel se o atrito no cadastro se provar caro demais.
-    if (!data.session) return setConfirmarPara(dados.email)
+    if (!data.session) {
+      return navigate('/confirmar-email', {
+        state: { email: dados.email },
+        replace: true,
+      })
+    }
     navigate(destino, { replace: true })
-  }
-
-  if (confirmarPara) {
-    return (
-      <ConfirmePorEmail
-        email={confirmarPara}
-        aoVoltar={() => {
-          setConfirmarPara(null)
-          trocarModo('entrar')
-        }}
-      />
-    )
   }
 
   return (
@@ -278,102 +264,6 @@ export default function Entrar() {
           </Button>
         </form>
       </Cartela>
-    </div>
-  )
-}
-
-/* ---------- A espera pelo clique no e-mail ---------- */
-
-/**
- * A tela de quem acabou de criar a conta e ainda não confirmou o e-mail.
- *
- * Ela existe porque este é o único ponto do cadastro em que **nada acontece na
- * tela** — a conta foi criada, e a pessoa não entrou. Sem uma tela dizendo
- * isso, o desfecho é ela achar que o cadastro falhou e tentar de novo.
- *
- * De 12/08 a 21/08 este momento não existia (a confirmação estava desligada), e
- * antes disso ele era uma frase vermelha embaixo do formulário — a mesma
- * moldura de "senha incorreta". Erro e "está tudo certo, vá ao seu e-mail" não
- * podem ter a mesma cara.
- *
- * O endereço aparece por extenso de propósito: e-mail digitado errado é o
- * defeito mais comum daqui, e é o único que a pessoa consegue notar sozinha
- * antes de esperar por um link que nunca chega.
- */
-function ConfirmePorEmail({
-  email,
-  aoVoltar,
-}: {
-  email: string
-  aoVoltar: () => void
-}) {
-  const [reenviando, setReenviando] = useState(false)
-  const [reenviado, setReenviado] = useState(false)
-  const [erro, setErro] = useState<string | null>(null)
-
-  async function reenviar() {
-    setErro(null)
-    setReenviando(true)
-    try {
-      await reenviarConfirmacao(email)
-      setReenviado(true)
-    } catch (falha) {
-      setErro(mensagemAuth(falha instanceof Error ? falha.message : ''))
-    } finally {
-      setReenviando(false)
-    }
-  }
-
-  return (
-    <div className="mx-auto flex min-h-[100dvh] w-full max-w-sm flex-col justify-center gap-6 px-5 py-10">
-      <Lockup />
-
-      <Cartela className="p-6 text-center">
-        <div className="mx-auto grid size-14 place-items-center rounded-[var(--radius-controle)] border-2 border-tinta bg-azul text-azul-tinta shadow-[var(--shadow-duro-xs)]">
-          <IconeEnvelope className="size-7" />
-        </div>
-        <h1 className="mt-5 font-titulo text-[24px] leading-[1.15] font-black text-tinta">
-          Confirme seu e-mail
-        </h1>
-        <p className="mt-3 font-corpo text-[15px] leading-relaxed text-apagado">
-          Sua conta está criada. Mandamos um link para{' '}
-          <span className="font-medium text-tinta">{email}</span> — abra e você
-          entra direto no app.
-        </p>
-
-        {erro && (
-          <p
-            role="alert"
-            className="mt-5 rounded-[var(--radius-controle)] border-2 border-alerta bg-alerta-fraco px-3.5 py-3 font-corpo text-[14px] font-medium text-alerta"
-          >
-            {erro}
-          </p>
-        )}
-
-        {reenviado ? (
-          <p className="mt-6 font-corpo text-[14px] leading-relaxed text-tinta">
-            Mandamos outro. Se nenhum chegar, confira o spam.
-          </p>
-        ) : (
-          // `AcaoSecundaria` e não o botão cheio: o caminho principal daqui não
-          // é clicar em nada nesta tela — é abrir o e-mail. Um botão grande e
-          // azul competiria com o link que já está na caixa de entrada.
-          <AcaoSecundaria
-            onClick={reenviando ? undefined : reenviar}
-            className="mt-6"
-          >
-            {reenviando ? 'Reenviando…' : 'Reenviar o link'}
-          </AcaoSecundaria>
-        )}
-
-        <p className="mt-6 font-dado text-[11px] uppercase text-apagado">
-          Não chegou? Confira o spam antes de pedir de novo.
-        </p>
-      </Cartela>
-
-      <AcaoSecundaria onClick={aoVoltar} className="self-center">
-        Voltar para entrar
-      </AcaoSecundaria>
     </div>
   )
 }

@@ -41,6 +41,7 @@ const Matches = lazy(() => import('@/routes/Matches'))
 const MinhasCartas = lazy(() => import('@/routes/MinhasCartas'))
 const NaoEncontrada = lazy(() => import('@/routes/NaoEncontrada'))
 const Notificacoes = lazy(() => import('@/routes/Notificacoes'))
+const ConfirmarEmail = lazy(() => import('@/routes/ConfirmarEmail'))
 const NovaSenha = lazy(() => import('@/routes/NovaSenha'))
 const Recuperar = lazy(() => import('@/routes/Recuperar'))
 const Onboarding = lazy(() => import('@/routes/Onboarding'))
@@ -88,6 +89,9 @@ function Rotas() {
           link vencido cairia numa tela pedindo senha que nunca ia salvar. */}
       <Route path="/recuperar" element={<Recuperar />} />
       <Route path="/nova-senha" element={<NovaSenha />} />
+      {/* O passo entre criar a conta e entrar nela. Tela própria porque o
+          movimento seguinte acontece fora do app, na caixa de entrada. */}
+      <Route path="/confirmar-email" element={<ConfirmarEmail />} />
       {/* Pública, e fora do `LayoutApp`: é o link para colar no grupo, e quem
           chega por ele ainda não tem conta. Quem já instalou e cai aqui de
           dentro do app vê a tela de confirmação, não o passo a passo. */}
