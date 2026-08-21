@@ -83,6 +83,33 @@ encolheu em 2026-08-19 por causa dela.
 **Mínimos**: 24px para o ícone isolado, 160px para a assinatura horizontal. O lockup
 do cabeçalho tem 28px de ícone e ~178px de largura — passa nos dois.
 
+**Composições.** A horizontal é a principal, e é a que o app usa: "na dúvida, use a
+assinatura horizontal". A **vertical** existe como arquivo desde 2026-08-19
+(`assinatura-vertical.svg` e a irmã escura), para formato estreito — capa, card,
+story, totem. Nenhuma tela a usa hoje, e por isso ela fica fora do precache do
+service worker. Ela não é arte nova: `scripts/gerar-assinatura.mjs` compõe as duas
+peças, com as proporções medidas no pixel da página 09 do manual — palavra a 22,4%
+da altura do desenho do ícone, vão de 34,4%, tudo centrado no mesmo eixo. Nunca
+comprimir a horizontal para simular a vertical.
+
+**O slogan é `Achou. Combinou. Trocou.`** — decidido pelo Eduardo em 2026-08-21.
+
+Três palavras, três pontos finais, e é o produto inteiro na ordem em que
+acontece: o app **achou** quem tem a sua carta, vocês **combinaram** onde e
+quando, e a troca **aconteceu**. O ponto depois de cada uma é do slogan, não
+enfeite: ele é o que dá o compasso de três batidas e impede que a frase seja lida
+como lista.
+
+**Onde ele entra:** como assinatura verbal, perto da marca — kicker da Home,
+subtítulo do "Como funciona", rodapé. Sempre com as três palavras juntas e nessa
+ordem.
+
+**Onde ele não entra:** onde o texto precisa *explicar* em vez de assinar. A
+descrição do manifesto, a `meta description` e o texto do link de convite
+continuam dizendo o que o app faz com todas as letras — quem nunca ouviu falar do
+TrocaTCG não deduz "quadro de trocas de Pokémon TCG" a partir de três verbos no
+passado. Slogan é para quem já chegou; descrição é para quem ainda não.
+
 Raios: `cartela 20px` · `controle 12px` · `imagem 8px` · `etiqueta 6px`.
 
 Sombra dura, deslocada e sem blur — o deslocamento é a hierarquia: `4px` cartela,

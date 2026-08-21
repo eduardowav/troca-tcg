@@ -29,7 +29,23 @@ export default defineConfig({
         // quem lê é o Chrome ao montar a caixa de instalação — os dois buscam a
         // imagem de fora, sem passar pelo service worker. Precacheá-las faria
         // toda pessoa baixar 80 KB que ela nunca vai ver.
-        globIgnores: ['og.png', 'screenshot-*.png'],
+        //
+        // As duas assinaturas verticais entram na mesma lista, por outro
+        // motivo: elas existem como arquivo oficial da marca (manual v1.0,
+        // página 09) e ainda não são usadas por tela nenhuma do app. Precachear
+        // arte que ninguém exibe é peso puro. No dia em que uma capa ou um card
+        // usá-las, elas saem daqui e entram no `includeAssets`.
+        // A `assinatura-email.png` entra pelo mesmo motivo das verticais, com
+        // uma diferença: ela é exibida, só que **fora do app**. Quem a busca é o
+        // cliente de e-mail de quem recebeu uma mensagem nossa, e ele não passa
+        // pelo service worker de ninguém.
+        globIgnores: [
+          'og.png',
+          'screenshot-*.png',
+          'assinatura-vertical.svg',
+          'assinatura-vertical-escura.svg',
+          'assinatura-email.png',
+        ],
         // `iife`, e não o `es` padrão: service worker como módulo ES não é
         // suportado em todo navegador (o Firefox não suporta até hoje), e ali
         // a queda não é degradar — é o app ficar sem worker nenhum, ou seja,
