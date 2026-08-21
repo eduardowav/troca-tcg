@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 
-import { AcaoSecundaria, Cartela, LockupTrocaTCG } from '@/components/brutal/Pecas'
+import { Cartela, LockupTrocaTCG } from '@/components/brutal/Pecas'
 import { PASSOS } from '@/lib/comoFunciona'
 import { marcarTutorialVisto } from '@/lib/tutorial'
 
@@ -21,9 +21,10 @@ import { marcarTutorialVisto } from '@/lib/tutorial'
  * ignora; num carrossel, quem já sabe precisa tocar três vezes para chegar onde
  * queria.
  *
- * **A saída aparece já.** "Já sei como funciona" fica visível junto com o botão
- * principal — obrigar alguém a passar por um tutorial que não pediu é a forma
- * mais barata de irritar quem chegou animado.
+ * **Um botão só.** Havia um "já sei como funciona" embaixo do principal, e os
+ * dois faziam exatamente a mesma coisa — a saída para quem não quer ler é rolar
+ * a tela, que custa menos que ler dois botões e decidir entre eles. Dois
+ * caminhos idênticos com nomes diferentes não dão escolha: dão dúvida.
  *
  * Aparece uma vez. O `lib/tutorial.ts` guarda essa decisão, e a tela continua
  * alcançável de propósito para quem quiser reler.
@@ -87,10 +88,6 @@ export default function ComoFunciona() {
       >
         Montar minhas listas
       </button>
-
-      <AcaoSecundaria onClick={comecar} className="self-center">
-        Já sei como funciona
-      </AcaoSecundaria>
     </div>
   )
 }
