@@ -41,6 +41,30 @@ Antes de 2026-08-21 o topo era o ícone do PWA num quadrado de 56 px com canto
 arredondado — o ícone de aplicativo fazendo papel de assinatura, que o manual não
 prevê.
 
+## A moldura preta é preenchimento, não `border`
+
+Regra da casa desde 2026-08-21, e ela vale para as três peças que têm borda: a
+cartela grande, o botão azul e as caixinhas de aviso.
+
+Nenhuma usa `border`. Cada uma é **um `td` preto com `padding:2px`** e, dentro
+dele, outro `td` com a cor de verdade e o raio dois pixels menor. Parece rodeio e
+não é: com `border` + `border-radius` no mesmo elemento, cliente de e-mail
+existe que pinta o fundo respeitando o raio e desenha a borda como um retângulo
+reto por cima. O resultado é um botão azul arredondado dentro de uma moldura
+quadrada — foi assim que os e-mails saíram no Gmail em 2026-08-21, e o defeito
+não aparece em navegador nenhum, que é o que o torna caro de achar.
+
+Com a moldura por baixo, o raio ou vale para as duas camadas ou não vale para
+nenhuma. Nos dois casos o desenho fecha.
+
+A sombra dura continua sendo uma barra de verdade — `box-shadow` não existe no
+Outlook —, e ganhou raio nos cantos de baixo pelo mesmo motivo: sem ele, as duas
+pontas quadradas escapam por baixo dos cantos arredondados.
+
+> Renderizar o arquivo no navegador **não prova** essa correção: o Chrome
+> desenhava certo as duas versões. Quem prova é a caixa de entrada — mande um a
+> si mesmo depois de colar.
+
 ### Por que dois não disparam, e são dois motivos diferentes
 
 Confundi-los é o caminho para achar que a conta está avisada quando não está.
