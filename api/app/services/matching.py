@@ -840,13 +840,35 @@ async def _itens_por_match(
     return por_match
 
 
+#: Os status em que a troca ainda espera alguém dizer se quer ou não.
+#:
+#: `SUGERIDO` é como o motor cria; `PENDENTE` é como fica quando um lado já
+#: respondeu e falta o outro. Todo o resto é desfecho, e desfecho não se
+#: reescreve por esta porta.
+_RESPONDIVEIS = frozenset({"SUGERIDO", "PENDENTE"})
+
+
 async def responder(
     session: AsyncSession, user_id: UUID, match_id: UUID, aceitou: bool
 ) -> MatchOut:
     """Aceita ou recusa. O contato só é revelado quando *todos* aceitaram.
 
-    **Só se responde a match PENDENTE**, e essa linha faltava até 2026-08-18.
-    Sem ela a rota gravava `status` sem olhar o status anterior, e o que era
+    **Só se responde a match que ainda espera resposta** — `SUGERIDO`, que é
+    como o motor cria, e `PENDENTE`, que é como ele fica quando um lado já
+    respondeu e falta o outro.
+
+    A trava chegou em 2026-08-18 exigindo só `PENDENTE`, e com isso **fechou o
+    caminho normal do produto**: todo match nasce `SUGERIDO`, então o primeiro
+    "tenho interesse" de qualquer troca respondia 409 dizendo que ela "já teve um
+    desfecho". Ninguém conseguiu aceitar uma troca entre 18 e 21 de agosto, e a
+    mensagem apontava para o oposto do que estava acontecendo. Corrigido em
+    2026-08-21, com o Eduardo tropeçando nele em duas contas de teste.
+
+    A lição fica na suíte: `test_responder_so_vale_em_pendente` percorria cinco
+    status e não percorria `SUGERIDO` — a lista de casos ruins estava completa, e
+    o caso bom estava incompleto. Uma trava se prova pelos dois lados.
+
+    Sem a trava, a rota gravava `status` sem olhar o status anterior, e o que era
     "responder à sugestão do motor" virava um botão de reescrever o desfecho de
     qualquer troca da pessoa:
 
@@ -863,7 +885,7 @@ async def responder(
     # A trava vem antes de qualquer escrita: ela prova a participação (404 para
     # quem não é da troca) e congela o status enquanto esta transação decide.
     status = await _status_do_participante(session, user_id, match_id)
-    if status != "PENDENTE":
+    if status not in _RESPONDIVEIS:
         raise RegraNegocio(
             "MATCH_JA_RESPONDIDO",
             "Esta troca já teve um desfecho e não aceita mais resposta.",
@@ -890,11 +912,16 @@ async def responder(
         )
         novo = "ACEITO" if not pendentes else "PENDENTE"
 
-    # `and status = 'PENDENTE'` de novo, agora na escrita: a trava acima já
-    # serializa, e esta condição é a segunda camada que sobrevive a alguém
-    # remover a trava sem perceber o que ela segurava.
+    # A mesma condição de novo, agora na escrita: a trava acima já serializa, e
+    # esta é a segunda camada, que sobrevive a alguém remover a trava sem
+    # perceber o que ela segurava. **Precisa listar os dois status** — quando ela
+    # dizia só `PENDENTE`, o primeiro aceite de um match `SUGERIDO` não gravava
+    # nada nem quando a trava deixava passar.
     await session.execute(
-        text("update matches set status = :s where id = :m and status = 'PENDENTE'"),
+        text(
+            "update matches set status = :s"
+            " where id = :m and status in ('SUGERIDO', 'PENDENTE')"
+        ),
         {"s": novo, "m": str(match_id)},
     )
     await session.execute(

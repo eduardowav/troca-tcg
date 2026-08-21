@@ -82,16 +82,19 @@ def _gravou_status(sessao: SessaoFalsa) -> bool:
 # ------------------------------------------------- F-01 · responder fora de hora
 #
 # Antes da correção, `responder` gravava `status` sem olhar o status anterior.
-# A tela só mostra os botões em PENDENTE — e é justamente por isso que a regra
-# precisa estar no servidor: quem chama a API direto não passa pela tela.
+# A tela só mostra os botões enquanto a troca espera resposta — e é justamente
+# por isso que a regra precisa estar no servidor: quem chama a API direto não
+# passa pela tela.
 
 
 @pytest.mark.parametrize(
     "status", ["ACEITO", "CONCLUIDO", "RECUSADO", "EXPIRADO", "CANCELADO"]
 )
 @pytest.mark.parametrize("aceitou", [True, False])
-async def test_responder_so_vale_em_pendente(sem_efeito_colateral, status, aceitou):
-    """Qualquer status que não seja PENDENTE recusa, e não grava nada.
+async def test_responder_so_vale_enquanto_espera_resposta(
+    sem_efeito_colateral, status, aceitou
+):
+    """Todo status de desfecho recusa, e não grava nada.
 
     O caso que mais custa é `CONCLUIDO` com `aceitou=False`: apagava do
     histórico uma troca que aconteceu, deixando de pé os pontos de reputação que
@@ -109,10 +112,24 @@ async def test_responder_so_vale_em_pendente(sem_efeito_colateral, status, aceit
     assert sessao.commits == 0
 
 
-async def test_responder_em_pendente_continua_funcionando(sem_efeito_colateral):
-    """A correção não pode fechar o caminho que ela existe para proteger."""
-    # status PENDENTE; ninguém mais falta; o outro participante.
-    sessao = SessaoFalsa(escalares=["PENDENTE", 0, str(uuid4())])
+@pytest.mark.parametrize("status", ["SUGERIDO", "PENDENTE"])
+async def test_responder_funciona_nos_dois_status_que_esperam_resposta(
+    sem_efeito_colateral, status
+):
+    """A correção não pode fechar o caminho que ela existe para proteger.
+
+    **`SUGERIDO` está aqui por causa de um defeito de três dias.** A trava
+    chegou em 2026-08-18 exigindo `PENDENTE`, e o teste de cima percorria cinco
+    status ruins sem perceber que o status *bom* mais comum ficara de fora: todo
+    match nasce `SUGERIDO`, então o primeiro "tenho interesse" de qualquer troca
+    respondia 409 dizendo que ela já tinha desfecho. Ninguém conseguiu aceitar
+    uma troca até 2026-08-21.
+
+    A lista de casos ruins estava completa; a de casos bons, não. Uma trava se
+    prova pelos dois lados.
+    """
+    # o status; ninguém mais falta; o outro participante.
+    sessao = SessaoFalsa(escalares=[status, 0, str(uuid4())])
 
     await matching.responder(sessao, uuid4(), uuid4(), True)  # type: ignore[arg-type]
 
@@ -121,8 +138,11 @@ async def test_responder_em_pendente_continua_funcionando(sem_efeito_colateral):
     assert sessao.commits == 1
 
 
-async def test_recusar_em_pendente_continua_funcionando(sem_efeito_colateral):
-    sessao = SessaoFalsa(escalares=["PENDENTE"])
+@pytest.mark.parametrize("status", ["SUGERIDO", "PENDENTE"])
+async def test_recusar_funciona_nos_dois_status_que_esperam_resposta(
+    sem_efeito_colateral, status
+):
+    sessao = SessaoFalsa(escalares=[status])
 
     await matching.responder(sessao, uuid4(), uuid4(), False)  # type: ignore[arg-type]
 
@@ -144,6 +164,12 @@ async def test_a_escrita_do_status_carrega_a_propria_guarda(sem_efeito_colateral
 
     A trava de `_status_do_participante` já serializa; esta condição é a camada
     que sobrevive a alguém remover a trava sem perceber o que ela segurava.
+
+    **E ela precisa conhecer os mesmos status que a trava.** Enquanto dizia só
+    `status = 'PENDENTE'`, o primeiro aceite de um match `SUGERIDO` não gravava
+    nada nem quando a trava deixasse passar — a requisição responderia 200 e o
+    match continuaria parado. Uma condição que some sem levantar erro nenhum só
+    se pega olhando o SQL, e é o que este teste faz.
     """
     sessao = SessaoFalsa(escalares=["PENDENTE"])
     await matching.responder(sessao, uuid4(), uuid4(), False)  # type: ignore[arg-type]
@@ -151,7 +177,7 @@ async def test_a_escrita_do_status_carrega_a_propria_guarda(sem_efeito_colateral
     escrita = next(
         s for s in sessao.sqls if "update matches" in s and "set status" in s
     )
-    assert "status = 'PENDENTE'" in escrita
+    assert "'SUGERIDO'" in escrita and "'PENDENTE'" in escrita
 
 
 # ------------------------------------- F-02 · a conclusão que perde a corrida
