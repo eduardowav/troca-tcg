@@ -45,6 +45,12 @@ export default function ComoFunciona() {
         <h1 className="font-titulo text-[28px] leading-[1.05] font-black text-tinta">
           Como funciona
         </h1>
+        {/* O slogan cai bem aqui porque a tela é exatamente ele: as três
+            batidas são o que acontece nos passos 2 e 3. O que ele não conta é o
+            passo 1, e é por isso que ele fica de subtítulo e não de título. */}
+        <p className="mt-2 font-dado text-[12px] font-bold uppercase tracking-wide text-azul">
+          Achou. Combinou. Trocou.
+        </p>
         <p className="mt-2 font-corpo text-[15px] leading-relaxed text-apagado">
           Três passos, e o segundo é o app que faz.
         </p>

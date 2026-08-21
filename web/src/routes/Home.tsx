@@ -53,7 +53,15 @@ export default function Home() {
       <header className="pt-10">
         <LockupTrocaTCG />
 
-        <h1 className="mt-8 font-titulo text-[32px] leading-[1.05] font-black text-balance text-tinta lg:text-[38px]">
+        {/* O slogan entra como assinatura da marca, e por isso vem em cima e
+            em corpo pequeno: embaixo do título ele viraria uma segunda frase
+            disputando a leitura com a primeira, que é a que explica o produto.
+            Aqui ele é o carimbo que o lockup pede — ver DESIGN.md. */}
+        <p className="mt-5 font-dado text-[12px] font-bold uppercase tracking-wide text-azul">
+          Achou. Combinou. Trocou.
+        </p>
+
+        <h1 className="mt-3 font-titulo text-[32px] leading-[1.05] font-black text-balance text-tinta lg:text-[38px]">
           Alguém aí tem a carta que te falta. E quer a que te sobra.
         </h1>
         <p className="mt-4 font-corpo text-[16px] leading-relaxed text-apagado">
