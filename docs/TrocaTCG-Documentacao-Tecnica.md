@@ -3058,10 +3058,42 @@ varredura de 2026-08-11, detalhada no bloco "Segurança do app" abaixo.
 **Fase 5 — depois de lançar.**
 
 18. Tela de três pontas da triangulação. O motor está pronto e desligado.
+
+    **Decisão do Eduardo em 2026-08-22: um mês depois do lançamento.** O app abre
+    sem triangulação, e ela chega com a base já rodando. Antes disto o item era
+    "depois de lançar" sem data, o que na prática é "quando sobrar tempo".
+
+    O prazo é a parte útil da decisão, e não por disciplina: a tela de três pontas
+    é a peça de interface mais difícil do projeto — toda a UI de troca é escrita
+    para duas pessoas e duas cartas, e um match de três chega nela torto. Um mês
+    de base real antes de construí-la é um mês de gente usando a troca de dois
+    lados, que é o material com que a de três se desenha direito.
 19. Virar `COBRANCA_ATIVA`, que depende do 18: a tabela do PRO vende match
-    triangular. **Antes de virar, rodar a assinatura ponta a ponta com
-    credenciais de teste** — ver a ressalva no item 2. É o único caminho do app
-    que nunca foi exercitado contra o serviço de verdade.
+    triangular.
+
+    **Com o 18 marcado para um mês depois do lançamento, esta é a data real da
+    primeira receita: lançamento + um mês + o tempo de construir a tela.** Fica
+    escrito porque a conta não é óbvia lendo a lista, e porque "o app não fatura
+    nada há dois meses" é o tipo de coisa que assusta quando se descobre por
+    acidente, e não quando se decidiu.
+
+    Não é problema: cobrar antes de o app provar que gera troca é vender o que
+    ainda não se entregou, e o princípio de precificação da seção 16 já diz isso.
+    Mas se em algum momento a receita precisar vir antes, o caminho **não** é
+    antecipar o 18 — é o patrocínio de loja, que não depende de recurso nenhum do
+    app e está descrito em "Alternativa de receita".
+
+    **O pré-requisito deste item está cumprido desde 2026-08-22.** Ele dizia
+    "antes de virar, rodar a assinatura ponta a ponta com credenciais de teste,
+    porque é o único caminho do app que nunca foi exercitado contra o serviço de
+    verdade". Foi rodado, e achou quatro bugs fatais — ver o item 2.
+
+    O que resta é operação de painel, no dia de ligar: pôr
+    `MERCADO_PAGO_ACCESS_TOKEN` e `MERCADO_PAGO_WEBHOOK_SECRET` **de produção** no
+    Render, e cadastrar o webhook no painel do Mercado Pago apontando para
+    `https://api.trocatcg.com/v1/webhooks/mercadopago`, com o evento "Planos e
+    Assinaturas". Os ids de plano não entram mais — a assinatura é criada sem
+    plano associado.
 20. README de portfólio, que serve ao Eduardo e não ao app.
 
 ### O que entrou fora desta ordem, em 2026-08-21
