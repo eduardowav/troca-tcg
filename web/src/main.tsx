@@ -6,6 +6,7 @@ import { Toaster } from 'sonner'
 
 import App from '@/App'
 import { LimiteDeErro } from '@/components/Falha'
+import { aquecer } from '@/lib/api'
 import { iniciarAtualizacao } from '@/lib/atualizacao'
 import { iniciarMonitoramento } from '@/lib/erros'
 import { queryClient } from '@/lib/queryClient'
@@ -36,6 +37,13 @@ iniciarAtualizacao()
 // fonte — ver `stores/preferencias.ts`. Fora de componente porque o preço
 // aparece em meia dúzia de telas e nenhuma delas deveria ser a dona disso.
 void carregarCotacao()
+
+// Um GET no /health, sem esperar resposta. A API dorme depois de 15 min parada
+// no plano gratuito do Render, e a volta custa ~35s. Disparar aqui não encolhe
+// essa espera — tira ela do caminho crítico: o servidor acorda enquanto a
+// pessoa lê a tela de entrada, e não quando ela pede a primeira lista. Ver
+// `lib/api.ts` para o porquê de ser aqui e não dentro de uma tela.
+void aquecer()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

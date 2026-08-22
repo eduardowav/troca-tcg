@@ -128,3 +128,34 @@ export const api = {
   del: (caminho: string, corpo?: unknown) =>
     requisitar<void>('DELETE', caminho, corpo),
 }
+
+/**
+ * Acorda a API antes de alguém precisar dela.
+ *
+ * O serviço da API está no plano gratuito do Render, que hiberna depois de 15
+ * minutos sem tráfego. A volta custa cerca de 35 segundos — quase tudo é o
+ * Render alocando e subindo o contêiner, não código nosso: o `import` do
+ * `app.main` leva 2,4s do total.
+ *
+ * O keep-alive do GitHub Actions cobre o caso normal, mas ele nunca vai cobrir
+ * todos: o agendador do Actions é "melhor esforço" e atrasa sob carga. Esta
+ * chamada é a segunda linha de defesa, e paga por si mesma justamente na hora
+ * em que o keep-alive falhou.
+ *
+ * Ela não deixa a espera menor — deixa ela mais cedo. Sai no instante em que o
+ * app monta, enquanto a pessoa ainda está lendo a tela de entrada ou digitando
+ * a senha; quando a primeira tela de dado pede alguma coisa, o servidor já
+ * acordou. É por isso que fica no `main.tsx` e não numa tela: dentro de uma
+ * tela ela só correria depois da navegação, que é tarde demais.
+ *
+ * Sem `await`, sem estado e sem erro visível de propósito. Falhar aqui não
+ * significa nada — a requisição de verdade vem depois e tem o tratamento dela.
+ * `cache: 'no-store'` porque uma resposta servida do cache acorda ninguém.
+ */
+export function aquecer(): Promise<void> {
+  if (!BASE) return Promise.resolve()
+  return fetch(`${BASE}/health`, { cache: 'no-store' }).then(
+    () => undefined,
+    () => undefined,
+  )
+}

@@ -1,23 +1,93 @@
 name: Keep-alive
 
 # Mantém a API do Render acordada (hiberna em 15 min) e o projeto Supabase
-# ativo (pausa em 7 dias). O /v1/health consulta o banco de verdade, então
-# um único ping resolve os dois. Ver seção 6 da doc.
+# ativo (pausa em 7 dias). O /v1/health consulta o banco de verdade, então um
+# único ping resolve os dois. Ver seção 6 da doc.
+#
+# ## Por que este workflow tem um laço dentro
+#
+# A versão anterior pedia `*/10` e dava um ping por execução. Não funcionou: o
+# agendador do GitHub Actions é melhor esforço, e sob carga ele atrasa ou
+# descarta disparos. As execuções reais de 2026-08-22 saíram com intervalos de
+# 15 a 46 minutos — nenhum de 10. Todo intervalo acima de 15 abre uma
+# hibernação, e o resultado medido foi 37 partidas a frio em 24 horas, com
+# ~35s de espera na primeira tela de quem chegasse logo depois.
+#
+# Consertar o cron não é possível — ele é assim de projeto. Então a execução
+# deixa de confiar na pontualidade do disparo e passa a cobrir a própria
+# janela: cada uma pinga de 4 em 4 minutos por ~50 minutos. O agendamento vira
+# `*/15` e as execuções se sobrepõem de propósito. Disparo descartado deixa de
+# abrir buraco, porque outra execução já está no ar cobrindo aquele minuto.
+#
+# A sobreposição enche a aba Actions com várias execuções ao mesmo tempo, e
+# isso é o preço, não um defeito. O repositório é público: minutos de Actions
+# não são cobrados.
 on:
   schedule:
-    - cron: '*/10 * * * *'   # a cada 10 min, dentro dos 15 do Render
+    - cron: '*/15 * * * *'
   workflow_dispatch:
 
 jobs:
   ping:
     runs-on: ubuntu-latest
+    # O laço fecha em ~54 min (50 de janela + o último sleep). A folga é para o
+    # job morrer por conta própria, e não pendurado, se um curl travar.
+    timeout-minutes: 60
     steps:
-      - name: Ping /v1/health
+      - name: Manter a API acordada
         env:
           API_URL: ${{ secrets.API_URL }}
         run: |
-          if [ -z "$API_URL" ]; then
+          set -u
+          if [ -z "${API_URL:-}" ]; then
             echo "Secret API_URL ainda não configurado — keep-alive em espera."
             exit 0
           fi
-          curl -sf "$API_URL/v1/health"
+
+          FIM=$(( $(date -u +%s) + 50 * 60 ))
+          ok=0
+          falhas=0
+
+          while [ "$(date -u +%s)" -lt "$FIM" ]; do
+            # Janela de silêncio: 05:00–08:59 UTC = 02:00–05:59 em Belém.
+            #
+            # Não é economia de enfeite. O plano gratuito do Render dá 750 horas
+            # de instância por mês, e acordado 24/7 num mês de 31 dias são 744 —
+            # cabe com 6 horas de margem, o que é margem nenhuma. Estourar o teto
+            # não deixa a API lenta: **suspende o serviço até o mês virar**.
+            #
+            # Dormir quatro horas por noite derruba o consumo para ~620h e devolve
+            # uma margem que aguenta deploy, susto e mês cheio. O custo é que quem
+            # abrir o app de madrugada paga os ~35s — e às 3h da manhã, num app de
+            # troca de carta em Belém, esse alguém é raro.
+            #
+            # `%-H` (sem zero à esquerda) porque "05" em comparação numérica de
+            # shell é uma armadilha conhecida.
+            hora=$(date -u +%-H)
+            if [ "$hora" -ge 5 ] && [ "$hora" -lt 9 ]; then
+              echo "$(date -u +%H:%M) UTC — janela de silêncio, deixando dormir."
+            else
+              inicio=$(date -u +%s)
+              # `--max-time 90` porque a primeira chamada depois de uma
+              # hibernação leva ~35s, e o padrão do curl esperaria 300.
+              if curl -sf --max-time 90 -o /dev/null "$API_URL/v1/health"; then
+                echo "$(date -u +%H:%M) UTC — ok em $(( $(date -u +%s) - inicio ))s"
+                ok=$(( ok + 1 ))
+              else
+                echo "$(date -u +%H:%M) UTC — FALHOU"
+                falhas=$(( falhas + 1 ))
+              fi
+            fi
+            sleep 240
+          done
+
+          echo "Resumo: $ok ok, $falhas falha(s)."
+
+          # Um ping que falha no meio do caminho não derruba a execução — o laço
+          # segue e o próximo tenta de novo. Mas uma execução inteira sem uma
+          # única resposta é outra coisa: é a API fora do ar por quase uma hora,
+          # e essa merece ficar vermelha na lista.
+          if [ "$ok" -eq 0 ] && [ "$falhas" -gt 0 ]; then
+            echo "Nenhum ping respondeu nesta execução — a API pode estar fora."
+            exit 1
+          fi
