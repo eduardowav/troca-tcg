@@ -215,6 +215,23 @@ permanecer consistentes.
 - A frente pode ser redimensionada, rotacionada, parcialmente ocultada e colocada em
   perspectiva, mas nunca quadrada, esticada, comprimida ou deformada.
 
+### Lógica de frente e verso na cena
+
+- Antes de aplicar qualquer padrão, determinar qual lado da carta está realmente
+  voltado para o observador. Frente e verso nunca devem ser distribuídos de forma
+  arbitrária.
+- Uma pessoa segura as cartas com a frente voltada para si para conseguir lê-las; quem
+  observa essa pessoa pelo lado oposto vê o verso das cartas.
+- Em uma mesa vista nesta composição, as personagens ao fundo, voltadas para o
+  observador, devem normalmente mostrar os versos de suas mãos. As personagens em
+  primeiro plano, vistas pelo mesmo lado de suas cartas, devem normalmente mostrar as
+  frentes.
+- Uma carta sendo entregue deve seguir a mesma orientação espacial da mão que a
+  apresenta. Verificar a direção da face antes de escolher o grafismo.
+- O ponto de vista, a pose e a orientação da mão prevalecem sobre regras de posição. Se
+  a pose mudar, inferir novamente o lado visível em vez de repetir mecanicamente a
+  distribuição anterior.
+
 ### Por que a esfera é azul, e não vermelha
 
 Não está na diretriz e fica registrado aqui porque é a linha que mais corre risco de ser
