@@ -231,7 +231,21 @@ async def aplicar_notificacao(
     if inserida is None:
         return "repetida"
 
-    recurso = await mercado_pago.buscar_assinatura(recurso_id)
+    try:
+        recurso = await mercado_pago.buscar_assinatura(recurso_id)
+    except mercado_pago.RecursoInexistente:
+        # Fim de linha, e por isso 200 e não 500. O Mercado Pago reenvia tudo que
+        # não recebe 200: contra um id que ele mesmo não resolve, isso seria
+        # reenvio para sempre. O evento fica commitado de propósito — na próxima
+        # vez que a mesma notificação chegar, o dedupe responde "repetida" sem
+        # gastar outra ida à API deles.
+        logger.warning(
+            "[assinaturas] notificação de recurso que o provedor não conhece: %s",
+            recurso_id,
+        )
+        await session.commit()
+        return "desconhecido"
+
     await _registrar(
         session,
         recurso_id,

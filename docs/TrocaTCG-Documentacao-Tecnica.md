@@ -2851,10 +2851,24 @@ com todo o resto.
    (idempotência), `ignorado` (tópico fora da lista) e 401 para assinatura
    forjada, ausente e com carimbo fora da janela.
 
-   **O que falta, e é uma coisa só:** as notificações do teste foram assinadas por
-   nós, com a mesma fórmula do código. Isso prova o receptor, não o contrato — se
-   o nosso manifesto HMAC divergir do real, tudo volta 401 em silêncio. Fechar
-   isso é um clique em **Simular** no painel do Mercado Pago, com o túnel de pé.
+   **✅ E o contrato do HMAC também está provado.** As notificações que nós mesmos
+   assinamos provavam o receptor, não o contrato: a mesma fórmula dos dois lados é
+   raciocínio circular, e manifesto errado significaria 401 em tudo, para sempre,
+   sem nada no log explicando. O botão **Simular** do painel deles quebrou o
+   círculo — a notificação chegou assinada pelo Mercado Pago e **passou** pelo
+   `assinatura_confere` sem uma recusa no log.
+
+   **E foi ela que achou o quarto bug.** O simulador manda `data.id=123456`, um id
+   que não existe; o `buscar_assinatura` levava 404 e o receptor devolvia 500. Como
+   o Mercado Pago reenvia tudo que não recebe 200, uma notificação assim seria
+   reenviada **para sempre**. Agora existe `mercado_pago.RecursoInexistente`: 404 é
+   fim de linha, responde `200 desconhecido`, e o evento fica gravado para o dedupe
+   pegar o reenvio sem gastar outra ida à API. Qualquer outro erro continua subindo
+   como 500 — provedor fora do ar merece retentativa, id inexistente não.
+
+   Estado final do banco depois da passagem: `webhook_events` em zero, nenhum
+   `profile` com carência aberta, `api/.env` restaurado com as credenciais do
+   aplicativo real.
 
    **Decisão do Eduardo em 2026-08-16: ligar fica para o lançamento**, junto com o
    resto da ativação. Não bloqueia nada enquanto `COBRANCA_ATIVA` for falso.

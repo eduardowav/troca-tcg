@@ -539,6 +539,40 @@ async def test_sem_credencial_a_rota_recusa_com_503():
     assert mercado_pago.ativo() is bool(settings.MERCADO_PAGO_ACCESS_TOKEN)
 
 
+async def test_recurso_inexistente_responde_200_e_nao_reenvia(monkeypatch):
+    """404 do provedor é fim de linha: 200 com `desconhecido`, não 500.
+
+    O Mercado Pago reenvia tudo que não recebe 200, e isso é o comportamento certo
+    dele — reenviar resolve provedor fora do ar e rede caída. Contra um id que ele
+    mesmo não resolve, porém, reenviar é para sempre.
+
+    Apareceu em 2026-08-22 com o botão "Simular" do painel deles, que manda
+    `data.id=123456`: o caminho inteiro funcionou, a assinatura HMAC **deles**
+    passou pelo nosso `assinatura_confere`, e o 404 no fim virava 500.
+
+    O evento fica commitado de propósito — reenvio da mesma notificação encontra o
+    dedupe e responde "repetida", sem gastar outra ida à API.
+    """
+
+    async def falsa_busca(preapproval_id):
+        raise mercado_pago.RecursoInexistente("/preapproval/123456")
+
+    monkeypatch.setattr(mercado_pago, "buscar_assinatura", falsa_busca)
+
+    sessao = SessaoFalsa(retornos=["evento-404"], linha=None)
+    resultado = await assinaturas.aplicar_notificacao(
+        sessao,  # type: ignore[arg-type]
+        notificacao_id="evento-404",
+        topico="subscription_preapproval",
+        recurso_id="123456",
+    )
+
+    assert resultado == "desconhecido"
+    assert sessao.commits == 1, "o evento precisa ficar gravado para o dedupe"
+    # E nada de mexer em plano de ninguém a partir de um recurso que não existe.
+    assert not any("update profiles" in sql for sql in sessao.sqls)
+
+
 async def test_data_do_provedor_chega_ao_banco_como_datetime(monkeypatch):
     """O `next_payment_date` é texto no JSON e precisa virar `datetime` antes do SQL.
 

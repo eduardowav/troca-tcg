@@ -44,6 +44,26 @@ TIMEOUT = 10.0
 PERIODOS = {"mensal": 1, "anual": 12}
 
 
+class RecursoInexistente(Exception):
+    """O Mercado Pago respondeu 404: o recurso não existe e nunca vai existir.
+
+    Separada das demais falhas de propósito, e o motivo é o comportamento de
+    reenvio deles. O `_chamar` deixa qualquer erro subir para que o receptor de
+    webhook devolva 500 e a notificação seja reenviada — o que é certo quando o
+    provedor está fora do ar ou a rede falhou, porque a próxima tentativa
+    resolve.
+
+    404 não é dessa família. O recurso não existe, e responder 500 faz o Mercado
+    Pago reenviar a mesma notificação para sempre, contra um id que nunca vai
+    resolver. Quem chama trata isto como fim de linha, não como tentar de novo.
+
+    Apareceu em 2026-08-22 com o botão "Simular" do painel deles, que manda
+    `data.id=123456`. O caminho todo funcionou — a assinatura HMAC **deles**
+    passou pelo nosso `assinatura_confere`, que era o que faltava provar — e
+    parou aqui, no id de mentira.
+    """
+
+
 def ativo() -> bool:
     """Há credencial para falar com o Mercado Pago?
 
@@ -62,6 +82,10 @@ async def _chamar(
     processa webhook precisa saber que não conseguiu ler o recurso — responder
     200 sem ter lido faria o Mercado Pago parar de reenviar um aviso que nunca
     foi tratado.
+
+    **404 é a exceção, e vira `RecursoInexistente`.** Reenviar resolve falha
+    passageira; contra um recurso que não existe, reenviar é para sempre. Ver o
+    docstring da exceção.
     """
     tempo = aiohttp.ClientTimeout(total=TIMEOUT)
     cabecalhos = {"Authorization": f"Bearer {settings.MERCADO_PAGO_ACCESS_TOKEN}"}
@@ -71,6 +95,11 @@ async def _chamar(
             metodo, f"{BASE_URL}{caminho}", json=corpo, headers=cabecalhos
         ) as resposta:
             texto = await resposta.text()
+            if resposta.status == 404:
+                logger.warning(
+                    "[mercado_pago] %s %s: recurso inexistente", metodo, caminho
+                )
+                raise RecursoInexistente(caminho)
             if resposta.status >= 400:
                 logger.error(
                     "[mercado_pago] %s %s devolveu %s: %s",
