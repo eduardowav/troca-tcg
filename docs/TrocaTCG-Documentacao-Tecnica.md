@@ -2600,6 +2600,124 @@ Esse pagamento é da assinatura da plataforma, entre usuário e você. Ele não 
 
 ---
 
+### Levantamento da AbacatePay — 2026-08-21
+
+Feito lendo a documentação pública, não conversando com eles. **Nada aqui está
+confirmado pelo fornecedor** e as perguntas comerciais seguem abertas.
+
+Contexto: o provedor mudou do Mercado Pago para o Asaas em 21/08, e no mesmo dia
+a AbacatePay entrou na disputa — brasileira, Pix-first, taxa apresentada como
+diferencial.
+
+**O que a documentação diz.**
+
+| | |
+|---|---|
+| Assinatura recorrente | existe, cobrança automática, sem ação do cliente por ciclo |
+| Ciclos | `WEEKLY`, `MONTHLY`, `SEMIANNUALLY`, `ANNUALLY` |
+| Métodos | cartão **e Pix Automático** — ver a contradição abaixo |
+| Retentativa | `retryPolicy` com `maxRetry` e `retryEvery` |
+| Webhook | "Payloads assinados com HMAC usando o `secret` informado" |
+| Status | `PENDING, EXPIRED, CANCELLED, PAID, REFUNDED` (herdados do checkout) |
+| Saque | R$ 0,80 por saque, mínimo R$ 3,50, instantâneo 24/7 |
+
+**A documentação se contradiz, e isso é o achado mais importante.** A página
+`pages/subscriptions/create` afirma *"Assinaturas suportam apenas CARD"*. O
+changelog de **15/05/2026** diz que existe **Pix Automático em assinaturas**, com
+`methods: ["PIX"]`, *"disponível mediante habilitação no dashboard"* — e é Pix
+Automático de verdade, a autorização recorrente do Banco Central, não um QR novo
+a cada ciclo.
+
+O changelog é mais novo e mais específico, então provavelmente é ele que vale. A
+lição prática vale para a integração inteira: **a página de referência não é
+contrato neste fornecedor.** Conferir comportamento contra o changelog ou contra
+o suporte.
+
+Sinal a favor: o changelog é ativo (04/08, 27/07, 09/06, 02/06). Para empresa
+nova, produto mantido em ritmo diz mais que qualquer página institucional.
+
+**As três incógnitas, em ordem de risco.**
+
+1. **Como saber que o ciclo N foi pago.** É a única que pode obrigar a mudar
+   arquitetura. `assinaturas.py` decide quem é PRO consultando o provedor, nunca
+   pelo corpo do webhook — precisa existir endpoint que responda "esta assinatura
+   está em dia hoje", e um evento de webhook por cobrança. Nenhum dos dois
+   apareceu na documentação. O conjunto de status é herdado do *checkout*, o que
+   descreve bem a primeira cobrança e mal as seguintes.
+2. **Licença e custódia.** Nenhuma menção a autorização do Banco Central ou a
+   instituição parceira em site, docs ou `llms.txt`. É a pergunta que sobra em
+   fornecedor novo, porque entre a cobrança e o repasse o recebível fica com ele.
+3. **A taxa por transação.** Quatro páginas, nenhum número; `/precos` responde
+   404. Só *"Sem taxa mensal, sem surpresas"*.
+
+**Por que Pix Automático importa mais que a taxa.** O público é jogador de TCG em
+Belém, boa parte jovem: cartão de crédito não é universal, Pix é. E o cartão traz
+o churn involuntário — vence, é reemitido, é bloqueado, e a pessoa sai sem saber
+que saiu. Isso custa mais que qualquer percentual.
+
+**Ação que não espera a decisão:** pedir a habilitação do Pix Automático no
+dashboard. "Disponibilidade limitada" costuma significar fila, e descobrir isso
+na hora de integrar é o erro que a conta Meta já ensinou.
+
+### A reconstrução da camada de pagamento
+
+Vale para qualquer provedor que ganhe — Asaas ou AbacatePay. O que muda é o
+cliente HTTP; o resto do desenho é o mesmo, e foi construído para isto.
+
+**O que não se toca.** A regra de negócio não é do provedor: quem vira PRO,
+quando cai, e a carência de 7 dias vivem em `services/assinaturas.py`. Ela já
+trata "cartão recusado" e "Pix não pago" como o mesmo evento, então trocar o
+método de pagamento não mexe nela. `db/schema/30_assinaturas.sql`,
+`routers/assinaturas.py` e a desativação em `profiles.py` também ficam.
+
+**A superfície do provedor são seis funções e uma constante**, todas em
+`services/mercado_pago.py` (211 linhas):
+
+```
+PERIODOS                    mapa nome -> meses
+ativo()                     está configurado?
+plano_do_periodo(periodo)   nome -> id do plano no provedor
+criar_assinatura(...)       devolve a URL de checkout
+buscar_assinatura(id)       a consulta que decide tudo
+cancelar_assinatura(id)
+assinatura_confere(...)     validação HMAC do webhook
+```
+
+Escrever o equivalente para o provedor novo é o trabalho. `routers/webhooks.py`
+(91 linhas) muda o caminho da rota e a chamada de validação; o resto do fluxo —
+idempotência por id de notificação em `webhook_events`, consulta, `_registrar` —
+não muda.
+
+**As duas costuras que vazam, e o que fazer com elas.** `aplicar_notificacao` lê
+o JSON cru do provedor: `status`, `next_payment_date`, `external_reference`. E
+`_periodo_do_recurso` lê `auto_recurring.frequency_type` / `frequency`, que é
+formato do Mercado Pago dentro da camada de regra.
+
+Isto é o que fez a primeira troca custar mais do que devia. **A reconstrução
+corrige na raiz:** o módulo do provedor passa a devolver um objeto normalizado —
+`status` já traduzido para o vocabulário do app, próxima cobrança como `date`,
+`user_id` e `periodo` resolvidos — em vez de `dict`. Aí `assinaturas.py` deixa de
+saber o nome de qualquer campo de qualquer fornecedor, e a terceira troca custa
+só o cliente HTTP.
+
+**O mapa de status é a decisão que sobra.** O `PENDING/EXPIRED/CANCELLED/PAID/
+REFUNDED` da AbacatePay é mais pobre que o `preapproval` do Mercado Pago e não
+distingue "em dia" de "pago uma vez". Enquanto a incógnita 1 acima não for
+respondida, este mapa não pode ser escrito — e é por isso que a integração não
+começa antes da resposta.
+
+**Ordem de execução, quando chegar a hora.** Provedor decidido e as três
+incógnitas respondidas → normalizar o retorno do módulo atual (refatoração pura,
+com os 586 testes de `test_assinaturas.py` de rede) → escrever o cliente novo
+contra a interface normalizada → validação do webhook, provada como a do Mercado
+Pago foi: notificação assinada com tópico fora da lista atravessa e para no
+`ignorado`; forjada devolve 401 → percorrer o fluxo inteiro com credencial de
+teste, que é o caminho que nunca foi exercitado contra serviço nenhum.
+
+**Nada disso bloqueia lançamento.** `COBRANCA_ATIVA` é falso, e a cobrança é Fase
+5, atrás da triangulação.
+
+
 ## 17. Roadmap de desenvolvimento
 
 ### Fase 1 — Fundação (semana 1–2)
