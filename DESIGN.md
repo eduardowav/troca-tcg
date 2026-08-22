@@ -115,6 +115,122 @@ Raios: `cartela 20px` · `controle 12px` · `imagem 8px` · `etiqueta 6px`.
 Sombra dura, deslocada e sem blur — o deslocamento é a hierarquia: `4px` cartela,
 `3px` botão, `2px` peça pequena.
 
+## Ilustração
+
+Diretriz oficial da marca, colada aqui na íntegra. A fonte é
+`idv_troca_tcg/DIRETRIZ-ILUSTRACAO.md`, e é lá que ela muda — este bloco é cópia, e
+cópia que diverge da fonte é pior que cópia nenhuma. Se as duas discordarem, a de lá
+ganha.
+
+Os três arquivos que a diretriz manda usar moram no mesmo repositório:
+`assets/referencia-estilo-ilustracao-principal.png` (a referência visual obrigatória),
+`assets/padrao-verso-carta-trocatcg.svg` e `assets/padrao-frente-carta-trocatcg.svg`.
+
+> Esta é a linguagem visual oficial para todas as ilustrações do aplicativo e da
+> comunicação do TrocaTCG.
+
+### Características essenciais
+
+- Ilustração vetorial plana com linguagem neo-brutalista editorial.
+- Pessoas diversas representadas por formas grandes, simples e acolhedoras.
+- Contornos firmes e grossos em carvão, com espessura visual consistente.
+- Anatomia simplificada, sem rostos ou detalhes realistas desnecessários.
+- Composições humanas e comunitárias: encontros, trocas, coleção e colaboração.
+- Perspectiva simplificada e levemente irregular, com energia de pôster editorial.
+- Áreas amplas de cor e forte contraste; poucos elementos pequenos.
+- Cartas sempre genéricas, sem personagens, marcas ou artes de franquias.
+
+### Paleta aplicada às ilustrações
+
+- Azul principal da identidade.
+- Bege quente como fundo, pele, respiro e áreas negativas.
+- Carvão `#171717` para contornos, cabelos, roupas e massas de contraste.
+- Branco somente quando necessário para contraste ou acessibilidade.
+
+Usar no máximo três cores principais por ilustração. Evitar adicionar cores secundárias
+sem aprovação.
+
+### Acabamento
+
+- Preenchimentos predominantemente chapados.
+- Curvas orgânicas combinadas com cortes geométricos.
+- Contornos preservados mesmo em áreas de sobreposição.
+- Leitura clara tanto em banners quanto em cards pequenos do aplicativo.
+- Inclusão e diversidade sem estereótipos ou caricaturas.
+
+### Evitar
+
+- Fotorealismo, 3D, render plástico ou iluminação cinematográfica.
+- Sombras realistas, bevel, glassmorphism ou gradientes decorativos.
+- Clipart corporativo genérico e personagens com aparência de banco de imagens.
+- Anatomia detalhada, dedos excessivamente definidos e expressões faciais complexas.
+- Texturas pesadas, ruído, pinceladas ou estética artesanal incompatível com o vetor.
+- Referências visuais diretas a Pokémon ou outras propriedades intelectuais.
+- Paletas multicoloridas que enfraqueçam azul, bege e carvão.
+
+### Regra de uso
+
+Sempre que uma tela, onboarding, estado vazio, campanha, tutorial ou publicação precisar
+de ilustração, esta referência deve ser usada como direção principal. Variações de cena
+são permitidas; a linguagem de desenho, a simplificação, os contornos e a paleta devem
+permanecer consistentes.
+
+### Verso oficial das cartas ilustradas
+
+- Sempre que o verso de uma carta estiver visível, usar o arquivo
+  `assets/padrao-verso-carta-trocatcg.svg`.
+- O padrão consiste em uma carta branca de cantos arredondados, com moldura grossa em
+  carvão e uma esfera central simples: contorno em carvão, metade superior azul e metade
+  inferior branca.
+- Este grafismo pertence exclusivamente ao verso da carta. Nunca aplicar a esfera
+  azul/branca à frente; quando a frente estiver visível, representar a face própria da
+  carta ou mantê-la sem detalhes, conforme a cena.
+- A carta deve manter sempre a proporção oficial de `5:7`. Nunca gerar cartas quadradas,
+  esticadas, comprimidas ou com proporções diferentes.
+- A carta pode ser redimensionada, rotacionada e colocada em perspectiva para acompanhar
+  a cena, desde que sua geometria retangular e a proporção `5:7` permaneçam visualmente
+  coerentes. A perspectiva pode alterar os ângulos aparentes, mas nunca deformar a carta.
+- Cartas parcialmente ocultas devem preservar a mesma largura, altura, espessura e
+  perspectiva das demais cartas do mesmo conjunto ou pilha.
+- Não redesenhar a esfera, alterar suas proporções ou adicionar ornamentos em cada
+  ilustração.
+- Não usar o verso oficial de Pokémon, artes de cartas existentes ou elementos
+  licenciados.
+- Em tamanhos muito pequenos, preservar prioritariamente a esfera central e o contraste
+  azul/branco.
+
+### Frente oficial das cartas ilustradas
+
+- Sempre que a frente de uma carta estiver visível, usar como referência o arquivo
+  `assets/padrao-frente-carta-trocatcg.svg`.
+- A frente deve manter a proporção `5:7`, os cantos arredondados, o fundo branco e a
+  moldura grossa em carvão.
+- Representar a área da ilustração por um único retângulo azul de contorno carvão, sem
+  personagem, cenário, textura ou detalhe interno.
+- Representar nomes, atributos, ações e textos somente por linhas geométricas em carvão.
+  Não inserir palavras legíveis nas ilustrações.
+- Pequenos círculos azuis podem marcar atributos, desde que permaneçam simples e
+  consistentes com o modelo oficial.
+- Nunca aplicar a esfera azul/branca do verso na frente da carta.
+- A frente pode ser redimensionada, rotacionada, parcialmente ocultada e colocada em
+  perspectiva, mas nunca quadrada, esticada, comprimida ou deformada.
+
+### Por que a esfera é azul, e não vermelha
+
+Não está na diretriz e fica registrado aqui porque é a linha que mais corre risco de ser
+"corrigida" por quem só quiser deixar a associação mais óbvia.
+
+A estrutura — círculo, faixa no equador, botão no centro — é linguagem genérica de bola
+de captura, e é ela que produz o reconhecimento imediato que o verso precisa ter. O que
+é marca registrada de terceiro é a **combinação** vermelho no topo, branco embaixo,
+faixa preta. Trocar a cor pela da marca mantém a leitura e sai da combinação protegida.
+
+E o ganho não é só jurídico: uma bola vermelha e branca faz o produto parecer o produto
+do outro; a azul faz parecer este. O disclaimer de não-afiliação (item 4 da seção 17 da
+doc técnica) existe para dizer que não somos eles — e perde o sentido se a ilustração
+disser o contrário.
+
+
 ## Tipografia
 
 - **Título:** Outfit 500–900. A distância entre Medium e Black é o que carrega a
