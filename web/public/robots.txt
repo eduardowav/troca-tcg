@@ -1,0 +1,34 @@
+# O que os buscadores podem varrer em trocatcg.com.
+#
+# A decisão é: o app entra no Google. Ser achado por quem procura "troca de
+# cartas em Belém" é aquisição que não custa nada, e o produto depende de
+# densidade de gente — ver "O risco número um" na seção 21 da doc técnica.
+#
+# **Isto não protege nada.** Robô mal-intencionado lê este arquivo justamente
+# para descobrir onde alguém escondeu coisa. O que protege está em `App.tsx`:
+# `/u/:username`, `/vitrine/*`, `/carta/:id` e `/matches/*` moram dentro do
+# bloco `ExigeSessao`, então o robô cai na tela de entrar e não passa daí.
+#
+# Vale registrar por que isso importa mais aqui do que na média: a seção 22.2
+# da doc diz que **não existe diretório de pessoas** neste app — sem busca por
+# usuário, sem lista de membros. Um perfil público indexado construiria
+# exatamente o diretório que o produto recusou construir. A porta que impede
+# isso é a sessão, não este arquivo.
+#
+# O que está barrado abaixo é só higiene: telas de passagem, que existem para
+# ser atravessadas uma vez e não têm o que oferecer a quem chega pela busca.
+
+User-agent: *
+Allow: /
+
+# Telas de passagem. `/nova-senha` e `/confirmar-email` só fazem sentido com um
+# token na URL — sem ele são um beco. `/recuperar` e `/completar-cadastro` são
+# etapas de um fluxo que começa em outro lugar; chegar nelas pela busca é
+# chegar no meio de uma frase.
+Disallow: /nova-senha
+Disallow: /confirmar-email
+Disallow: /recuperar
+Disallow: /completar-cadastro
+
+# Não há `Sitemap:` aqui de propósito: o arquivo não existe, e apontar para um
+# 404 é pior que não apontar. Quando existir, a linha entra.
