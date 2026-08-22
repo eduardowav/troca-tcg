@@ -395,7 +395,7 @@ da página que abriu. A caixa do WhatsApp vem cinza e ninguém toca.
 O e-mail transacional continua saindo pelo SMTP do Gmail. Com domínio próprio dá
 para ter remetente `nao-responda@trocatcg.com` com SPF e DKIM, o que tira o app
 da pasta de promoções — mas é outra tarefa, e o teto de envio do Supabase
-(30/hora neste projeto) continua sendo o limite real no dia do lançamento.
+(100/hora desde 2026-08-21) continua sendo o limite real no dia do lançamento.
 
 `web/src/routes/Termos.tsx` ainda cita `contato@trocatcg.com.br`, que é de outra
 pessoa. Com o `.com` na mão, esse endereço passa a ter para onde ir — está na

@@ -1698,9 +1698,17 @@ Dois detalhes que custaram tempo e ficam escritos:
 - **O teto de envio muda de lugar quando o SMTP entra.** Com o remetente interno
   do Supabase são 2 e-mails por hora, fixos — a cota que estourou com três
   cadastros de teste. Com Custom SMTP o campo passa a ser editável em
-  Authentication → Rate Limits, com 30 por hora de padrão — e é o que este
-  projeto tem, conferido no painel em 2026-08-14. Vale olhar em vez de supor: o
-  valor não aparece em nenhuma API pública, só ali.
+  Authentication → Rate Limits, com 30 por hora de padrão. **Este projeto está
+  em 100 por hora desde 2026-08-21**, subido para o lançamento — quarenta
+  cadastros numa tarde, mais reenvios e recuperações de senha, saem todos do
+  mesmo balde. Vale olhar em vez de supor: o valor não aparece em nenhuma API
+  pública, só ali.
+
+  Acima de ~75 o Supabase deixa de ser o teto e o Gmail assume. A troca não é
+  neutra: estourar o limite do Supabase dá erro limpo, que `authMensagens.ts`
+  traduz; estourar o do Gmail é falha de SMTP, e o pior caso é o Google tratar a
+  conta como spam e cortar confirmação e recuperação de uma vez. Os 100 são
+  folga declarada, não capacidade.
 
 Serve a um caso só hoje: **recuperação de senha**. A confirmação de conta está
 desligada e as notificações vivem em in-app e push. Isso é decisão, não
@@ -2695,6 +2703,14 @@ com todo o resto.
    resto da ativação. Não bloqueia nada enquanto `COBRANCA_ATIVA` for falso — e
    vira a primeira coisa a fazer no dia em que ele for virado.
 
+   **Em 2026-08-21 o provedor mudou para o Asaas**, e com isso tudo o que está
+   escrito acima sobre credencial de produção, `preapproval_plan_id` e segredo de
+   webhook **caducou** — é todo do Mercado Pago. A regra de negócio não é do
+   provedor e sobrevive à troca: quem decide quem é PRO, quando cai e como
+   funciona a carência mora em `services/assinaturas.py`, alimentado por consulta
+   ao provedor e nunca pelo corpo do webhook. Trocar é reescrever o cliente HTTP,
+   a validação de assinatura e o mapa de status.
+
 **Fase 2 — o que falta para poder abrir.** Tudo código ou texto, nada bloqueado.
 
 3. ✅ **Modal de disclaimer antes de revelar o contato** — feito em 2026-08-15.
@@ -2774,9 +2790,24 @@ varredura de 2026-08-11, detalhada no bloco "Segurança do app" abaixo.
     `Authorization` vazava por ali). **Provado em produção no mesmo dia**: os DSN
     entraram no Render e o PWA no ar enviou evento com `200` do ingest. Detalhe
     na seção 20.
-16. PWA instalada testada em Android e iOS.
+16. **PWA instalada — iOS feito em 2026-08-21, Android pendente.** É o que
+    sobra deste item.
 17. 30+ usuários pré-cadastrados, com o lançamento tratado como evento e não como
     deploy — ver "O risco número um" na seção 21.
+
+    **Decidido em 2026-08-21: o lançamento é só Belém.** A pergunta estava aberta
+    desde 14/08, e a resposta fecha o escopo do item: uma comunidade que já se
+    conhece, num dia de torneio, com os cadastros feitos no celular de cada
+    pessoa e com ajuda ao lado. Não é limitação técnica — é a condição em que o
+    início a frio se resolve, porque quarenta pessoas que se encontram
+    presencialmente geram troca real, e quatrocentas espalhadas não.
+
+    **A confirmação de e-mail fica ligada**, decidido no mesmo dia. Chegou a ser
+    considerado desligá-la para o evento, pelo teto de envio; o teto subiu para
+    100/hora e o argumento caiu. O que sobrava era atrito, e o preço de desligar
+    era alto demais para pagá-lo por isso: além de reabrir o R-1 da
+    `SEGURANCA.md`, e-mail digitado errado viraria conta que nunca recupera a
+    senha — some da base no dia seguinte e ninguém descobre por quê.
 
 **Fase 5 — depois de lançar.**
 
@@ -2786,6 +2817,28 @@ varredura de 2026-08-11, detalhada no bloco "Segurança do app" abaixo.
     credenciais de teste** — ver a ressalva no item 2. É o único caminho do app
     que nunca foi exercitado contra o serviço de verdade.
 20. README de portfólio, que serve ao Eduardo e não ao app.
+
+### O que entrou fora desta ordem, em 2026-08-21
+
+Quatro coisas foram feitas num dia só e nenhuma estava na lista. Ficam
+registradas aqui para que a ordem acima continue sendo a verdade e não uma
+lembrança:
+
+- **Domínio próprio.** O app mora em `trocatcg.com`, a API em
+  `api.trocatcg.com`, e `www` redireciona para o apex. Feito antes do
+  lançamento de propósito: PWA é presa à origem, e trocar o endereço depois não
+  migra ninguém. Runbook e armadilhas em `docs/INFRA.md`.
+- **Medidor de força de senha** no cadastro e na senha nova, com barreira contra
+  o que é adivinhável — lista das mais usadas, vocabulário de carta, nome e @ da
+  própria pessoa. Ver `lib/forcaSenha.ts`.
+- **Mínimo de senha no servidor subiu de 6 para 8**, fechando o item 2 das
+  pendências de painel da `SEGURANCA.md`. Medido contra a API, não lido no
+  painel.
+- **`robots.txt`**, com o app indexável e as telas de passagem fora da busca.
+
+- **A base de contas foi zerada** para receber cadastros reais. Sobrou uma conta
+  de teste. O estado de selagem que existia para exercitar o carimbo morreu
+  junto e precisa ser remontado do zero.
 
 Duas ressalvas sobre a própria ordem. O **rate limit (8)** sobe para antes do
 item 5 se o WhatsApp ficar pronto cedo — cada mensagem custa dinheiro e queima

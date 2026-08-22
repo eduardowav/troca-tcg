@@ -53,9 +53,19 @@ export function destinoDaConfirmacao(): string {
  * pessoa fecha a aba antes de abrir. Sem este botão, a saída seria criar outra
  * conta — que o Supabase recusa, com uma mensagem que não ajuda ninguém.
  *
- * O teto de envio é do Supabase (30 por hora neste projeto, com o SMTP do
- * Gmail). Estourar é caso tratado: `authMensagens.ts` traduz o limite numa
- * frase que diz que a espera é longa e não é culpa de quem tentou.
+ * O teto de envio é do Supabase — **100 por hora neste projeto** desde
+ * 2026-08-21, com o SMTP do Gmail. Era 30, e subiu para o lançamento: quarenta
+ * pessoas cadastrando numa tarde, mais os reenvios e as recuperações de senha,
+ * que saem do mesmo balde.
+ *
+ * Acima de ~75 o Supabase deixa de ser quem segura e o Gmail assume, e ele é
+ * menos educado: bater no teto do Supabase dá erro limpo e traduzido; bater no
+ * do Gmail é falha de SMTP, e o pior caso é o Google tratar a conta como spam e
+ * cortar o envio inteiro — confirmação e recuperação juntas. Os 100 são folga
+ * declarada, não capacidade real.
+ *
+ * Estourar o do Supabase é caso tratado: `authMensagens.ts` traduz o limite
+ * numa frase que diz que a espera é longa e não é culpa de quem tentou.
  */
 export async function reenviarConfirmacao(email: string): Promise<void> {
   const { error } = await supabase.auth.resend({
