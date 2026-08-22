@@ -7,9 +7,12 @@ import { api, ApiError } from '@/lib/api'
  * onde a regra é aplicada. Repetir os números aqui criaria duas verdades sobre a
  * mesma promessa, e a divergência apareceria depois de alguém pagar.
  *
- * **O preço mora aqui**, e é a exceção deliberada: ele não é regra de negócio do
- * backend hoje — nenhum código decide nada com ele —, é texto de venda. Na Fase C
- * quem passa a mandar nele é o Mercado Pago.
+ * **O preço vem da API também, desde 2026-08-22.** Ele era a exceção deliberada
+ * aqui — "texto de venda, e na Fase C quem manda é o Mercado Pago" —, e deixou de
+ * ser: a assinatura passou a ser criada sem plano associado, então o valor viaja
+ * na chamada e `PRECOS` em `core/limites.py` é o dono. A exceção virou o caso
+ * mais forte da regra: limite divergente irrita, preço divergente é cobrança que
+ * não bate com a tela.
  */
 
 export interface Limites {
@@ -32,17 +35,33 @@ export interface Planos {
    */
   cobranca_ativa: boolean
   planos: Record<'FREE' | 'PRO', Limites>
+  /**
+   * O valor de cada período, em reais e como texto — `"19.90"`.
+   *
+   * Texto e não número porque quem formata é `formatarPreco` logo abaixo: número
+   * de dinheiro atravessando JSON é como `19.90` chega na tela escrito `19.9`.
+   */
+  precos: Record<Periodo, string>
 }
+
+export type Periodo = 'mensal' | 'anual'
 
 export const obterPlanos = () => api.get<Planos>('/planos')
 
-/** R$ 19,90/mês ou R$ 199,90/ano — o anual sai por dez meses. */
-export const PRECO = {
-  mensal: 'R$ 19,90',
-  anual: 'R$ 199,90',
-  /** O que o anual economiza, dito como quem compra pensa. */
-  economia: 'dois meses de graça',
-} as const
+/** `"19.90"` vira `"R$ 19,90"`. A vírgula é a do Brasil, e a API manda ponto. */
+export const formatarPreco = (valor: string) =>
+  `R$ ${Number(valor).toFixed(2).replace('.', ',')}`
+
+/**
+ * O que o anual economiza, dito como quem compra pensa.
+ *
+ * Continua sendo texto daqui, e não conta feita: são dez meses pelo preço de
+ * doze, e "dois meses de graça" é a frase que vende isso. Derivar da diferença
+ * entre os dois preços produziria "economize 16%", que é verdade e não convence
+ * ninguém. Se a razão entre os planos mudar, esta linha muda junto — e é por
+ * isso que ela está encostada nos dois valores que a API serve.
+ */
+export const ECONOMIA_ANUAL = 'dois meses de graça'
 
 /**
  * Os códigos de erro que significam "isto é do PRO".

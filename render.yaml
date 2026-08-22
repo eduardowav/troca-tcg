@@ -132,17 +132,16 @@ services:
       # assinatura respondem 503 e o receptor recusa tudo — que é o estado certo
       # de um ambiente sem credencial.
       #
-      # Os ids dos planos ficam aqui porque não são segredo: são o "qual plano",
-      # não o "quem pode". Mas atenção, eles são **de produção** — os que estão
-      # no `api/.env` foram criados com credencial de teste e não valem aqui.
-      # Preencher com os de produção no dia em que a aplicação for ativada.
+      # **Os ids de plano saíram em 2026-08-22**, e com eles duas armadilhas.
+      # Assinatura ligada a `preapproval_plan_id` exige `card_token_id` — ou seja,
+      # exige coletar cartão no nosso frontend, que este projeto não faz. A
+      # assinatura passou a ser criada sem plano, com o valor vindo de `PRECOS`
+      # em `core/limites.py`. Some junto o `back_url`, que morava no plano e
+      # apontava para o domínio antigo desde a troca de 21/08: agora ele viaja
+      # por assinatura, e quem manda nele é o `MERCADO_PAGO_BACK_URL` abaixo.
       - key: MERCADO_PAGO_ACCESS_TOKEN
         sync: false
       - key: MERCADO_PAGO_WEBHOOK_SECRET
-        sync: false
-      - key: MERCADO_PAGO_PLANO_MENSAL
-        sync: false
-      - key: MERCADO_PAGO_PLANO_ANUAL
         sync: false
       # Para onde o Mercado Pago devolve quem terminou o checkout. Endereço
       # único, e por isso o novo: quem volta do checkout volta para o domínio.

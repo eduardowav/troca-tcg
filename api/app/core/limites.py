@@ -17,6 +17,7 @@ Ver seção 16 da doc.
 """
 
 from dataclasses import dataclass
+from decimal import Decimal
 
 #: Vira True junto com a Fase C (Mercado Pago, webhook, tela de planos). Até lá,
 #: os limites de plano estão escritos e desligados — ligar é trocar esta linha,
@@ -79,6 +80,30 @@ PLANOS: dict[str, Limites] = {
         historico_dias=None,
         propostas_por_dia=100,
     ),
+}
+
+
+#: O preço do PRO, por período, em reais.
+#:
+#: **Mora aqui desde 2026-08-22, e antes morava no Mercado Pago.** A mudança veio
+#: junto com a descoberta de que a assinatura precisa ser criada *sem plano
+#: associado* — o fluxo com `preapproval_plan_id` exige `card_token_id`, ou seja,
+#: exige que o app colete o cartão, que é justamente o que este projeto não faz.
+#: Sem plano do lado deles, o valor viaja na chamada, e alguém aqui precisa ser o
+#: dono dele.
+#:
+#: Ser um número e não uma string é de propósito: `criar_assinatura` manda isto
+#: para o `auto_recurring`, e formatar preço é trabalho da tela. `Decimal` porque
+#: `float` de dinheiro é como 19.90 vira 19.899999999999999 no corpo de uma
+#: requisição de cobrança.
+#:
+#: A tela lê pela rota `/planos`, e não repete estes números — mesmo motivo dos
+#: limites, e pior consequência: tabela que promete um valor e cobrança que
+#: debita outro é a discussão que não se ganha.
+PRECOS: dict[str, Decimal] = {
+    "mensal": Decimal("19.90"),
+    # Dez meses pelo preço de doze — os "dois meses de graça" que a tela diz.
+    "anual": Decimal("199.90"),
 }
 
 

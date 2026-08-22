@@ -65,12 +65,19 @@ class Settings(BaseSettings):
     # rotas de assinatura respondem 503 e nada sai daqui. Mesmo padrão do push
     # sem chave VAPID e do WhatsApp sem chip.
     #
-    # O token de teste começa com `TEST-`, o de produção com `APP_USR-`. Os ids
-    # de plano **não** são os mesmos nos dois ambientes: plano de teste e plano
-    # de produção são objetos diferentes, criados com credenciais diferentes.
+    # O token de teste começa com `TEST-` e o de produção com `APP_USR-`, **com
+    # uma exceção que confunde**: dentro de uma conta de usuário de teste não
+    # existe seção de credencial de teste, e a que ela chama de produção é a de
+    # teste — a conta inteira é fictícia. Foi assim que o fluxo foi percorrido em
+    # 2026-08-22. Na dúvida sobre um token, `GET /users/me` responde: usuário de
+    # teste vem com a tag `test_user`.
+    #
+    # Não há mais id de plano aqui. Até 2026-08-22 existiam
+    # `MERCADO_PAGO_PLANO_MENSAL` e `_ANUAL`, e eles saíram junto com a descoberta
+    # de que assinatura ligada a plano exige `card_token_id` — ver o docstring de
+    # `mercado_pago.criar_assinatura`. Menos duas variáveis para preencher errado
+    # no dia de ligar, e some com elas o `back_url` que ficava preso no plano.
     MERCADO_PAGO_ACCESS_TOKEN: str = ""
-    MERCADO_PAGO_PLANO_MENSAL: str = ""
-    MERCADO_PAGO_PLANO_ANUAL: str = ""
     # O segredo da assinatura do webhook, gerado no painel junto com a URL. Sem
     # ele o receptor recusa tudo, de propósito: webhook de pagamento sem
     # validação é uma rota pública que promove qualquer um a PRO.

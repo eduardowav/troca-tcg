@@ -452,13 +452,90 @@ async def test_periodo_invalido_e_recusado_com_campo():
     assert e.value.campo == "periodo"
 
 
-async def test_sem_plano_configurado_recusa(monkeypatch):
-    """Ambiente novo sem os ids dos planos: 503, não um 500 no meio do checkout."""
-    monkeypatch.setattr(settings, "MERCADO_PAGO_PLANO_MENSAL", "")
-    with pytest.raises(RegraNegocio) as e:
-        await assinaturas.iniciar(SessaoFalsa(), uuid4(), "mensal")  # type: ignore[arg-type]
-    assert e.value.codigo == "ASSINATURA_INDISPONIVEL"
-    assert e.value.status_code == 503
+@pytest.mark.parametrize(
+    ("periodo", "meses", "valor"),
+    [("mensal", 1, 19.9), ("anual", 12, 199.9)],
+)
+async def test_criar_assinatura_vai_sem_plano_associado(
+    monkeypatch, periodo, meses, valor
+):
+    """O corpo que o Mercado Pago aceita — e que por meses foi o errado.
+
+    Até 2026-08-22 esta chamada mandava `preapproval_plan_id` e o provedor recusava
+    com ``card_token_id is required``: assinatura ligada a plano só nasce pela API
+    com o cartão já tokenizado, e tokenizar cartão é justamente o que este projeto
+    não faz. Nenhum teste pegou porque todos dublavam a função inteira — o dublê
+    aceitava o corpo que o Mercado Pago recusava.
+
+    Por isso este teste desce um nível: dubla o `_chamar`, que é a borda da rede, e
+    afirma sobre o **corpo**. É o que sobreviveria à mesma classe de erro.
+    """
+    enviados: list[tuple[str, str, dict]] = []
+
+    async def falso_chamar(metodo, caminho, corpo=None):
+        enviados.append((metodo, caminho, corpo or {}))
+        return {"id": "pp-1", "status": "pending", "init_point": "https://mp/x"}
+
+    monkeypatch.setattr(mercado_pago, "_chamar", falso_chamar)
+    monkeypatch.setattr(
+        settings, "MERCADO_PAGO_BACK_URL", "https://trocatcg.com/planos"
+    )
+
+    usuario = uuid4()
+    # O `retornos` alimenta o `scalar` de `_email`, que é a primeira consulta.
+    sessao = SessaoFalsa(retornos=["alguem@exemplo.com"])
+    await assinaturas.iniciar(sessao, usuario, periodo)  # type: ignore[arg-type]
+
+    metodo, caminho, corpo = enviados[0]
+    assert (metodo, caminho) == ("POST", "/preapproval")
+
+    # O que quebrava: plano associado exige cartão tokenizado.
+    assert "preapproval_plan_id" not in corpo
+    # O que faz o provedor devolver `init_point` em vez de exigir cartão.
+    assert corpo["status"] == "pending"
+
+    assert corpo["auto_recurring"]["frequency"] == meses
+    assert corpo["auto_recurring"]["frequency_type"] == "months"
+    assert corpo["auto_recurring"]["transaction_amount"] == valor
+    assert corpo["auto_recurring"]["currency_id"] == "BRL"
+
+    # A amarração com o usuário. Pelo fluxo com plano ela se perdia: a assinatura
+    # autorizada voltava com `external_reference: None`, e promover a PRO exigiria
+    # adivinhar de quem era.
+    assert corpo["external_reference"] == str(usuario)
+    assert corpo["back_url"] == "https://trocatcg.com/planos"
+
+
+async def test_preco_nao_vira_dizima_no_corpo(monkeypatch):
+    """`19.90` precisa sair `19.9` no JSON, e não `19.899999999999999`.
+
+    `PRECOS` é `Decimal` justamente para isso, e a conversão para `float` acontece
+    num ponto só. O teste é sobre o que o Mercado Pago recebe — dízima num corpo de
+    cobrança é diferença de centavo na fatura de alguém.
+    """
+    import json
+
+    enviados: list[dict] = []
+
+    async def falso_chamar(metodo, caminho, corpo=None):
+        enviados.append(corpo or {})
+        return {"id": "pp-1", "status": "pending", "init_point": "https://mp/x"}
+
+    monkeypatch.setattr(mercado_pago, "_chamar", falso_chamar)
+    sessao = SessaoFalsa(retornos=["alguem@exemplo.com"])
+    await assinaturas.iniciar(sessao, uuid4(), "mensal")  # type: ignore[arg-type]
+
+    assert '"transaction_amount": 19.9' in json.dumps(enviados[0])
+
+
+async def test_sem_credencial_a_rota_recusa_com_503():
+    """Ambiente sem token: 503 com código próprio, não um 500 no meio do checkout.
+
+    Substitui o antigo teste dos ids de plano, que sumiram junto com o fluxo de
+    plano associado. O portão que sobrou é `mercado_pago.ativo()`, e ele mora no
+    roteador — ver `_exigir_ligada`.
+    """
+    assert mercado_pago.ativo() is bool(settings.MERCADO_PAGO_ACCESS_TOKEN)
 
 
 async def test_reconciliar_desligado_nao_toca_no_banco(monkeypatch):

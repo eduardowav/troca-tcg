@@ -17,6 +17,7 @@ import hashlib
 import hmac
 import logging
 import time
+from decimal import Decimal
 from typing import Any
 
 import aiohttp
@@ -32,9 +33,14 @@ BASE_URL = "https://api.mercadopago.com"
 #: responder. Nos dois casos, lentidão do provedor não pode virar timeout nosso.
 TIMEOUT = 10.0
 
-#: Os dois períodos vendidos, e a frequência de cada um em meses. O preço não
-#: está aqui de propósito — ele mora no plano, do lado do Mercado Pago, e
-#: repetido em dois lugares é como a tela e a cobrança passam a discordar.
+#: Os dois períodos vendidos, e a frequência de cada um em meses.
+#:
+#: O preço **não** está aqui, e desde 2026-08-22 por um motivo diferente do
+#: antigo: ele morava no plano do Mercado Pago, e agora mora em `PRECOS`, no
+#: `core/limites.py`. Quanto custa é regra de negócio; de quantos em quantos
+#: meses se cobra é vocabulário do provedor, e é só isso que este mapa é. Ele
+#: serve nas duas direções — monta o `auto_recurring` na criação e lê a
+#: frequência de volta em `_periodo_do_recurso`.
 PERIODOS = {"mensal": 1, "anual": 12}
 
 
@@ -45,14 +51,6 @@ def ativo() -> bool:
     com 503, e o receptor de webhook nem chega a ser exercitado sem segredo.
     """
     return bool(settings.MERCADO_PAGO_ACCESS_TOKEN)
-
-
-def plano_do_periodo(periodo: str) -> str:
-    """O `preapproval_plan_id` configurado para `mensal` ou `anual`."""
-    return {
-        "mensal": settings.MERCADO_PAGO_PLANO_MENSAL,
-        "anual": settings.MERCADO_PAGO_PLANO_ANUAL,
-    }.get(periodo, "")
 
 
 async def _chamar(
@@ -86,7 +84,7 @@ async def _chamar(
 
 
 async def criar_assinatura(
-    *, plano_id: str, email: str, referencia: str, back_url: str
+    *, periodo: str, valor: Decimal, email: str, referencia: str, back_url: str
 ) -> dict[str, Any]:
     """Cria o `preapproval` e devolve o recurso, com `id` e `init_point`.
 
@@ -96,15 +94,60 @@ async def criar_assinatura(
 
     O status nasce `pending`: ninguém está assinado até autorizar o pagamento na
     tela do Mercado Pago.
+
+    **Assinatura sem plano associado, e a escolha não é de estilo — 2026-08-22.**
+    Esta função mandava `preapproval_plan_id` e o Mercado Pago recusava com
+    ``{"message": "card_token_id is required", "status": 400}``. Não é
+    contornável: assinatura ligada a plano só nasce pela API com o cartão já
+    tokenizado, o que significa coletar cartão no nosso frontend — exatamente o
+    que o cabeçalho deste módulo diz que o projeto não faz.
+
+    Sem plano, manda-se o `auto_recurring` inteiro e `status: "pending"`, e o
+    Mercado Pago devolve o `init_point` para a pessoa autorizar na tela dele.
+    Provado ponta a ponta com credencial de teste: a assinatura voltou
+    `authorized`, com `external_reference`, `next_payment_date` e `auto_recurring`
+    corretos.
+
+    **E é o fluxo que preserva o `external_reference`.** Pelo caminho do plano ele
+    se perde — nem no corpo, nem como query no checkout ele sobrevive; a
+    assinatura autorizada volta com `external_reference: None` e `payer_email`
+    vazio, restando só o `payer_id`, que é identidade do Mercado Pago e não nossa.
+    Seria uma promoção a PRO sem saber de quem.
+
+    Some junto o `back_url` preso ao plano, que estava no domínio antigo desde a
+    troca de 21/08 e devolveria quem pagou para a origem errada. Agora ele viaja
+    por assinatura, e é o `MERCADO_PAGO_BACK_URL` que manda.
+
+    **Armadilha para quem for testar isto na mão.** O Mercado Pago filtra conteúdo
+    do corpo e recusa com ``{"code": "invalid_field_content"}`` — mensagem genérica
+    que não diz qual campo. Um `external_reference` de enfeite como
+    ``11111111-2222-3333-4444-555555555555`` cai nesse filtro, e o erro parece ser
+    do corpo inteiro. UUID de verdade passa, que é o que o app manda
+    (`str(user_id)`). Se este 400 aparecer num teste manual, desconfie do valor
+    inventado antes de desconfiar do desenho.
     """
     return await _chamar(
         "POST",
         "/preapproval",
         {
-            "preapproval_plan_id": plano_id,
+            "reason": f"TrocaTCG PRO {periodo}",
+            "auto_recurring": {
+                "frequency": PERIODOS[periodo],
+                "frequency_type": "months",
+                # O valor é `Decimal` até aqui de propósito — ver `PRECOS` em
+                # `core/limites.py`. A conversão para `float` acontece só neste
+                # ponto, porque é o que o JSON aceita, e é segura para os valores
+                # que vendemos: `json.dumps` escreve a repr mais curta que
+                # round-trips, então 19.90 sai "19.9" e não "19.8999...".
+                "transaction_amount": float(valor),
+                "currency_id": "BRL",
+            },
             "payer_email": email,
             "external_reference": referencia,
             "back_url": back_url,
+            # O que faz o Mercado Pago devolver `init_point` em vez de exigir
+            # cartão: a assinatura nasce à espera de autorização.
+            "status": "pending",
         },
     )
 

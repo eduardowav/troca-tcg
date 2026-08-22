@@ -6,7 +6,12 @@ import { useMarcaOculta } from '@/hooks/useMundo'
 import { usePerfil } from '@/hooks/usePerfil'
 import { usePlanos } from '@/hooks/usePlanos'
 import { cn } from '@/lib/cn'
-import { type Limites, PRECO } from '@/lib/planos'
+import {
+  ECONOMIA_ANUAL,
+  formatarPreco,
+  type Limites,
+  type Periodo,
+} from '@/lib/planos'
 
 /**
  * A tela de planos (item 8 da Fase C, seção 16).
@@ -61,7 +66,7 @@ export default function Planos() {
         <div className="mt-6 h-64 animate-pulse rounded-[var(--radius-cartela)] border-2 border-tinta bg-cartela" />
       ) : (
         <>
-          <Estado cobrando={cobrando} ePro={ePro} />
+          <Estado cobrando={cobrando} ePro={ePro} precos={data.precos} />
 
           <Comparacao free={data.planos.FREE} pro={data.planos.PRO} />
 
@@ -78,7 +83,15 @@ export default function Planos() {
  * Três estados, e o do meio é o de hoje. Sem ele, a tela seria uma oferta e a
  * pessoa sairia achando que precisa pagar por algo que já tem.
  */
-function Estado({ cobrando, ePro }: { cobrando: boolean; ePro: boolean }) {
+function Estado({
+  cobrando,
+  ePro,
+  precos,
+}: {
+  cobrando: boolean
+  ePro: boolean
+  precos: Record<Periodo, string>
+}) {
   if (!cobrando) {
     return (
       <Cartela className="mt-6 p-5">
@@ -116,7 +129,8 @@ function Estado({ cobrando, ePro }: { cobrando: boolean; ePro: boolean }) {
         O FREE é o teste. O PRO é o app.
       </p>
       <p className="mt-2 font-corpo text-[14px] leading-relaxed text-apagado">
-        {PRECO.mensal} por mês, ou {PRECO.anual} no ano — {PRECO.economia}.
+        {formatarPreco(precos.mensal)} por mês, ou {formatarPreco(precos.anual)}{' '}
+        no ano — {ECONOMIA_ANUAL}.
       </p>
       {/* Sem botão de assinar: ele chega com o Mercado Pago (item 7 da Fase C).
           Um botão que não cobra hoje seria promessa de tela, e esta tela existe

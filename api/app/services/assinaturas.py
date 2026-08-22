@@ -21,7 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.errors import RegraNegocio
-from app.core.limites import limites_de, plano_vigente
+from app.core.limites import PRECOS, limites_de, plano_vigente
 from app.services import mercado_pago, notificacoes
 
 logger = logging.getLogger(__name__)
@@ -71,16 +71,14 @@ async def iniciar(session: AsyncSession, user_id: UUID, periodo: str) -> dict:
             campo="periodo",
         )
 
-    plano_id = mercado_pago.plano_do_periodo(periodo)
-    if not plano_id:
-        raise RegraNegocio(
-            "ASSINATURA_INDISPONIVEL",
-            "A assinatura ainda não está disponível.",
-            status_code=503,
-        )
-
+    # O preço vem de casa desde 2026-08-22 — ver `PRECOS` em `core/limites.py` e
+    # o docstring de `criar_assinatura`. Antes daqui saía um `preapproval_plan_id`
+    # de ambiente, e a checagem era "o plano está configurado?". Agora a pergunta
+    # não faz sentido: o valor é constante do código, não configuração, e um
+    # período fora do mapa já foi recusado acima.
     recurso = await mercado_pago.criar_assinatura(
-        plano_id=plano_id,
+        periodo=periodo,
+        valor=PRECOS[periodo],
         email=await _email(session, user_id),
         referencia=str(user_id),
         back_url=settings.MERCADO_PAGO_BACK_URL,

@@ -2616,7 +2616,8 @@ porque a lição sobre ler changelog em vez de página de referência é boa par
 qualquer fornecedor.
 
 Contexto de então: o provedor havia mudado do Mercado Pago para o Asaas em 21/08
-— porque a assinatura recorrente do Mercado Pago é só cartão —, e no mesmo dia a
+— por acreditar que a assinatura do Mercado Pago era só cartão, o que se provou
+falso em 22/08 —, e no mesmo dia a
 AbacatePay entrou na disputa: brasileira, Pix-first, taxa como diferencial.
 
 **O que a documentação diz.**
@@ -2839,23 +2840,23 @@ com todo o resto.
    ao provedor e nunca pelo corpo do webhook. Trocar é reescrever o cliente HTTP,
    a validação de assinatura e o mapa de status.
 
-   **Por que o Mercado Pago saiu — conferido em 2026-08-22.** A assinatura
-   recorrente dele é **só cartão**. O Eduardo confirmou no painel, olhando os dois
-   planos que já estavam criados com credencial de produção. O motivo da troca de
-   21/08 tinha ficado só na conversa, e por um dia esta seção registrou o que
-   mudou sem registrar por quê — que é exatamente a falha que ela existe para
-   evitar.
+   **Por que o Mercado Pago saiu, e por que o motivo não existia — 2026-08-22.**
+   A troca de 21/08 foi feita por acreditar que a assinatura recorrente do Mercado
+   Pago é só cartão. **Ela não é.** O checkout do plano `TrocaTCG PRO mensal`,
+   percorrido com credencial de teste em 22/08, oferece três opções: cartão de
+   crédito, **boleto** e **Pix**.
 
-   O peso disso não é preferência, é alcance. O público é jogador de TCG em Belém,
-   boa parte jovem: cartão de crédito não é universal, Pix é. Provedor só-cartão
-   não deixa a cobrança pior, deixa parte da base **impossibilitada de pagar**. E
-   o cartão ainda traz o churn involuntário — vence, é reemitido, é bloqueado, e a
-   pessoa sai sem saber que saiu.
+   O que enganou foi o painel, e vale saber para não repetir: a tela de
+   configuração do plano não é onde os meios aparecem. O plano tem
+   `payment_methods_allowed: {}` — vazio significa *todos liberados*, não
+   *nenhum*. Quem lê o painel procurando uma lista de meios encontra o vazio e
+   conclui o contrário do que ele diz. **O checkout é a fonte da verdade, e ele só
+   se lê percorrendo.**
 
    Fica registrado também o argumento que **não** vale, porque ele volta: "o
-   pessoal já conhece o Mercado Pago". O checkout é hospedado pelo provedor nos
-   dois casos — o app cria a assinatura, recebe a URL e redireciona. Reconhecer a
-   marca não ajuda quem não tem cartão para pôr nela.
+   pessoal já conhece o Mercado Pago". O checkout é hospedado pelo provedor em
+   qualquer um dos candidatos — o app manda a pessoa para lá e ela volta.
+   Reconhecer a marca não decide nada; o que decide é quem consegue pagar.
 
    **E aí a conta é PF, o que derruba a premissa da troca — 2026-08-22.** O
    Eduardo não tem CNPJ. Isso não é detalhe de cadastro: **pessoa física não pode
@@ -2884,12 +2885,20 @@ com todo o resto.
    linha de código**, e é essa a razão dela: o alternativo era escrever um cliente
    HTTP inteiro para comprar um Pix manual que o cartão já cobre em parte.
 
-   **O que se aceitou junto, e precisa continuar visível:** só-cartão exclui quem
-   não tem cartão, que neste público não é minoria. A decisão é para *começar* —
-   a reavaliação tem gatilho, não é "algum dia": o MEI aberto, mais seis meses de
-   CNPJ, é quando o Pix Automático entra em jogo e este parágrafo deve ser lido de
-   novo. Até lá, se a conversão da assinatura vier baixa, a causa mais provável
-   está escrita aqui e não é o preço.
+   **Como o Pix funciona aqui, que é o que se está comprando.** Não é Pix
+   Automático: a cada ciclo o Mercado Pago emite um código Pix (ou boleto) e manda
+   por e-mail na data da cobrança; ele vence em 7 dias e ainda tem 3 de prazo
+   antes de expirar. A pessoa paga **na mão, todo mês**.
+
+   Isso custa churn — toda cobrança que exige ação perde gente — e é o modelo
+   realista para este projeto de qualquer forma: Pix Automático exige CNPJ, e a
+   conta é PF. O que importava era o alcance, e o alcance está resolvido: quem não
+   tem cartão paga por Pix ou boleto, sem trocar de provedor e sem uma linha de
+   código.
+
+   O gatilho de reavaliação continua valendo, só que agora é sobre conforto e não
+   sobre alcance: MEI aberto, mais seis meses de CNPJ, é quando o Pix Automático
+   entra em jogo e troca o pagamento manual por débito autorizado.
 
    **E a decisão que vale a pena tomar cedo é outra: abrir o MEI.** É gratuito,
    sai online em minutos, e é o único item desta lista cujo custo é *esperar* —
