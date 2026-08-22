@@ -2605,9 +2605,19 @@ Esse pagamento é da assinatura da plataforma, entre usuário e você. Ele não 
 Feito lendo a documentação pública, não conversando com eles. **Nada aqui está
 confirmado pelo fornecedor** e as perguntas comerciais seguem abertas.
 
-Contexto: o provedor mudou do Mercado Pago para o Asaas em 21/08, e no mesmo dia
-a AbacatePay entrou na disputa — brasileira, Pix-first, taxa apresentada como
-diferencial.
+**Levantamento histórico — a disputa acabou em 22/08 e o Mercado Pago ficou.** O
+que decidiu não foi nada do que está abaixo: a conta é PF, e PF não pode ser
+recebedora no Pix Automático (regra do Banco Central). A AbacatePay saiu por
+motivo próprio e mais duro — **não opera conta PF em produção**, CPF só no
+sandbox. O registro completo está no item 2 da seção 17.
+
+Fica escrito porque volta a valer no dia em que houver CNPJ com seis meses, e
+porque a lição sobre ler changelog em vez de página de referência é boa para
+qualquer fornecedor.
+
+Contexto de então: o provedor havia mudado do Mercado Pago para o Asaas em 21/08
+— porque a assinatura recorrente do Mercado Pago é só cartão —, e no mesmo dia a
+AbacatePay entrou na disputa: brasileira, Pix-first, taxa como diferencial.
 
 **O que a documentação diz.**
 
@@ -2828,6 +2838,74 @@ com todo o resto.
    funciona a carência mora em `services/assinaturas.py`, alimentado por consulta
    ao provedor e nunca pelo corpo do webhook. Trocar é reescrever o cliente HTTP,
    a validação de assinatura e o mapa de status.
+
+   **Por que o Mercado Pago saiu — conferido em 2026-08-22.** A assinatura
+   recorrente dele é **só cartão**. O Eduardo confirmou no painel, olhando os dois
+   planos que já estavam criados com credencial de produção. O motivo da troca de
+   21/08 tinha ficado só na conversa, e por um dia esta seção registrou o que
+   mudou sem registrar por quê — que é exatamente a falha que ela existe para
+   evitar.
+
+   O peso disso não é preferência, é alcance. O público é jogador de TCG em Belém,
+   boa parte jovem: cartão de crédito não é universal, Pix é. Provedor só-cartão
+   não deixa a cobrança pior, deixa parte da base **impossibilitada de pagar**. E
+   o cartão ainda traz o churn involuntário — vence, é reemitido, é bloqueado, e a
+   pessoa sai sem saber que saiu.
+
+   Fica registrado também o argumento que **não** vale, porque ele volta: "o
+   pessoal já conhece o Mercado Pago". O checkout é hospedado pelo provedor nos
+   dois casos — o app cria a assinatura, recebe a URL e redireciona. Reconhecer a
+   marca não ajuda quem não tem cartão para pôr nela.
+
+   **E aí a conta é PF, o que derruba a premissa da troca — 2026-08-22.** O
+   Eduardo não tem CNPJ. Isso não é detalhe de cadastro: **pessoa física não pode
+   ser recebedora no Pix Automático.** É regra do Banco Central, não política de
+   fornecedor — PF entra na modalidade só como pagadora. O Asaas ainda soma
+   exigência própria: CNPJ ativo há **no mínimo seis meses**, conta aprovada.
+
+   O efeito é que o recurso pelo qual o Mercado Pago foi trocado não existe para
+   este projeto hoje, em provedor nenhum, e não passa a existir antes de seis
+   meses contados da abertura de um CNPJ. A **AbacatePay sai da disputa inteira**
+   pelo mesmo motivo: ela não opera conta PF em produção — CPF só no sandbox.
+
+   **O que resta, e é suficiente.** O objetivo nunca foi Pix Automático, foi
+   *"quem não tem cartão consegue pagar"*. A assinatura comum do Asaas entrega
+   isso: ele gera uma cobrança a cada ciclo e, com chave Pix na conta, embute um
+   QR Code em cada fatura. A pessoa paga por Pix, todo mês, na mão. Perde-se a
+   automação — o que custa churn, porque exige ação por ciclo — e ganha-se o
+   alcance, que é o que estava em jogo.
+
+   **Decisão do Eduardo em 2026-08-22: fica o Mercado Pago.** A troca de 21/08
+   está desfeita, e o parágrafo acima que declara credencial de produção,
+   `preapproval_plan_id` e segredo de webhook caducados **volta a valer** — são
+   de novo o que precisa ser preenchido no painel do Render. Os dois planos já
+   estão criados com credencial de produção; o `services/mercado_pago.py` e os
+   testes de `test_assinaturas.py` nunca foram tocados. **A decisão custa zero
+   linha de código**, e é essa a razão dela: o alternativo era escrever um cliente
+   HTTP inteiro para comprar um Pix manual que o cartão já cobre em parte.
+
+   **O que se aceitou junto, e precisa continuar visível:** só-cartão exclui quem
+   não tem cartão, que neste público não é minoria. A decisão é para *começar* —
+   a reavaliação tem gatilho, não é "algum dia": o MEI aberto, mais seis meses de
+   CNPJ, é quando o Pix Automático entra em jogo e este parágrafo deve ser lido de
+   novo. Até lá, se a conversão da assinatura vier baixa, a causa mais provável
+   está escrita aqui e não é o preço.
+
+   **E a decisão que vale a pena tomar cedo é outra: abrir o MEI.** É gratuito,
+   sai online em minutos, e é o único item desta lista cujo custo é *esperar* —
+   os seis meses só começam a correr no dia em que o CNPJ existe. Não bloqueia
+   lançamento nenhum; adiar só empurra a data em que o Pix Automático entra.
+
+   **O que sobra como próximo passo real da Fase 5** não é escolher provedor, é o
+   que já estava escrito acima e continua verdadeiro: a assinatura nunca rodou
+   ponta a ponta. Isso agora é fazível de graça e hoje, porque o provedor voltou
+   a ser aquele cujas credenciais de teste e `preapproval_plan_id` já estão no
+   `api/.env`.
+
+   **E a primeira receita provavelmente não passa por nada disso.** O patrocínio
+   de loja local, registrado acima como alternativa, são uma a três lojas pagando
+   R$ 100–200/mês. Isso é chave Pix e planilha — não precisa de provedor, de
+   integração nem de CNPJ para começar.
 
 **Fase 2 — o que falta para poder abrir.** Tudo código ou texto, nada bloqueado.
 
