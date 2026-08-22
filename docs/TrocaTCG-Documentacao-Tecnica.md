@@ -2813,24 +2813,51 @@ com todo o resto.
    leva dias e corre sozinha — adiar isto é criar o gargalo do fim.
 2. Credenciais de produção do Mercado Pago e os dois planos criados com elas.
 
-   **Junto disso, e ainda não feito: a assinatura nunca rodou ponta a ponta.** O
-   backend inteiro é coberto por testes com dublês; nenhum `preapproval` foi
-   criado de verdade, nenhuma notificação real chegou ao receptor, e o job de
-   reconciliação nunca conversou com a API do Mercado Pago. Do jeito que está, a
-   primeira execução real desse caminho seria com o dinheiro de alguém.
+   **✅ A assinatura rodou ponta a ponta em 2026-08-22**, e o parágrafo que
+   estava aqui — "nenhum `preapproval` criado de verdade, nenhuma notificação real
+   no receptor" — deixa de valer. A passagem custou zero reais e **achou três bugs
+   que a suíte inteira não pegava**, todos os três fatais para a cobrança:
 
-   Dá para fechar antes, e de graça: o MCP do Mercado Pago cria pagador de teste
-   e adiciona saldo, e as credenciais de teste com os `preapproval_plan_id` que
-   já estão no `api/.env` percorrem o fluxo inteiro — assinar, o webhook chegar,
-   `profiles.plano` virar PRO, cancelar, a carência abrir. Fecha de quebra a
-   dúvida do Pix em assinatura (cobrança por ciclo, como boleto, ou débito
-   automático), que nenhuma documentação respondeu. A conta dona do plano não
-   assina o próprio plano, então o checkout precisa ser percorrido por outra
-   pessoa.
+   1. **`criar_assinatura` nunca funcionou.** Mandava `preapproval_plan_id` e o
+      provedor recusava com `card_token_id is required`, sempre. Corrigido para
+      assinatura sem plano associado.
+   2. **O `external_reference` se perdia** pelo caminho do plano, e é ele que diz
+      de quem é a assinatura. O webhook rodaria inteiro sem promover ninguém.
+   3. **O `next_payment_date` derrubava o webhook com 500.** Ele chega como texto
+      e o SQL fazia `cast(:prox as timestamptz)`, o que parecia bastar; o asyncpg
+      confere o tipo Python antes da query e recusa `str` num parâmetro de
+      timestamp, então o `cast` nunca roda. Ver `_quando` em `assinaturas.py`.
 
-   **Decisão do Eduardo em 2026-08-16: fica para o lançamento**, junto com o
-   resto da ativação. Não bloqueia nada enquanto `COBRANCA_ATIVA` for falso — e
-   vira a primeira coisa a fazer no dia em que ele for virado.
+   **A lição de método é a mesma das outras três vezes** (rate limit, aceite,
+   notificação de troca), e agora com uma forma nova: os testes dublavam
+   `criar_assinatura` e `buscar_assinatura` inteiras, então o dublê aceitava o
+   corpo que o provedor recusava e devolvia o tipo que o driver recusaria. **Dublê
+   na borda prova o nosso lado, nunca o contrato.** Os testes que entraram descem
+   um nível — dublam `_chamar`, e afirmam sobre o corpo enviado e sobre o tipo do
+   parâmetro ligado ao SQL.
+
+   **Como foi montado, para repetir:** dois usuários de teste do Mercado Pago
+   (`/users/test_user`), um vendedor e um comprador. O vendedor precisa ter
+   aplicação própria — dentro de conta de teste **não existe seção de credencial
+   de teste**, e a que ela chama de produção é a de teste. Sem isso o checkout
+   falha com "uma das partes é de teste", porque a conta real do Eduardo é o
+   `collector` dos planos. O webhook chegou por um túnel do `cloudflared`
+   (`cloudflared tunnel --url http://localhost:8000`, sem conta) apontado no
+   painel do vendedor — `notification_url` por assinatura é aceito e **ignorado**.
+
+   **O que ficou provado:** `criar_assinatura` nos dois períodos, `buscar_assinatura`
+   e `cancelar_assinatura` contra assinatura real, `_periodo_do_recurso` contra
+   payload real, e no receptor os seis caminhos — `aplicada`, `repetida`
+   (idempotência), `ignorado` (tópico fora da lista) e 401 para assinatura
+   forjada, ausente e com carimbo fora da janela.
+
+   **O que falta, e é uma coisa só:** as notificações do teste foram assinadas por
+   nós, com a mesma fórmula do código. Isso prova o receptor, não o contrato — se
+   o nosso manifesto HMAC divergir do real, tudo volta 401 em silêncio. Fechar
+   isso é um clique em **Simular** no painel do Mercado Pago, com o túnel de pé.
+
+   **Decisão do Eduardo em 2026-08-16: ligar fica para o lançamento**, junto com o
+   resto da ativação. Não bloqueia nada enquanto `COBRANCA_ATIVA` for falso.
 
    **Em 2026-08-21 o provedor mudou para o Asaas**, e com isso tudo o que está
    escrito acima sobre credencial de produção, `preapproval_plan_id` e segredo de

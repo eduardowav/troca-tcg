@@ -14,6 +14,7 @@ os limites do PRO, tempo de resolver o pagamento. Ver o item 10 da seção 16.
 """
 
 import logging
+from datetime import datetime
 from uuid import UUID
 
 from sqlalchemy import text
@@ -254,11 +255,39 @@ def _periodo_do_recurso(recurso: dict) -> str | None:
     return None
 
 
+def _quando(valor: str | datetime | None) -> datetime | None:
+    """A data que o Mercado Pago manda como texto, virada `datetime`.
+
+    **Sem isto o webhook devolvia 500 em toda notificação real**, e nenhum teste
+    pegava. O provedor manda `next_payment_date` como `'2026-08-22T12:35:49.000-04:00'`,
+    e o SQL fazia `cast(:prox as timestamptz)` acreditando que o banco resolveria.
+    Não resolve: o asyncpg confere o tipo Python **antes** de mandar a query, e
+    recusa `str` num parâmetro de timestamp — o `cast` do SQL nunca chega a rodar.
+
+    Descoberto em 2026-08-22, mandando uma notificação assinada por um túnel para
+    a API local. Os testes passavam porque o dublê de sessão não liga em tipo
+    nenhum, e porque os casos com data usavam `None`.
+
+    **Data ilegível vira `None`, e não exceção.** No SQL o valor entra dentro de
+    um `coalesce(..., proxima_cobranca_em)`: `None` mantém o que já estava. Perder
+    a data de cobrança é ruim; perder a notificação inteira — que é o que uma
+    exceção aqui faria — é pior, porque ela também carrega a mudança de status
+    que decide quem é PRO.
+    """
+    if valor is None or isinstance(valor, datetime):
+        return valor
+    try:
+        return datetime.fromisoformat(valor)
+    except ValueError:
+        logger.warning("[assinaturas] next_payment_date ilegível: %r", valor)
+        return None
+
+
 async def _registrar(
     session: AsyncSession,
     preapproval_id: str,
     status: str,
-    proxima_cobranca: str | None,
+    proxima_cobranca: str | datetime | None,
     *,
     user_id: str | None = None,
     periodo: str | None = None,
@@ -280,7 +309,7 @@ async def _registrar(
                 """),
                 {
                     "s": status,
-                    "prox": proxima_cobranca,
+                    "prox": _quando(proxima_cobranca),
                     "per": periodo,
                     "p": preapproval_id,
                 },

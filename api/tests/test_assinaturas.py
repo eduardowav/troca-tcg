@@ -19,6 +19,7 @@ de promover, manter ou derrubar.
 import hashlib
 import hmac
 import time
+from datetime import datetime
 from uuid import uuid4
 
 import pytest
@@ -536,6 +537,57 @@ async def test_sem_credencial_a_rota_recusa_com_503():
     roteador — ver `_exigir_ligada`.
     """
     assert mercado_pago.ativo() is bool(settings.MERCADO_PAGO_ACCESS_TOKEN)
+
+
+async def test_data_do_provedor_chega_ao_banco_como_datetime(monkeypatch):
+    """O `next_payment_date` é texto no JSON e precisa virar `datetime` antes do SQL.
+
+    **Isto derrubava toda notificação real com 500**, e a suíte inteira passava.
+    O SQL faz `cast(:prox as timestamptz)` e parecia bastar; não basta — o asyncpg
+    confere o tipo Python antes de mandar a query e recusa `str` num parâmetro de
+    timestamp, então o `cast` nunca chega a rodar. Só apareceu em 2026-08-22, com
+    uma notificação assinada entrando pela rede numa API de verdade.
+
+    O dublê de sessão não liga para tipo, então o teste afirma sobre o **tipo do
+    parâmetro ligado** — que é o que o driver recusaria.
+    """
+
+    async def falsa_busca(preapproval_id):
+        return {
+            "status": "authorized",
+            "external_reference": str(uuid4()),
+            "next_payment_date": "2026-09-22T12:35:49.000-04:00",
+            "auto_recurring": {"frequency": 1, "frequency_type": "months"},
+        }
+
+    monkeypatch.setattr(mercado_pago, "buscar_assinatura", falsa_busca)
+
+    sessao = SessaoFalsa(retornos=["evento-1"], linha=None)
+    await assinaturas.aplicar_notificacao(
+        sessao,  # type: ignore[arg-type]
+        notificacao_id="evento-1",
+        topico="subscription_preapproval",
+        recurso_id="pp-1",
+    )
+
+    ligados = [p["prox"] for p in sessao.params if "prox" in p]
+    assert ligados, "o update de subscriptions nao chegou a ser executado"
+    assert isinstance(ligados[0], datetime)
+    assert ligados[0].year == 2026 and ligados[0].month == 9
+
+
+def test_data_ilegivel_vira_none_em_vez_de_explodir():
+    """Data que nao parseia mantem a que ja estava, e nao derruba a notificacao.
+
+    O valor entra num `coalesce(..., proxima_cobranca_em)`, entao `None` preserva.
+    Perder a data de cobranca e ruim; perder a notificacao inteira e pior, porque
+    ela carrega junto a mudanca de status que decide quem e PRO.
+    """
+    assert assinaturas._quando(None) is None
+    assert assinaturas._quando("nao e data") is None
+    assert assinaturas._quando("2026-09-22T12:35:49.000-04:00").month == 9
+    ja = datetime(2026, 9, 22)
+    assert assinaturas._quando(ja) is ja
 
 
 async def test_reconciliar_desligado_nao_toca_no_banco(monkeypatch):
