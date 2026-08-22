@@ -38,7 +38,15 @@ _COLUNAS_PUBLICAS = """
 # descobrir por que o app parou de deixá-lo agir. Sem este campo, `GET /me`
 # continuar aberto a conta bloqueada não serviria para nada — a pessoa veria o
 # próprio perfil normal e concluiria que o app está quebrado.
-_COLUNAS = f"{_COLUNAS_PUBLICAS}, contato_visivel, plano, onboarding_ok, bloqueado"
+# `parceiro` sai como booleano derivado, e o motivo **não** sai. O motivo é o
+# acordo — "patrocínio fechado em 03/2026, revisar em 03/2027" —, e é registro
+# interno: quem está vendo o próprio perfil precisa saber que tem PRO de
+# cortesia, não ler a cláusula. Mandar o texto seria servir ao cliente um dado
+# que só interessa a quem administra.
+_COLUNAS = (
+    f"{_COLUNAS_PUBLICAS}, contato_visivel, plano, onboarding_ok, bloqueado, "
+    "(parceiro_motivo is not null) as parceiro"
+)
 
 
 def _reputacao(concluidas: int, furadas: int) -> int | None:

@@ -439,6 +439,10 @@ function Interruptor({
  * tela contradizendo o app, que não está limitando nada. Por isso o rótulo é
  * "Liberado" até a cobrança ligar: é o que está valendo, sem prometer assinatura
  * que ninguém tem.
+ *
+ * **Parceiro vem antes de Pro na escada**, e não é detalhe de ordem: quem é
+ * parceiro também tem `plano = 'PRO'`, então testar o plano primeiro esconderia
+ * a distinção para sempre. Ver `36_parceiro.sql`.
  */
 function Plano({ perfil }: { perfil?: Perfil | null }) {
   const { data } = usePlanos()
@@ -447,9 +451,11 @@ function Plano({ perfil }: { perfil?: Perfil | null }) {
     ? undefined
     : !data.cobranca_ativa
       ? 'Liberado'
-      : perfil?.plano === 'PRO'
-        ? 'Pro'
-        : 'Free'
+      : perfil?.parceiro
+        ? 'Parceiro'
+        : perfil?.plano === 'PRO'
+          ? 'Pro'
+          : 'Free'
 
   return (
     <Ficha para="/planos" valor={valor}>

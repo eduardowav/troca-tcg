@@ -82,6 +82,27 @@ def test_perfil_publico_nao_expoe_estado_da_conta():
     """`plano` e `onboarding_ok` dizem respeito à conta, não a quem a pessoa é."""
     assert "plano" not in PerfilPublicoOut.model_fields
     assert "onboarding_ok" not in PerfilPublicoOut.model_fields
+    # `parceiro` entrou em 2026-08-22 e cai na mesma regra: que alguém tem o PRO
+    # de cortesia é assunto da conta, e no perfil público seria dizer a estranhos
+    # quem tem acordo comercial com o app.
+    assert "parceiro" not in PerfilPublicoOut.model_fields
+
+
+def test_parceiro_e_booleano_e_o_motivo_nunca_sai():
+    """A API diz *que* alguém é parceiro, nunca *por quê*.
+
+    `parceiro_motivo` é o acordo — "loja tal, patrocínio fechado em 03/2026" — e
+    é registro de quem administra. A tela precisa do booleano para não oferecer
+    assinatura a quem já tem tudo e não pode cancelar nada; o texto não tem
+    destinatário do lado do cliente.
+
+    O teste olha o contrato servido, e não só o modelo: é o `openapi()` que diz o
+    que de fato sai pela rede.
+    """
+    assert PerfilOut.model_fields["parceiro"].annotation is bool
+    propriedades = app.openapi()["components"]["schemas"]["PerfilOut"]["properties"]
+    assert "parceiro" in propriedades
+    assert not [c for c in propriedades if "motivo" in c]
 
 
 def test_me_estende_o_publico_e_nao_o_contrario():

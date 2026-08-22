@@ -46,6 +46,10 @@ export default function Planos() {
 
   const cobrando = data?.cobranca_ativa ?? false
   const ePro = cobrando && perfil?.plano === 'PRO'
+  // Parceiro é PRO sem pagar. Precisa vir separado porque a cartela do PRO fala
+  // de assinatura ativa e de cancelar — duas coisas que não existem para quem
+  // tem o plano por acordo, e prometer que ele "cai" seria assustar à toa.
+  const eParceiro = cobrando && (perfil?.parceiro ?? false)
 
   return (
     <div className="mx-auto flex min-h-[100dvh] w-full max-w-xl flex-col px-6 pt-5 pb-10">
@@ -66,7 +70,12 @@ export default function Planos() {
         <div className="mt-6 h-64 animate-pulse rounded-[var(--radius-cartela)] border-2 border-tinta bg-cartela" />
       ) : (
         <>
-          <Estado cobrando={cobrando} ePro={ePro} precos={data.precos} />
+          <Estado
+            cobrando={cobrando}
+            ePro={ePro}
+            eParceiro={eParceiro}
+            precos={data.precos}
+          />
 
           <Comparacao free={data.planos.FREE} pro={data.planos.PRO} />
 
@@ -86,10 +95,12 @@ export default function Planos() {
 function Estado({
   cobrando,
   ePro,
+  eParceiro,
   precos,
 }: {
   cobrando: boolean
   ePro: boolean
+  eParceiro: boolean
   precos: Record<Periodo, string>
 }) {
   if (!cobrando) {
@@ -103,6 +114,21 @@ function Estado({
           Nenhum limite desta tabela está valendo — nem o de ofertas, nem o de
           propostas por dia. Ela está aqui para você ver o que vai mudar quando a
           assinatura entrar, e nada muda sem aviso antes.
+        </p>
+      </Cartela>
+    )
+  }
+
+  if (eParceiro) {
+    return (
+      <Cartela className="mt-6 p-5">
+        <Selo>Você é Parceiro</Selo>
+        <p className="mt-3 font-titulo text-[18px] leading-tight font-black text-tinta">
+          Você tem o PRO, e não paga por ele.
+        </p>
+        <p className="mt-2 font-corpo text-[14px] leading-relaxed text-apagado">
+          Tudo do PRO está liberado na sua conta, sem assinatura e sem
+          vencimento. Não há nada para pagar nem para cancelar.
         </p>
       </Cartela>
     )

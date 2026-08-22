@@ -125,3 +125,10 @@ class PerfilOut(PerfilPublicoOut):
     #: forma de a pessoa saber por que o app parou de deixá-la agir, e sem isso
     #: ela conclui que o app quebrou e cria uma segunda conta.
     bloqueado: bool = False
+    #: PRO sem pagar — patrocínio, permuta, contrato. Ver `36_parceiro.sql`.
+    #:
+    #: Booleano, e não o motivo: o motivo é o acordo, e é registro de quem
+    #: administra. A pessoa precisa saber que o plano dela é de cortesia — senão
+    #: a tela de planos ofereceria assinatura a quem já tem tudo —, não precisa
+    #: ler a cláusula.
+    parceiro: bool = False

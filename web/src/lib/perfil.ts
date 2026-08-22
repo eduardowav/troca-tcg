@@ -30,6 +30,14 @@ export interface Perfil extends PerfilPublico {
   /** Só vem em /me — o dono vendo o próprio contato. */
   contato_visivel: string | null
   plano: string
+  /**
+   * PRO sem pagar — patrocínio de loja, permuta de serviço, contrato.
+   *
+   * Booleano e não o motivo: o motivo é o acordo, e é registro de quem
+   * administra. A tela precisa saber que este PRO é de cortesia, para não
+   * oferecer assinatura a quem já tem tudo e não pode cancelar nada.
+   */
+  parceiro?: boolean
   onboarding_ok: boolean
   /**
    * A conta foi bloqueada por descumprir os termos.
