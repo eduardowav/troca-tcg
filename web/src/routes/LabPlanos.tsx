@@ -1,15 +1,16 @@
-import { useState } from "react";
-import { toast } from "sonner";
+import { useState } from 'react'
+import { toast } from 'sonner'
 
 import {
   Comparacao,
+  GanchoDoTopo,
   Oferta,
   Principio,
   Topo,
   useCompra,
-} from "@/routes/Planos";
-import { cn } from "@/lib/cn";
-import type { Limites, Periodo } from "@/lib/planos";
+} from '@/routes/Planos'
+import { cn } from '@/lib/cn'
+import type { Limites, Periodo } from '@/lib/planos'
 
 /**
  * Laboratório da tela de planos — rota de desenvolvimento, fora de produção.
@@ -44,7 +45,7 @@ const FREE: Limites = {
   alerta_carta: false,
   historico_dias: 30,
   propostas_por_dia: 5,
-};
+}
 
 const PRO: Limites = {
   max_ofertas: null,
@@ -54,46 +55,46 @@ const PRO: Limites = {
   alerta_carta: true,
   historico_dias: null,
   propostas_por_dia: null,
-};
+}
 
-const PRECOS: Record<Periodo, string> = { mensal: "19.90", anual: "199.90" };
+const PRECOS: Record<Periodo, string> = { mensal: '14.90', anual: '149.90' }
 
-type Estado = "oferta" | "pro" | "parceiro" | "desligada";
+type Estado = 'oferta' | 'pro' | 'parceiro' | 'desligada'
 
 const ESTADOS: { chave: Estado; rotulo: string; explica: string }[] = [
   {
-    chave: "oferta",
-    rotulo: "Oferta",
-    explica: "Quem é FREE com a cobrança ligada. É o único estado que vende.",
+    chave: 'oferta',
+    rotulo: 'Oferta',
+    explica: 'Quem é FREE com a cobrança ligada. É o único estado que vende.',
   },
   {
-    chave: "pro",
-    rotulo: "É PRO",
-    explica: "Já assina. Não pode ver oferta nenhuma.",
+    chave: 'pro',
+    rotulo: 'É PRO',
+    explica: 'Já assina. Não pode ver oferta nenhuma.',
   },
   {
-    chave: "parceiro",
-    rotulo: "Parceiro",
-    explica: "PRO sem pagar. Não tem o que cobrar nem o que cancelar.",
+    chave: 'parceiro',
+    rotulo: 'Parceiro',
+    explica: 'PRO sem pagar. Não tem o que cobrar nem o que cancelar.',
   },
   {
-    chave: "desligada",
-    rotulo: "Sem cobrança",
-    explica: "Como era até 22/08: todo mundo com tudo, e a tabela é só aviso.",
+    chave: 'desligada',
+    rotulo: 'Sem cobrança',
+    explica: 'Como era até 22/08: todo mundo com tudo, e a tabela é só aviso.',
   },
-];
+]
 
 export default function LabPlanos() {
-  const [estado, setEstado] = useState<Estado>("oferta");
+  const [estado, setEstado] = useState<Estado>('oferta')
   // O desvio que impede o laboratório de criar assinatura de verdade.
   const compra = useCompra((periodo) =>
     toast.success(`Assinaria o ${periodo} — no laboratório não cobra.`),
-  );
+  )
   // O preço vem da API na tela de verdade. Aqui é editável para experimentar
   // número — é a pergunta que mais volta quando se olha uma tela de preço.
-  const [precos, setPrecos] = useState(PRECOS);
+  const [precos, setPrecos] = useState(PRECOS)
 
-  const atual = ESTADOS.find((e) => e.chave === estado)!;
+  const atual = ESTADOS.find((e) => e.chave === estado)!
 
   return (
     <div className="mx-auto w-full max-w-xl px-6 pt-5 pb-16">
@@ -112,10 +113,10 @@ export default function LabPlanos() {
             type="button"
             onClick={() => setEstado(e.chave)}
             className={cn(
-              "rounded-[var(--radius-controle)] border-2 border-tinta px-3 py-1.5 font-titulo text-[12px] font-extrabold uppercase transition-shadow",
+              'rounded-[var(--radius-controle)] border-2 border-tinta px-3 py-1.5 font-titulo text-[12px] font-extrabold uppercase transition-shadow',
               estado === e.chave
-                ? "bg-azul text-azul-tinta shadow-[var(--shadow-duro-sm)]"
-                : "bg-cartela text-tinta hover:shadow-[var(--shadow-duro-xs)]",
+                ? 'bg-azul text-azul-tinta shadow-[var(--shadow-duro-sm)]'
+                : 'bg-cartela text-tinta hover:shadow-[var(--shadow-duro-xs)]',
             )}
           >
             {e.rotulo}
@@ -127,7 +128,7 @@ export default function LabPlanos() {
       </p>
 
       <div className="mt-4 flex items-end gap-3">
-        {(["mensal", "anual"] as Periodo[]).map((p) => (
+        {(['mensal', 'anual'] as Periodo[]).map((p) => (
           <label key={p} className="flex-1">
             <span className="block font-dado text-[11px] uppercase text-apagado">
               Preço {p}
@@ -146,21 +147,28 @@ export default function LabPlanos() {
 
       <hr className="mt-6 border-t-2 border-tinta" />
 
-      {/* Daqui para baixo é a tela de verdade, peça por peça. */}
-      {estado === "oferta" ? (
-        <Oferta precos={precos} compra={compra} />
+      {/* Daqui para baixo é a tela de verdade, **na ordem dela**. Isto estava
+          errado até 2026-08-22: o laboratório mostrava a oferta antes da tabela
+          enquanto a página já tinha invertido, e olhar aqui dava uma impressão
+          que o app não produzia. Laboratório que não espelha a ordem mente tanto
+          quanto laboratório que copia as peças. */}
+      {estado === 'oferta' ? (
+        <GanchoDoTopo compra={compra} />
       ) : (
         <Topo
-          cobrando={estado !== "desligada"}
-          ePro={estado === "pro"}
-          eParceiro={estado === "parceiro"}
+          cobrando={estado !== 'desligada'}
+          ePro={estado === 'pro'}
+          eParceiro={estado === 'parceiro'}
           precos={precos}
           compra={compra}
         />
       )}
 
       <Comparacao free={FREE} pro={PRO} />
+
+      {estado === 'oferta' && <Oferta precos={precos} compra={compra} />}
+
       <Principio />
     </div>
-  );
+  )
 }

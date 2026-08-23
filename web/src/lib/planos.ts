@@ -1,4 +1,4 @@
-import { api, ApiError } from "@/lib/api";
+import { api, ApiError } from '@/lib/api'
 
 /**
  * Os planos como a tela os mostra.
@@ -17,20 +17,20 @@ import { api, ApiError } from "@/lib/api";
 
 export interface Limites {
   /** Cartas anunciadas como OFERTA. `null` é ilimitado. */
-  max_ofertas: number | null;
-  cadastro_em_massa: boolean;
-  matches_visiveis: number | null;
-  triangular: boolean;
-  alerta_carta: boolean;
+  max_ofertas: number | null
+  cadastro_em_massa: boolean
+  matches_visiveis: number | null
+  triangular: boolean
+  alerta_carta: boolean
   /** Janela do histórico de trocas. `null` é completo. */
-  historico_dias: number | null;
+  historico_dias: number | null
   /**
    * Propostas abertas por dia. `null` é ilimitado — o PRO desde 2026-08-22.
    *
    * Nulável como os outros tetos, e não zero-como-ilimitado: zero é um número
    * legítimo, e um dia pode existir um plano que não abre proposta nenhuma.
    */
-  propostas_por_dia: number | null;
+  propostas_por_dia: number | null
 }
 
 export interface Planos {
@@ -39,24 +39,24 @@ export interface Planos {
    * esbarra em limite nenhum. A tela muda de recado com isto — comparar planos
    * num app onde tudo está liberado é falar do que *vai* valer, não do que vale.
    */
-  cobranca_ativa: boolean;
-  planos: Record<"FREE" | "PRO", Limites>;
+  cobranca_ativa: boolean
+  planos: Record<'FREE' | 'PRO', Limites>
   /**
    * O valor de cada período, em reais e como texto — `"19.90"`.
    *
    * Texto e não número porque quem formata é `formatarPreco` logo abaixo: número
    * de dinheiro atravessando JSON é como `19.90` chega na tela escrito `19.9`.
    */
-  precos: Record<Periodo, string>;
+  precos: Record<Periodo, string>
 }
 
-export type Periodo = "mensal" | "anual";
+export type Periodo = 'mensal' | 'anual'
 
-export const obterPlanos = () => api.get<Planos>("/planos");
+export const obterPlanos = () => api.get<Planos>('/planos')
 
 /** `"19.90"` vira `"R$ 19,90"`. A vírgula é a do Brasil, e a API manda ponto. */
 export const formatarPreco = (valor: string) =>
-  `R$ ${Number(valor).toFixed(2).replace(".", ",")}`;
+  `R$ ${Number(valor).toFixed(2).replace('.', ',')}`
 
 /**
  * O que o anual economiza, dito como quem compra pensa.
@@ -67,7 +67,7 @@ export const formatarPreco = (valor: string) =>
  * ninguém. Se a razão entre os planos mudar, esta linha muda junto — e é por
  * isso que ela está encostada nos dois valores que a API serve.
  */
-export const ECONOMIA_ANUAL = "dois meses de graça";
+export const ECONOMIA_ANUAL = 'dois meses de graça'
 
 /**
  * Os códigos de erro que significam "isto é do PRO".
@@ -80,21 +80,21 @@ export const ECONOMIA_ANUAL = "dois meses de graça";
  * um código novo na API.
  */
 const CODIGOS_DO_PRO = new Set([
-  "LIMITE_DE_ANUNCIOS",
-  "RECURSO_DO_PRO",
-  "LIMITE_DE_PROPOSTAS",
-]);
+  'LIMITE_DE_ANUNCIOS',
+  'RECURSO_DO_PRO',
+  'LIMITE_DE_PROPOSTAS',
+])
 
 /** Este erro é um limite de plano — e não uma falha? */
 export function eLimiteDePlano(erro: unknown): erro is ApiError {
-  return erro instanceof ApiError && CODIGOS_DO_PRO.has(erro.codigo);
+  return erro instanceof ApiError && CODIGOS_DO_PRO.has(erro.codigo)
 }
 
 /** O que `POST /me/assinatura` devolve: para onde mandar a pessoa. */
 export interface AssinaturaCriada {
   /** O checkout do Mercado Pago. É para lá que a pessoa vai. */
-  init_point: string;
-  preapproval_id: string;
+  init_point: string
+  preapproval_id: string
 }
 
 /**
@@ -109,20 +109,20 @@ export interface AssinaturaCriada {
  * e ela volta pelo `back_url`.
  */
 export const assinar = (periodo: Periodo) =>
-  api.post<AssinaturaCriada>("/me/assinatura", { periodo });
+  api.post<AssinaturaCriada>('/me/assinatura', { periodo })
 
 /** O que `GET /me/assinatura` responde. Nulos são o normal de quem nunca assinou. */
 export interface SituacaoDoPlano {
-  plano: string;
+  plano: string
   /** Fim da carência, quando o pagamento falhou. Nulo é o normal. */
-  plano_expira_em: string | null;
+  plano_expira_em: string | null
   /** Status do lado do Mercado Pago. Nulo para quem nunca assinou. */
-  status: string | null;
-  periodo: Periodo | null;
-  proxima_cobranca_em: string | null;
+  status: string | null
+  periodo: Periodo | null
+  proxima_cobranca_em: string | null
 }
 
-export const obterSituacao = () => api.get<SituacaoDoPlano>("/me/assinatura");
+export const obterSituacao = () => api.get<SituacaoDoPlano>('/me/assinatura')
 
 /**
  * Cancela a renovação da assinatura.
@@ -136,4 +136,4 @@ export const obterSituacao = () => api.get<SituacaoDoPlano>("/me/assinatura");
  * quem paga o anual. Enquanto não for resolvido, esta camada não afirma nada
  * sobre prazo: quem diz é a `situacao`, relida logo depois.
  */
-export const cancelarAssinatura = () => api.del("/me/assinatura");
+export const cancelarAssinatura = () => api.del('/me/assinatura')

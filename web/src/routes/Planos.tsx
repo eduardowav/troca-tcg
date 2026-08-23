@@ -1,14 +1,15 @@
-import type { ReactNode } from "react";
-import { useState } from "react";
-import { Link } from "react-router-dom";
-import { toast } from "sonner";
+import type { ReactNode } from 'react'
+import { useReducedMotion } from 'motion/react'
+import { useState } from 'react'
+import { Link } from 'react-router-dom'
+import { toast } from 'sonner'
 
-import { AcaoSecundaria, Cartela, Selo } from "@/components/brutal/Pecas";
-import { useMarcaOculta } from "@/hooks/useMundo";
-import { usePerfil } from "@/hooks/usePerfil";
-import { useAssinatura, usePlanos } from "@/hooks/usePlanos";
-import { ApiError } from "@/lib/api";
-import { cn } from "@/lib/cn";
+import { AcaoSecundaria, Cartela, Selo } from '@/components/brutal/Pecas'
+import { useMarcaOculta } from '@/hooks/useMundo'
+import { usePerfil } from '@/hooks/usePerfil'
+import { useAssinatura, usePlanos } from '@/hooks/usePlanos'
+import { ApiError } from '@/lib/api'
+import { cn } from '@/lib/cn'
 import {
   assinar,
   cancelarAssinatura,
@@ -16,7 +17,7 @@ import {
   formatarPreco,
   type Limites,
   type Periodo,
-} from "@/lib/planos";
+} from '@/lib/planos'
 
 /**
  * A tela de planos (item 8 da Fase C, seção 16).
@@ -53,26 +54,26 @@ import {
  * uma conta em cada situação.
  */
 export default function Planos() {
-  useMarcaOculta();
+  useMarcaOculta()
 
-  const { data: perfil } = usePerfil();
-  const { data, isPending } = usePlanos();
+  const { data: perfil } = usePerfil()
+  const { data, isPending } = usePlanos()
 
-  const cobrando = data?.cobranca_ativa ?? false;
-  const ePro = cobrando && perfil?.plano === "PRO";
+  const cobrando = data?.cobranca_ativa ?? false
+  const ePro = cobrando && perfil?.plano === 'PRO'
   // Parceiro é PRO sem pagar. Precisa vir separado porque a cartela do PRO fala
   // de assinatura ativa e de cancelar — duas coisas que não existem para quem
   // tem o plano por acordo, e prometer que ele "cai" seria assustar à toa.
-  const eParceiro = cobrando && (perfil?.parceiro ?? false);
+  const eParceiro = cobrando && (perfil?.parceiro ?? false)
 
   // Só este estado vende. Os outros três não podem ver botão nenhum — nem no
   // topo, nem no rodapé.
-  const vendendo = cobrando && !ePro && !eParceiro;
+  const vendendo = cobrando && !ePro && !eParceiro
 
   // O período mora aqui, e não dentro da `Oferta`, porque agora há **dois**
   // botões na tela. Com estado local em cada um, alguém escolheria "mensal" em
   // cima, rolaria, e assinaria o anual embaixo sem perceber.
-  const compra = useCompra();
+  const compra = useCompra()
 
   return (
     <div className="mx-auto flex min-h-[100dvh] w-full max-w-xl flex-col px-6 pt-5 pb-10">
@@ -121,17 +122,17 @@ export default function Planos() {
         </>
       )}
     </div>
-  );
+  )
 }
 
 /* ------------------------------------------------------------------ a compra */
 
 /** O que os dois botões da tela compartilham. */
 export interface Compra {
-  periodo: Periodo;
-  escolher: (p: Periodo) => void;
-  enviando: boolean;
-  assinarAgora: () => void;
+  periodo: Periodo
+  escolher: (p: Periodo) => void
+  enviando: boolean
+  assinarAgora: () => void
 }
 
 /**
@@ -147,49 +148,79 @@ export interface Compra {
  * verdade.
  */
 export function useCompra(aoAssinar?: (periodo: Periodo) => void): Compra {
-  const [periodo, setPeriodo] = useState<Periodo>("anual");
-  const [enviando, setEnviando] = useState(false);
+  const [periodo, setPeriodo] = useState<Periodo>('anual')
+  const [enviando, setEnviando] = useState(false)
 
   async function assinarAgora() {
-    if (aoAssinar) return aoAssinar(periodo);
-    setEnviando(true);
+    if (aoAssinar) return aoAssinar(periodo)
+    setEnviando(true)
     try {
-      const { init_point } = await assinar(periodo);
+      const { init_point } = await assinar(periodo)
       // `replace` e não `href`: se a pessoa voltar do Mercado Pago sem concluir,
       // o botão do navegador tem de trazê-la para os planos, não para o
       // checkout de novo — que criaria uma segunda assinatura pendente.
-      window.location.replace(init_point);
+      window.location.replace(init_point)
     } catch (erro) {
-      setEnviando(false);
+      setEnviando(false)
       toast.error(
         erro instanceof ApiError
           ? erro.message
-          : "Não foi possível abrir o pagamento. Tente de novo em instantes.",
-      );
+          : 'Não foi possível abrir o pagamento. Tente de novo em instantes.',
+      )
     }
   }
 
-  return { periodo, escolher: setPeriodo, enviando, assinarAgora };
+  return { periodo, escolher: setPeriodo, enviando, assinarAgora }
 }
 
-/** O botão, sozinho. Os dois pontos de compra da tela usam este. */
-function BotaoAssinar({ compra }: { compra: Compra }) {
+/** Para onde o botão do topo leva, e onde a oferta de verdade mora. */
+const ANCORA_OFERTA = 'oferta'
+
+/**
+ * O botão. Os dois pontos da tela usam este, com **comportamentos diferentes**.
+ *
+ * O de baixo compra. O de cima só rola até o de baixo, e isso é decisão do
+ * Eduardo em 2026-08-22: no topo a pessoa ainda não escolheu período, e o botão
+ * de lá comprava o anual em silêncio, por ser o padrão. Levar até a escolha é
+ * honesto e não custa nada — o toque continua sendo um só até a decisão.
+ *
+ * `scrollIntoView` respeita `prefers-reduced-motion`: rolagem suave é das
+ * animações que mais incomodam quem tem sensibilidade vestibular, e aqui ela é
+ * enfeite pleno — o salto seco leva ao mesmo lugar.
+ */
+function BotaoAssinar({
+  compra,
+  leva,
+}: {
+  compra: Compra
+  /** Em vez de comprar, rola até a oferta. É o botão do topo. */
+  leva?: boolean
+}) {
+  const semMovimento = useReducedMotion()
+
+  function rolar() {
+    document.getElementById(ANCORA_OFERTA)?.scrollIntoView({
+      behavior: semMovimento ? 'auto' : 'smooth',
+      block: 'start',
+    })
+  }
+
   return (
     <button
       type="button"
-      onClick={compra.assinarAgora}
-      disabled={compra.enviando}
+      onClick={leva ? rolar : compra.assinarAgora}
+      disabled={!leva && compra.enviando}
       className={cn(
-        "flex w-full items-center justify-center gap-2 rounded-[var(--radius-controle)] border-2 border-tinta bg-azul px-5 py-3",
-        "font-titulo text-[15px] font-extrabold uppercase text-azul-tinta",
-        "shadow-[var(--shadow-duro-sm)] transition-[box-shadow,transform]",
-        "hover:shadow-[var(--shadow-duro)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none",
-        "disabled:opacity-60 disabled:shadow-none disabled:active:translate-x-0 disabled:active:translate-y-0",
+        'flex w-full items-center justify-center gap-2 rounded-[var(--radius-controle)] border-2 border-tinta bg-azul px-5 py-3',
+        'font-titulo text-[15px] font-extrabold uppercase text-azul-tinta',
+        'shadow-[var(--shadow-duro-sm)] transition-[box-shadow,transform]',
+        'hover:shadow-[var(--shadow-duro)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none',
+        'disabled:opacity-60 disabled:shadow-none disabled:active:translate-x-0 disabled:active:translate-y-0',
       )}
     >
-      {compra.enviando ? "Abrindo o pagamento…" : "Assinar o PRO"}
+      {!leva && compra.enviando ? 'Abrindo o pagamento…' : 'Assinar o PRO'}
     </button>
-  );
+  )
 }
 
 /**
@@ -204,27 +235,21 @@ function BotaoAssinar({ compra }: { compra: Compra }) {
  * Quem toca aqui leva o padrão, que é o anual — e o padrão está dito em texto,
  * porque botão que compra sem dizer o quê é o que gera estorno.
  */
-function GanchoDoTopo({ compra }: { compra: Compra }) {
+export function GanchoDoTopo({ compra }: { compra: Compra }) {
   return (
     <Cartela className="mt-6 p-5">
       <p className="font-titulo text-[20px] leading-tight font-black text-tinta">
-        Sua lista inteira no ar, de uma vez.
+        Anuncie quantas cartas quiser.
       </p>
       <p className="mt-2 font-corpo text-[14px] leading-relaxed text-apagado">
-        O FREE para em 20 cartas anunciadas e 5 propostas por dia. O PRO tira os
-        dois tetos, cola a lista de uma vez e avisa quando a carta que falta
-        aparece.
+        O FREE para em 20 cartas e 5 propostas por dia. O PRO tira os dois
+        tetos.
       </p>
       <div className="mt-4">
-        <BotaoAssinar compra={compra} />
+        <BotaoAssinar compra={compra} leva />
       </div>
-      <p className="mt-2.5 text-center font-corpo text-[12px] leading-relaxed text-apagado">
-        {compra.periodo === "anual"
-          ? "Plano anual. O preço e o mensal estão logo abaixo da tabela."
-          : "Plano mensal. O preço está logo abaixo da tabela."}
-      </p>
     </Cartela>
-  );
+  )
 }
 
 /* ------------------------------------------------------------------- o topo */
@@ -237,13 +262,13 @@ function GanchoDoTopo({ compra }: { compra: Compra }) {
  * quem já tem tudo é o erro que faz a pessoa desconfiar do resto da tela.
  */
 export function Topo(props: {
-  cobrando: boolean;
-  ePro: boolean;
-  eParceiro: boolean;
-  precos: Record<Periodo, string>;
-  compra: Compra;
+  cobrando: boolean
+  ePro: boolean
+  eParceiro: boolean
+  precos: Record<Periodo, string>
+  compra: Compra
 }) {
-  const { cobrando, ePro, eParceiro, precos, compra } = props;
+  const { cobrando, ePro, eParceiro, precos, compra } = props
 
   if (!cobrando) {
     return (
@@ -258,7 +283,7 @@ export function Topo(props: {
           a assinatura entrar, e nada muda sem aviso antes.
         </p>
       </Cartela>
-    );
+    )
   }
 
   if (eParceiro) {
@@ -273,12 +298,12 @@ export function Topo(props: {
           tem cobrança, não tem vencimento e não há nada para cancelar.
         </p>
       </Cartela>
-    );
+    )
   }
 
-  if (ePro) return <Assinante />;
+  if (ePro) return <Assinante />
 
-  return <Oferta precos={precos} compra={compra} />;
+  return <Oferta precos={precos} compra={compra} />
 }
 
 /**
@@ -303,36 +328,36 @@ export function Topo(props: {
  * data que o servidor devolve e não afirma regra nenhuma.
  */
 function Assinante() {
-  const { data, refetch } = useAssinatura();
-  const [confirmando, setConfirmando] = useState(false);
-  const [cancelando, setCancelando] = useState(false);
+  const { data, refetch } = useAssinatura()
+  const [confirmando, setConfirmando] = useState(false)
+  const [cancelando, setCancelando] = useState(false)
 
   const proxima = data?.proxima_cobranca_em
-    ? new Date(data.proxima_cobranca_em).toLocaleDateString("pt-BR")
-    : null;
-  const jaCancelada = data?.status === "cancelled";
+    ? new Date(data.proxima_cobranca_em).toLocaleDateString('pt-BR')
+    : null
+  const jaCancelada = data?.status === 'cancelled'
 
   async function cancelar() {
-    setCancelando(true);
+    setCancelando(true)
     try {
-      await cancelarAssinatura();
-      await refetch();
-      setConfirmando(false);
-      toast.success("Assinatura cancelada. Não haverá nova cobrança.");
+      await cancelarAssinatura()
+      await refetch()
+      setConfirmando(false)
+      toast.success('Assinatura cancelada. Não haverá nova cobrança.')
     } catch (erro) {
       toast.error(
         erro instanceof ApiError
           ? erro.message
-          : "Não foi possível cancelar agora. Tente de novo em instantes.",
-      );
+          : 'Não foi possível cancelar agora. Tente de novo em instantes.',
+      )
     } finally {
-      setCancelando(false);
+      setCancelando(false)
     }
   }
 
   return (
     <Cartela className="mt-6 p-5">
-      <Selo>{jaCancelada ? "Assinatura cancelada" : "Você é PRO"}</Selo>
+      <Selo>{jaCancelada ? 'Assinatura cancelada' : 'Você é PRO'}</Selo>
       <p className="mt-3 font-titulo text-[18px] leading-tight font-black text-tinta">
         Está tudo liberado na sua conta.
       </p>
@@ -345,7 +370,7 @@ function Assinante() {
       ) : (
         <p className="mt-2 font-corpo text-[14px] leading-relaxed text-apagado">
           Sua assinatura está ativa e renova sozinha
-          {proxima ? `, com a próxima cobrança em ${proxima}` : ""}. Se o
+          {proxima ? `, com a próxima cobrança em ${proxima}` : ''}. Se o
           pagamento falhar, você tem 7 dias com os limites do PRO para resolver,
           e nada do que você cadastrou é apagado.
         </p>
@@ -365,7 +390,7 @@ function Assinante() {
                 disabled={cancelando}
                 className="flex-1 rounded-[var(--radius-controle)] border-2 border-tinta bg-cartela px-4 py-2.5 font-titulo text-[13px] font-extrabold uppercase text-tinta disabled:opacity-60"
               >
-                {cancelando ? "Cancelando…" : "Sim, cancelar"}
+                {cancelando ? 'Cancelando…' : 'Sim, cancelar'}
               </button>
               <button
                 type="button"
@@ -387,7 +412,7 @@ function Assinante() {
           </button>
         ))}
     </Cartela>
-  );
+  )
 }
 
 /**
@@ -408,83 +433,90 @@ export function Oferta({
   precos,
   compra,
 }: {
-  precos: Record<Periodo, string>;
-  compra: Compra;
+  precos: Record<Periodo, string>
+  compra: Compra
 }) {
-  const { periodo, escolher } = compra;
+  const { periodo, escolher } = compra
 
   const porMes =
-    periodo === "anual"
+    periodo === 'anual'
       ? formatarPreco(String(Number(precos.anual) / 12))
-      : formatarPreco(precos.mensal);
+      : formatarPreco(precos.mensal)
 
   return (
-    <Cartela className="mt-6 p-5">
-      <p className="font-titulo text-[20px] leading-tight font-black text-tinta">
-        Escolha como quer pagar.
-      </p>
-      <p className="mt-2 font-corpo text-[14px] leading-relaxed text-apagado">
-        Os dois planos são o mesmo PRO. Muda só de quanto em quanto tempo a
-        cobrança volta.
-      </p>
+    // O `id` mora num `div` em volta, e não na `Cartela`: ela é peça
+    // compartilhada por meia dúzia de telas, e acrescentar prop a ela para
+    // atender uma âncora de uma tela só é alargar a superfície de todas.
+    <div id={ANCORA_OFERTA} className="scroll-mt-4">
+      <Cartela className="mt-6 p-5">
+        <p className="font-titulo text-[20px] leading-tight font-black text-tinta">
+          Escolha como quer pagar.
+        </p>
+        <div
+          role="radiogroup"
+          aria-label="Período da assinatura"
+          className="mt-4 flex gap-2"
+        >
+          <Periodicidade
+            escolhido={periodo === 'anual'}
+            aoEscolher={() => escolher('anual')}
+            titulo="Anual"
+          />
+          <Periodicidade
+            escolhido={periodo === 'mensal'}
+            aoEscolher={() => escolher('mensal')}
+            titulo="Mensal"
+          />
+        </div>
 
-      <div
-        role="radiogroup"
-        aria-label="Período da assinatura"
-        className="mt-4 flex gap-2"
-      >
-        <Periodicidade
-          escolhido={periodo === "anual"}
-          aoEscolher={() => escolher("anual")}
-          titulo="Anual"
-          etiqueta={ECONOMIA_ANUAL}
-        />
-        <Periodicidade
-          escolhido={periodo === "mensal"}
-          aoEscolher={() => escolher("mensal")}
-          titulo="Mensal"
-        />
-      </div>
+        <p className="mt-4 font-titulo text-[28px] leading-none font-black text-tinta">
+          {porMes}
+          <span className="ml-1.5 font-corpo text-[14px] font-medium text-apagado">
+            por mês
+          </span>
+        </p>
+        <p className="mt-1 font-corpo text-[13px] text-apagado">
+          {periodo === 'anual'
+            ? `Cobrado ${formatarPreco(precos.anual)} uma vez por ano — ${ECONOMIA_ANUAL}.`
+            : `Cobrado ${formatarPreco(precos.mensal)} todo mês.`}
+        </p>
 
-      <p className="mt-4 font-titulo text-[28px] leading-none font-black text-tinta">
-        {porMes}
-        <span className="ml-1.5 font-corpo text-[14px] font-medium text-apagado">
-          por mês
-        </span>
-      </p>
-      <p className="mt-1 font-corpo text-[13px] text-apagado">
-        {periodo === "anual"
-          ? `Cobrado ${formatarPreco(precos.anual)} uma vez por ano.`
-          : `Cobrado ${formatarPreco(precos.mensal)} todo mês.`}
-      </p>
+        <div className="mt-4">
+          <BotaoAssinar compra={compra} />
+        </div>
 
-      <div className="mt-4">
-        <BotaoAssinar compra={compra} />
-      </div>
-
-      {/* O que tira o dedo do freio, em uma linha. Cartão, Pix e boleto porque
+        {/* O que tira o dedo do freio, em uma linha. Cartão, Pix e boleto porque
           cartão de crédito não é universal neste público — e é o Mercado Pago
           que decide quais aparecem, conforme a conta que recebe. */}
-      <p className="mt-2.5 text-center font-corpo text-[12px] leading-relaxed text-apagado">
-        Pix, cartão ou boleto pelo Mercado Pago. Dá para cancelar quando quiser,
-        sem multa, e nos primeiros 7 dias você pode desistir e receber o valor
-        de volta.
-      </p>
-    </Cartela>
-  );
+        <p className="mt-2.5 text-center font-corpo text-[12px] leading-relaxed text-apagado">
+          Pix, cartão ou boleto pelo Mercado Pago. Cancele quando quiser, sem
+          multa — o PRO fica até o fim do período que você pagou.
+        </p>
+      </Cartela>
+    </div>
+  )
 }
 
-/** Um dos dois períodos. Botão de rádio com cara de etiqueta. */
+/**
+ * Um dos dois períodos. Botão de rádio com cara de etiqueta.
+ *
+ * **Encolheu em 2026-08-22.** Ele carregava o título e, só no anual, uma segunda
+ * linha com "dois meses de graça" — o que deixava os dois botões desiguais em
+ * altura e ambos grandes demais para o pouco texto que têm. A vantagem do anual
+ * desceu para a linha do preço, que é onde ela decide alguma coisa: encostada no
+ * valor cheio, e não solta dentro de um seletor.
+ *
+ * Uma linha, altura igual nos dois, e o alvo continua com 44px — o mínimo de
+ * toque do DESIGN.md. Encolher o texto não é motivo para encolher o alvo.
+ */
 function Periodicidade({
   escolhido,
   aoEscolher,
   titulo,
-  etiqueta,
 }: {
-  escolhido: boolean;
-  aoEscolher: () => void;
-  titulo: string;
-  etiqueta?: string;
+  escolhido: boolean
+  aoEscolher: () => void
+  titulo: string
 }) {
   return (
     <button
@@ -493,38 +525,27 @@ function Periodicidade({
       aria-checked={escolhido}
       onClick={aoEscolher}
       className={cn(
-        "flex-1 rounded-[var(--radius-controle)] border-2 border-tinta px-3 py-2.5 text-left transition-shadow",
+        'min-h-11 flex-1 rounded-[var(--radius-controle)] border-2 border-tinta px-3 text-center transition-shadow',
+        'font-titulo text-[13px] font-extrabold uppercase',
         escolhido
-          ? "bg-azul text-azul-tinta shadow-[var(--shadow-duro-sm)]"
-          : "bg-cartela text-tinta hover:shadow-[var(--shadow-duro-xs)]",
+          ? 'bg-azul text-azul-tinta shadow-[var(--shadow-duro-sm)]'
+          : 'bg-cartela text-tinta hover:shadow-[var(--shadow-duro-xs)]',
       )}
     >
-      <span className="block font-titulo text-[14px] font-extrabold uppercase">
-        {titulo}
-      </span>
-      {etiqueta && (
-        <span
-          className={cn(
-            "mt-0.5 block font-corpo text-[12px]",
-            escolhido ? "text-azul-tinta/80" : "text-apagado",
-          )}
-        >
-          {etiqueta}
-        </span>
-      )}
+      {titulo}
     </button>
-  );
+  )
 }
 
 /* -------------------------------------------------------------- a comparação */
 
 /** Uma linha da comparação. `null` no valor vira "Ilimitado". */
 interface Linha {
-  o_que: string;
-  free: ReactNode;
-  pro: ReactNode;
+  o_que: string
+  free: ReactNode
+  pro: ReactNode
   /** Escrito embaixo, quando o número sozinho engana. */
-  nota?: string;
+  nota?: string
 }
 
 /**
@@ -562,43 +583,43 @@ interface Linha {
  * tela anuncia linha e coluna. `scope` nos cabeçalhos é o que faz isso valer.
  */
 export function Comparacao({ free, pro }: { free: Limites; pro: Limites }) {
-  const teto = (n: number | null) => (n === null ? "Ilimitado" : String(n));
-  const dias = (n: number | null) => (n === null ? "Completo" : `${n} dias`);
+  const teto = (n: number | null) => (n === null ? 'Ilimitado' : String(n))
+  const dias = (n: number | null) => (n === null ? 'Completo' : `${n} dias`)
 
   const linhas: Linha[] = [
     {
-      o_que: "Cartas anunciadas",
+      o_que: 'Cartas anunciadas',
       free: teto(free.max_ofertas),
       pro: teto(pro.max_ofertas),
     },
     {
-      o_que: "Propostas por dia",
+      o_que: 'Propostas por dia',
       free: teto(free.propostas_por_dia),
       pro: teto(pro.propostas_por_dia),
     },
     {
-      o_que: "Colar a lista de uma vez",
+      o_que: 'Colar a lista de uma vez',
       free: <Marca tem={free.cadastro_em_massa} />,
       pro: <Marca tem={pro.cadastro_em_massa} />,
     },
     {
-      o_que: "Aviso quando a carta aparece",
+      o_que: 'Aviso quando a carta aparece',
       free: <Marca tem={free.alerta_carta} />,
       pro: <Marca tem={pro.alerta_carta} />,
     },
     {
-      o_que: "Match triangular",
+      o_que: 'Match triangular',
       free: <Marca tem={free.triangular} />,
       pro: <span className="font-dado text-[11px] uppercase">Em breve</span>,
     },
     {
-      o_que: "Histórico de trocas",
+      o_que: 'Histórico de trocas',
       free: dias(free.historico_dias),
       pro: dias(pro.historico_dias),
     },
-    { o_que: "Cartas procuradas", free: "Ilimitado", pro: "Ilimitado" },
-    { o_que: "Matches que você vê", free: "Todos", pro: "Todos" },
-  ];
+    { o_que: 'Cartas procuradas', free: 'Ilimitado', pro: 'Ilimitado' },
+    { o_que: 'Matches que você vê', free: 'Todos', pro: 'Todos' },
+  ]
 
   return (
     <section className="mt-7">
@@ -619,7 +640,7 @@ export function Comparacao({ free, pro }: { free: Limites; pro: Limites }) {
               <th scope="col" className={cabecalho}>
                 Free
               </th>
-              <th scope="col" className={cn(cabecalho, "text-tinta")}>
+              <th scope="col" className={cn(cabecalho, 'text-tinta')}>
                 Pro
               </th>
             </tr>
@@ -628,7 +649,7 @@ export function Comparacao({ free, pro }: { free: Limites; pro: Limites }) {
             {linhas.map((linha, i) => (
               <tr
                 key={linha.o_que}
-                className={i > 0 ? "border-t border-tinta/25" : undefined}
+                className={i > 0 ? 'border-t border-tinta/25' : undefined}
               >
                 <th
                   scope="row"
@@ -636,8 +657,8 @@ export function Comparacao({ free, pro }: { free: Limites; pro: Limites }) {
                 >
                   {linha.o_que}
                 </th>
-                <td className={cn(celula, "text-apagado")}>{linha.free}</td>
-                <td className={cn(celula, "text-tinta")}>{linha.pro}</td>
+                <td className={cn(celula, 'text-apagado')}>{linha.free}</td>
+                <td className={cn(celula, 'text-tinta')}>{linha.pro}</td>
               </tr>
             ))}
           </tbody>
@@ -650,61 +671,50 @@ export function Comparacao({ free, pro }: { free: Limites; pro: Limites }) {
             key={nota.termo}
             className="font-corpo text-[12px] leading-relaxed text-apagado"
           >
-            <strong className="font-medium text-tinta">{nota.termo}:</strong>{" "}
+            <strong className="font-medium text-tinta">{nota.termo}:</strong>{' '}
             {nota.diz}
           </p>
         ))}
       </div>
     </section>
-  );
+  )
 }
 
 const cabecalho =
-  "w-[76px] px-2 py-2.5 text-center font-dado text-[11px] uppercase text-apagado";
-const celula = "w-[76px] px-2 py-3 text-center font-dado text-[12px] font-bold";
+  'w-[76px] px-2 py-2.5 text-center font-dado text-[11px] uppercase text-apagado'
+const celula = 'w-[76px] px-2 py-3 text-center font-dado text-[12px] font-bold'
 
 /**
  * O que o número sozinho não diz.
  *
  * Fora da tabela de propósito: dentro dela, cada nota empurrava as colunas para
- * baixo e desfazia o alinhamento. Só entram as que mudam a leitura de uma linha —
- * o resto é conversa que a tela de planos não precisa ter.
+ * baixo e desfazia o alinhamento.
+ *
+ * **Duas, e eram seis até 2026-08-22.** As outras quatro explicavam linhas que
+ * não precisavam — número que já se explica, ou recurso igual nos dois planos.
+ * Sobram as duas que fazem trabalho: uma responde ao medo de perder as cartas
+ * ("o que acontece se eu parar de pagar"), a outra é ressalva honesta e não pode
+ * sair. Nota que ninguém precisava ler é o que fazia a tela parecer longa.
  */
 const NOTAS: { termo: string; diz: string }[] = [
   {
-    termo: "Cartas anunciadas",
-    diz: "conta só o que você oferece. Se o PRO cair, o que passa de 20 sai do ar e continua no seu acervo — nada é apagado.",
+    termo: 'Cartas anunciadas',
+    diz: 'conta só o que você oferece. Se o PRO cair, o que passa de 20 sai do ar e continua no seu acervo — nada é apagado.',
   },
   {
-    termo: "Propostas por dia",
-    diz: "são 5 a cada 24 horas no FREE. Responder proposta não gasta nenhuma.",
+    termo: 'Match triangular',
+    diz: 'ainda não está no ar: chega um mês depois do lançamento. Não assine por causa desta linha.',
   },
-  {
-    termo: "Colar a lista de uma vez",
-    diz: "no FREE o cadastro é carta por carta, até o teto de 20.",
-  },
-  {
-    termo: "Match triangular",
-    diz: "a troca de três pontas, quando ninguém tem exatamente o que o outro quer. Ainda não está no ar: chega um mês depois do lançamento. Não assine por causa desta linha.",
-  },
-  {
-    termo: "Cartas procuradas",
-    diz: "dizer o que falta nunca tem teto — é assim que o app acha par para você e para os outros.",
-  },
-  {
-    termo: "Matches que você vê",
-    diz: "o app não guarda match para quem paga.",
-  },
-];
+]
 
 /** ✓ ou —, e o leitor de tela ouve a palavra, não o desenho. */
 function Marca({ tem }: { tem: boolean }) {
   return (
     <>
-      <span aria-hidden>{tem ? "✓" : "—"}</span>
-      <span className="sr-only">{tem ? "inclui" : "não inclui"}</span>
+      <span aria-hidden>{tem ? '✓' : '—'}</span>
+      <span className="sr-only">{tem ? 'inclui' : 'não inclui'}</span>
     </>
-  );
+  )
 }
 
 /**
@@ -722,18 +732,9 @@ export function Principio() {
       </h2>
       <Cartela className="mt-2 p-4">
         <p className="font-corpo text-[14px] leading-relaxed text-apagado">
-          Abrir, aceitar, recusar e contrapropor. Concluir a troca, avaliar quem
-          trocou com você e denunciar quem não deveria estar aqui. Ver a
-          vitrine, o acervo de alguém e quem tem a carta que falta.
-        </p>
-        <p className="mt-2.5 font-corpo text-[14px] leading-relaxed text-apagado">
-          O PRO cobra conveniência e alcance — nunca participação. Se quem não
-          assina não pudesse responder, a proposta de quem assina morreria sem
-          resposta.
-        </p>
-        <p className="mt-2.5 font-corpo text-[14px] leading-relaxed text-apagado">
-          E não existe destaque pago na vitrine. Nunca vai existir: o feed é o
-          mesmo para todo mundo.
+          Abrir, aceitar, recusar e contrapropor, concluir a troca, avaliar e
+          denunciar: livre nos dois planos. O PRO cobra conveniência e alcance,
+          nunca participação — e não existe destaque pago na vitrine.
         </p>
       </Cartela>
 
@@ -741,5 +742,5 @@ export function Principio() {
         Termos e privacidade
       </AcaoSecundaria>
     </section>
-  );
+  )
 }

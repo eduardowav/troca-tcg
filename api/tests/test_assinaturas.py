@@ -28,7 +28,7 @@ from fastapi.testclient import TestClient
 from app.core import limites
 from app.core.config import settings
 from app.core.errors import RegraNegocio
-from app.core.limites import COBRANCA_ATIVA
+from app.core.limites import COBRANCA_ATIVA, PRECOS
 from app.main import app
 from app.services import assinaturas, mercado_pago
 
@@ -461,12 +461,13 @@ async def test_periodo_invalido_e_recusado_com_campo():
 
 
 @pytest.mark.parametrize(
-    ("periodo", "meses", "valor"),
-    [("mensal", 1, 19.9), ("anual", 12, 199.9)],
+    ("periodo", "meses"),
+    # Sem valor chumbado: o preço muda por decisão comercial (reajuste previsto
+    # para janeiro de 2027), e teste que repete o número transforma decisão de
+    # preço em suíte vermelha.
+    [("mensal", 1), ("anual", 12)],
 )
-async def test_criar_assinatura_vai_sem_plano_associado(
-    monkeypatch, periodo, meses, valor
-):
+async def test_criar_assinatura_vai_sem_plano_associado(monkeypatch, periodo, meses):
     """O corpo que o Mercado Pago aceita — e que por meses foi o errado.
 
     Até 2026-08-22 esta chamada mandava `preapproval_plan_id` e o provedor recusava
@@ -504,7 +505,7 @@ async def test_criar_assinatura_vai_sem_plano_associado(
 
     assert corpo["auto_recurring"]["frequency"] == meses
     assert corpo["auto_recurring"]["frequency_type"] == "months"
-    assert corpo["auto_recurring"]["transaction_amount"] == valor
+    assert corpo["auto_recurring"]["transaction_amount"] == float(PRECOS[periodo])
     assert corpo["auto_recurring"]["currency_id"] == "BRL"
 
     # A amarração com o usuário. Pelo fluxo com plano ela se perdia: a assinatura
@@ -515,7 +516,7 @@ async def test_criar_assinatura_vai_sem_plano_associado(
 
 
 async def test_preco_nao_vira_dizima_no_corpo(monkeypatch):
-    """`19.90` precisa sair `19.9` no JSON, e não `19.899999999999999`.
+    """`14.90` precisa sair `14.9` no JSON, e não `14.899999999999999`.
 
     `PRECOS` é `Decimal` justamente para isso, e a conversão para `float` acontece
     num ponto só. O teste é sobre o que o Mercado Pago recebe — dízima num corpo de
@@ -533,7 +534,8 @@ async def test_preco_nao_vira_dizima_no_corpo(monkeypatch):
     sessao = SessaoFalsa(retornos=["alguem@exemplo.com"])
     await assinaturas.iniciar(sessao, uuid4(), "mensal")  # type: ignore[arg-type]
 
-    assert '"transaction_amount": 19.9' in json.dumps(enviados[0])
+    esperado = f'"transaction_amount": {float(PRECOS["mensal"])}'
+    assert esperado in json.dumps(enviados[0])
 
 
 async def test_sem_credencial_a_rota_recusa_com_503():

@@ -134,10 +134,41 @@ PLANOS: dict[str, Limites] = {
 #: limites, e pior consequência: tabela que promete um valor e cobrança que
 #: debita outro é a discussão que não se ganha.
 PRECOS: dict[str, Decimal] = {
-    "mensal": Decimal("19.90"),
+    "mensal": Decimal("14.90"),
     # Dez meses pelo preço de doze — os "dois meses de graça" que a tela diz.
-    "anual": Decimal("199.90"),
+    # Confere: 14,90 x 12 = 178,80, e o anual sai a 149,90.
+    "anual": Decimal("149.90"),
 }
+
+#: **Baixados em 2026-08-22, de 19,90 e 199,90, com reajuste previsto para
+#: janeiro de 2027.** A decisão veio de descobrir, no mesmo dia, que **assinatura
+#: do Mercado Pago não parcela**: recorrência e parcelamento são modelos opostos
+#: lá — a primeira é cobrança nova a cada ciclo, a segunda é uma venda só
+#: dividida. O ciclo do anual é de 12 meses, então o valor cheio cai no limite do
+#: cartão de uma vez, uma vez por ano.
+#:
+#: Para jogador de TCG jovem em Belém, R$ 199,90 num toque só era um muro. O
+#: mensal desceu junto para manter a razão de dez meses, que é o que sustenta a
+#: frase "dois meses de graça" na tela — mexer num sem o outro quebra a frase.
+#:
+#: A API do Mercado Pago **aceita `installments` em silêncio** e descarta: campo
+#: desconhecido não vira erro. Não dá para descobrir isso tentando, só lendo isto
+#: ou refazendo a conferência. E é por isso que a linha "Cobrado R$ 149,90 uma vez
+#: por ano" na tela precisa continuar dizendo **uma vez**.
+
+#: **O anual não parcela, e isso foi conferido em 2026-08-22.** Assinatura e
+#: parcelamento são modelos opostos no Mercado Pago: recorrência é cobrança nova
+#: a cada ciclo, parcelamento é uma venda só dividida. O ciclo do anual é de 12
+#: meses, então os R$ 199,90 caem inteiros no limite do cartão, uma vez por ano.
+#:
+#: A API **aceita `installments` em silêncio** e descarta — campo desconhecido
+#: não vira erro. Ou seja, não dá para descobrir isso tentando: só lendo isto ou
+#: refazendo a conferência.
+#:
+#: Baixar os preços por causa disso chegou a ser decidido e foi revertido no mesmo
+#: dia — ficam como estão. Fica registrado porque a pergunta volta, e porque a
+#: linha "Cobrado R$ 199,90 uma vez por ano" na tela **precisa** continuar
+#: dizendo "uma vez": é ela que impede alguém de assinar achando que parcela.
 
 
 def limites_de(plano: str) -> Limites:
