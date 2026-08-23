@@ -442,8 +442,14 @@ def test_uma_negociacao_por_dupla_e_decidida_pelo_indice():
 
 
 def test_teto_diario_vem_do_plano():
-    """Constraint não distingue FREE de PRO, então o teto mora em limites.py."""
-    assert limites_de("FREE").propostas_por_dia < limites_de("PRO").propostas_por_dia
+    """Constraint não distingue FREE de PRO, então o teto mora em limites.py.
+
+    O PRO é ilimitado (`None`) desde 2026-08-22, então a comparação numérica de
+    antes não serve mais — e o `is not None` do FREE é a parte que importa: um
+    plano pago sem teto é decisão, um plano grátis sem teto é porta aberta.
+    """
+    assert limites_de("PRO").propostas_por_dia is None
+    assert limites_de("FREE").propostas_por_dia is not None
     fonte = inspect.getsource(propostas._checar_limite_diario)
     assert "propostas_por_dia" in fonte
     assert "LIMITE_DE_PROPOSTAS" in fonte

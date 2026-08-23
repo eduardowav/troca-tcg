@@ -24,7 +24,13 @@ export interface Limites {
   alerta_carta: boolean
   /** Janela do histórico de trocas. `null` é completo. */
   historico_dias: number | null
-  propostas_por_dia: number
+  /**
+   * Propostas abertas por dia. `null` é ilimitado — o PRO desde 2026-08-22.
+   *
+   * Nulável como os outros tetos, e não zero-como-ilimitado: zero é um número
+   * legítimo, e um dia pode existir um plano que não abre proposta nenhuma.
+   */
+  propostas_por_dia: number | null
 }
 
 export interface Planos {
@@ -83,3 +89,24 @@ const CODIGOS_DO_PRO = new Set([
 export function eLimiteDePlano(erro: unknown): erro is ApiError {
   return erro instanceof ApiError && CODIGOS_DO_PRO.has(erro.codigo)
 }
+
+/** O que `POST /me/assinatura` devolve: para onde mandar a pessoa. */
+export interface AssinaturaCriada {
+  /** O checkout do Mercado Pago. É para lá que a pessoa vai. */
+  init_point: string
+  preapproval_id: string
+}
+
+/**
+ * Cria a assinatura e devolve o checkout.
+ *
+ * **Ninguém vira PRO aqui.** A linha nasce `pending` e quem promove é o webhook,
+ * depois de o pagamento existir — ver `services/assinaturas.py`. Quem fecha a aba
+ * no meio do caminho fica com uma assinatura pendente e o plano de antes, que é
+ * o desenho certo: o dinheiro promove, não o clique.
+ *
+ * Nenhum dado de cartão passa por aqui. O app manda a pessoa para o Mercado Pago
+ * e ela volta pelo `back_url`.
+ */
+export const assinar = (periodo: Periodo) =>
+  api.post<AssinaturaCriada>('/me/assinatura', { periodo })

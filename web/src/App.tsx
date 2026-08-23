@@ -36,6 +36,7 @@ const Mensagens = lazy(() =>
 )
 const Instalar = lazy(() => import('@/routes/Instalar'))
 const LabAzul = lazy(() => import('@/routes/LabAzul'))
+const LabPlanos = lazy(() => import('@/routes/LabPlanos'))
 const LabTroca = lazy(() => import('@/routes/LabTroca'))
 const MatchDetalhe = lazy(() => import('@/routes/Match'))
 const Matches = lazy(() => import('@/routes/Matches'))
@@ -113,6 +114,15 @@ function Rotas() {
           Fora do `LayoutApp` porque a barra de navegação carrega o azul da aba
           ativa e entraria no quadro como quarta amostra sem ser convidada. */}
       {import.meta.env.DEV && <Route path="/lab/azul" element={<LabAzul />} />}
+
+      {/* Laboratório da tela de planos. Mesma regra dos dois de cima, e um
+          motivo a mais: a tela tem quatro estados e nenhum é alcançável à
+          vontade numa conta de verdade — ver PRO exigiria assinar, ver Parceiro
+          exigiria editar o banco. Fora do `LayoutApp` porque é bancada, não
+          tela do app. */}
+      {import.meta.env.DEV && (
+        <Route path="/lab/planos" element={<LabPlanos />} />
+      )}
 
       <Route element={<ExigeSessao />}>
         <Route path="/completar-cadastro" element={<CompletarCadastro />} />

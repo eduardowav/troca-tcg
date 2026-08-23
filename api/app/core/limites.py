@@ -13,6 +13,12 @@ segue aberto.
 não virar disparador em massa, valem desde o primeiro dia e por isso são lidos
 com `limites_de()` direto, sem passar pelo portão.
 
+**O `propostas_por_dia` passou a ser as duas coisas em 2026-08-22**, e é a única
+exceção à separação acima. Ele continua sendo lido sem o portão — quem é FREE
+esbarra nos 5 mesmo que a cobrança esteja desligada —, mas o número deixou de ser
+escolhido só por antiabuso e passou a ser argumento de venda. Ver o comentário
+dele no dataclass.
+
 Ver seção 16 da doc.
 """
 
@@ -65,13 +71,24 @@ class Limites:
     #: `trocas_concluidas` e `trocas_furadas` são contadores em `profiles` e não
     #: dependem desta lista.
     historico_dias: int | None
-    #: Propostas abertas por pessoa nas últimas 24h (seção 22.5). Mora aqui, e
-    #: não numa constraint, porque constraint não distingue FREE de PRO. Não é o
-    #: antiabuso principal da vitrine — esse é o índice único "uma negociação
-    #: aberta por dupla" —, e sim o teto de quem dispararia proposta para a base
-    #: inteira. O número é generoso de propósito: uma pessoa que abre dez
-    #: negociações num dia está usando o app, não abusando dele.
-    propostas_por_dia: int
+    #: Propostas abertas por pessoa nas últimas 24h (seção 22.5). `None` é
+    #: ilimitado. Mora aqui, e não numa constraint, porque constraint não
+    #: distingue FREE de PRO.
+    #:
+    #: **Mudou em 2026-08-22, por decisão do Eduardo: FREE 10 -> 5, PRO 100 ->
+    #: ilimitado.** Deixou de ser só antiabuso e passou a ser também argumento de
+    #: venda, e a mudança de papel merece registro porque muda o raciocínio sobre
+    #: o número. Antes: "generoso de propósito, quem abre dez negociações está
+    #: usando o app, não abusando dele". Agora o cinco é apertado de propósito —
+    #: é ele que faz quem usa de verdade encostar no teto e ver o PRO.
+    #:
+    #: **O que se perdeu junto:** o PRO deixa de ter teto de disparo. O índice
+    #: único "uma negociação aberta por dupla" continua sendo o antiabuso
+    #: principal da vitrine e não depende disto, então ninguém consegue metralhar
+    #: a mesma pessoa. Mas um assinante mal-intencionado pode abrir proposta para
+    #: a base inteira num dia, e é o tipo de coisa que só aparece quando acontece.
+    #: Se aparecer, o conserto é um teto alto aqui (500, 1000) em vez de `None`.
+    propostas_por_dia: int | None
 
 
 PLANOS: dict[str, Limites] = {
@@ -85,7 +102,7 @@ PLANOS: dict[str, Limites] = {
         triangular=False,
         alerta_carta=False,
         historico_dias=30,
-        propostas_por_dia=10,
+        propostas_por_dia=5,
     ),
     "PRO": Limites(
         max_ofertas=None,
@@ -94,7 +111,7 @@ PLANOS: dict[str, Limites] = {
         triangular=True,
         alerta_carta=True,
         historico_dias=None,
-        propostas_por_dia=100,
+        propostas_por_dia=None,
     ),
 }
 

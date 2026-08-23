@@ -428,7 +428,10 @@ async def _checar_limite_diario(session: AsyncSession, user_id: UUID) -> None:
         """),
         {"eu": str(user_id)},
     )
-    if (abertas_hoje or 0) >= limite:
+    # `None` é ilimitado — o PRO desde 2026-08-22. A comparação precisa do
+    # `is not None` e não de um `if limite:`, porque zero também é falsy e um dia
+    # alguém pode querer um plano que não abre proposta nenhuma.
+    if limite is not None and (abertas_hoje or 0) >= limite:
         raise RegraNegocio(
             "LIMITE_DE_PROPOSTAS",
             "Você já enviou muitas propostas hoje. Tente de novo amanhã.",

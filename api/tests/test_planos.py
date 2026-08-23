@@ -62,7 +62,12 @@ def test_o_pro_nao_e_pior_que_o_free_em_nada():
     assert pro.historico_dias is None or (
         free.historico_dias is not None and pro.historico_dias >= free.historico_dias
     )
-    assert pro.propostas_por_dia >= free.propostas_por_dia
+    # `None` é ilimitado no PRO desde 2026-08-22, e a comparação precisa saber
+    # disso: `None >= 5` explode em vez de reprovar.
+    assert pro.propostas_por_dia is None or (
+        free.propostas_por_dia is not None
+        and pro.propostas_por_dia >= free.propostas_por_dia
+    )
     assert pro.cadastro_em_massa >= free.cadastro_em_massa
     assert pro.triangular >= free.triangular
     assert pro.alerta_carta >= free.alerta_carta
