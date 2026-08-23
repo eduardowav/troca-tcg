@@ -43,8 +43,16 @@ def _antes_de_enviar(evento: dict, dica: dict) -> dict | None:
     """
     excecao = (dica or {}).get("exc_info", (None, None, None))[1]
 
-    # Regra de negócio é conversa com quem usa, não defeito.
-    if isinstance(excecao, RegraNegocio):
+    # Regra de negócio é conversa com quem usa, não defeito — **enquanto o
+    # status for de cliente**. A ressalva entrou em 2026-08-23, junto com o
+    # `PAGAMENTO_INDISPONIVEL`: `RegraNegocio` passou a carregar também falha de
+    # infraestrutura traduzida para quem está na tela (502, provedor de pagamento
+    # fora do ar ou recusando), e essa é defeito por definição.
+    #
+    # Sem esta linha o conserto daquele dia teria trocado um erro barulhento e
+    # ilegível por um erro legível e invisível: o 400 do Mercado Pago chegava ao
+    # painel por ser exceção crua, e viraria silêncio ao virar regra de negócio.
+    if isinstance(excecao, RegraNegocio) and excecao.status_code < 500:
         return None
 
     # `status_code` cobre o `HTTPException` do FastAPI e qualquer exceção nossa

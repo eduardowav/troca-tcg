@@ -805,3 +805,138 @@ async def test_sem_carencia_vencida_nao_toca_em_listings(monkeypatch):
 
     assert resultado == {"caidos": 0, "ofertas_desativadas": 0}
     assert not any("update listings" in s for s in sessao.sqls)
+
+
+# --------------------------------------------------------------------------
+# A falha do provedor que chegava na tela como "confira sua conexão" (2026-08-23)
+# --------------------------------------------------------------------------
+
+
+async def test_recusa_do_provedor_vira_erro_com_frase(monkeypatch):
+    """Um 400 do Mercado Pago precisa sair daqui como `RegraNegocio`.
+
+    É o teste do incidente de 2026-08-23. O provedor recusou a criação com
+    ``{"message":"User bad request"}``, a exceção subiu crua até o
+    `ServerErrorMiddleware` — que responde por **fora** do `CORSMiddleware` —, e
+    o 500 sem `access-control-allow-origin` fez o navegador bloquear a resposta.
+    O PWA não viu status nenhum, só um `fetch` rejeitado, e disse à pessoa que a
+    conexão dela estava ruim. Cinco tentativas antes de alguém abrir o log.
+
+    O que prende o conserto é o **tipo**: `RegraNegocio` tem handler registrado,
+    e handler responde por dentro do CORS.
+    """
+
+    async def falso_chamar(metodo, caminho, corpo=None):
+        raise mercado_pago.FalhaDoProvedor(400, '{"message":"User bad request"}')
+
+    monkeypatch.setattr(mercado_pago, "_chamar", falso_chamar)
+
+    sessao = SessaoFalsa(retornos=["alguem@exemplo.com"])
+    with pytest.raises(RegraNegocio) as e:
+        await assinaturas.iniciar(sessao, uuid4(), "mensal")  # type: ignore[arg-type]
+
+    assert e.value.codigo == "PAGAMENTO_INDISPONIVEL"
+    assert e.value.status_code == 502
+    # A mensagem é para ler na tela: nada de "400", "preapproval" ou nome de
+    # provedor. O detalhe fica no log.
+    assert "conexão" not in e.value.mensagem
+    assert "assinatura" in e.value.mensagem
+
+
+async def test_provedor_inalcancavel_tambem_tem_frase(monkeypatch):
+    """Timeout e conexão recusada não têm status, e a pessoa merece a mesma frase.
+
+    Distinguir "recusaram" de "não deu para perguntar" não muda nada do que ela
+    pode fazer — nos dois casos é tentar de novo mais tarde.
+    """
+
+    async def falso_chamar(metodo, caminho, corpo=None):
+        raise mercado_pago.FalhaDoProvedor(None)
+
+    monkeypatch.setattr(mercado_pago, "_chamar", falso_chamar)
+
+    sessao = SessaoFalsa(retornos=["alguem@exemplo.com"])
+    with pytest.raises(RegraNegocio) as e:
+        await assinaturas.iniciar(sessao, uuid4(), "mensal")  # type: ignore[arg-type]
+    assert e.value.codigo == "PAGAMENTO_INDISPONIVEL"
+
+
+async def test_erro_de_rede_vira_falha_do_provedor(monkeypatch):
+    """A borda: `aiohttp` não escapa de `mercado_pago.py`.
+
+    Quem chama captura `FalhaDoProvedor` e não importa `aiohttp` — é o que
+    mantém a promessa do cabeçalho do módulo. Se um dia uma exceção de rede
+    voltar a vazar daqui, o `iniciar` deixa de reconhecê-la e o bug de 23/08
+    volta inteiro, com outra cara.
+    """
+    import aiohttp
+
+    class SessaoQueNaoConecta:
+        def __init__(self, *a, **kw):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *a):
+            return False
+
+        def request(self, *a, **kw):
+            raise aiohttp.ClientConnectionError("sem rota até o provedor")
+
+    monkeypatch.setattr(aiohttp, "ClientSession", SessaoQueNaoConecta)
+    monkeypatch.setattr(settings, "MERCADO_PAGO_ACCESS_TOKEN", "APP_USR-qualquer")
+
+    with pytest.raises(mercado_pago.FalhaDoProvedor) as e:
+        await mercado_pago.buscar_assinatura("pp-1")
+    assert e.value.status is None
+
+
+async def test_cancelamento_so_e_gravado_depois_do_provedor_confirmar(monkeypatch):
+    """Se o Mercado Pago não confirmou, o app não pode dizer que cancelou.
+
+    Gravar `cancelled` antes deixaria a tela afirmando que a renovação parou
+    enquanto a cobrança continua saindo todo mês — a pior das duas mentiras
+    possíveis aqui, porque ela só aparece na fatura.
+    """
+
+    async def explode(_):
+        raise mercado_pago.FalhaDoProvedor(500, "indisponivel")
+
+    monkeypatch.setattr(mercado_pago, "cancelar_assinatura", explode)
+
+    sessao = SessaoFalsa(
+        linha={"preapproval_id": "pp-viva", "proxima_cobranca_em": None}
+    )
+    with pytest.raises(RegraNegocio) as e:
+        await assinaturas.cancelar(sessao, uuid4())  # type: ignore[arg-type]
+
+    assert e.value.codigo == "PAGAMENTO_INDISPONIVEL"
+    assert not any("update subscriptions" in s for s in sessao.sqls)
+    assert not any("update profiles" in s for s in sessao.sqls)
+    assert sessao.commits == 0
+
+
+def test_erro_de_negocio_responde_por_dentro_do_cors():
+    """O que faltava na resposta de 23/08: o cabeçalho que o navegador exige.
+
+    Este teste não é sobre assinatura — é sobre a diferença entre as duas saídas
+    de erro do app. `RegraNegocio` tem handler registrado e sai por dentro do
+    `CORSMiddleware`; exceção crua sai pelo `ServerErrorMiddleware`, que é mais
+    externo, e chega ao navegador sem `access-control-allow-origin` — que é como
+    uma recusa do provedor virou "confira sua conexão".
+
+    Um 401 serve de sonda porque também vem de handler. Se um dia o CORS parar
+    de cobrir as respostas de erro, todo erro do app volta a chegar no PWA como
+    falha de rede.
+    """
+    origem = settings.cors_origins_list[0]
+
+    resp = TestClient(app).post(
+        "/v1/me/assinatura",
+        json={"periodo": "mensal"},
+        headers={"Origin": origem},
+    )
+
+    assert resp.status_code >= 400
+    assert resp.headers.get("access-control-allow-origin") == origem

@@ -90,6 +90,16 @@ def app_de_teste() -> FastAPI:
     async def quebrado():
         raise ValueError("isto é defeito nosso")
 
+    @aplicacao.get("/provedor-fora")
+    async def provedor_fora():
+        # A quarta forma, de 2026-08-23: `RegraNegocio` carregando falha de
+        # infraestrutura em vez de recusa a quem pediu. Ver `_antes_de_enviar`.
+        raise RegraNegocio(
+            "PAGAMENTO_INDISPONIVEL",
+            "Não foi possível iniciar a assinatura agora.",
+            status_code=502,
+        )
+
     return aplicacao
 
 
@@ -113,6 +123,26 @@ def test_regra_de_negocio_nao_vira_evento(transporte):
     assert resposta.status_code == 400
     assert resposta.json()["erro"]["codigo"] == "LIMITE_DO_PLANO"
     assert transporte.eventos == []
+
+
+def test_regra_de_negocio_de_infraestrutura_vira_evento(transporte):
+    """Nem toda `RegraNegocio` é conversa com quem usa — a de 502 é defeito.
+
+    O filtro acima existe para não gastar a cota com "não pode". Mas desde
+    2026-08-23 esta exceção também traduz o provedor de pagamento recusando ou
+    fora do ar, e essa precisa acordar alguém: naquele dia, um 400 do Mercado
+    Pago derrubou a assinatura por horas e o único rastro foi o log do servidor.
+
+    Sem este teste, o filtro por tipo volta sozinho na primeira refatoração e o
+    silêncio volta com ele.
+    """
+    cliente = TestClient(app_de_teste(), raise_server_exceptions=False)
+    resposta = cliente.get("/provedor-fora")
+    sentry_sdk.flush()
+
+    assert resposta.status_code == 502
+    assert resposta.json()["erro"]["codigo"] == "PAGAMENTO_INDISPONIVEL"
+    assert len(transporte.eventos) == 1
 
 
 def test_quatrocentos_nao_vira_evento(transporte):

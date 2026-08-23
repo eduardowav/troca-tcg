@@ -64,6 +64,38 @@ class RecursoInexistente(Exception):
     """
 
 
+class FalhaDoProvedor(Exception):
+    """O Mercado Pago recusou a chamada, ou não deu para chegar até ele.
+
+    Existe para que quem chama possa distinguir "o provedor falhou" de qualquer
+    outro erro **sem importar `aiohttp`**. O cabeçalho deste módulo promete que
+    o resto do app não sabe o que é um `preapproval`; deixar um
+    `ClientResponseError` subir quebrava a promessa por baixo, e o preço apareceu
+    em 2026-08-23.
+
+    Naquele dia um 400 do Mercado Pago virou, na tela de quem tentou assinar,
+    "Não foi possível falar com o servidor. Confira sua conexão." O caminho: a
+    exceção crua subia até o `ServerErrorMiddleware` do Starlette, que é mais
+    externo que o `CORSMiddleware` (`main.py`), então o 500 saía **sem**
+    `access-control-allow-origin`; o navegador bloqueava a resposta, o `fetch`
+    rejeitava, e `web/src/lib/api.ts` traduzia isso em `REDE_INDISPONIVEL`. Uma
+    recusa do provedor e a rede da pessoa caindo tinham exatamente a mesma cara.
+
+    **Continua subindo para quem processa webhook**, que é o que o `_chamar`
+    sempre prometeu: virar 500 ali é o que faz o Mercado Pago reenviar a
+    notificação. Quem trata é só o caminho de quem está parado na tela — ver
+    `services/assinaturas.py`.
+
+    `status` é o código HTTP deles quando houve resposta, e `None` quando nem
+    isso (timeout, DNS, conexão recusada).
+    """
+
+    def __init__(self, status: int | None, corpo: str = "") -> None:
+        self.status = status
+        self.corpo = corpo
+        super().__init__(f"Mercado Pago: {status or 'sem resposta'} {corpo}".strip())
+
+
 def ativo() -> bool:
     """Há credencial para falar com o Mercado Pago?
 
@@ -86,30 +118,43 @@ async def _chamar(
     **404 é a exceção, e vira `RecursoInexistente`.** Reenviar resolve falha
     passageira; contra um recurso que não existe, reenviar é para sempre. Ver o
     docstring da exceção.
+
+    Todo o resto vira `FalhaDoProvedor` — inclusive o que nem chegou a ser
+    resposta, como timeout e conexão recusada. Sobe igual ao que subia antes; o
+    que muda é ser um tipo deste módulo, que quem chama consegue capturar sem
+    importar `aiohttp`. Ver o docstring da exceção para o estrago que a falta
+    disso causou na tela.
     """
     tempo = aiohttp.ClientTimeout(total=TIMEOUT)
     cabecalhos = {"Authorization": f"Bearer {settings.MERCADO_PAGO_ACCESS_TOKEN}"}
 
-    async with aiohttp.ClientSession(timeout=tempo) as sessao:
-        async with sessao.request(
-            metodo, f"{BASE_URL}{caminho}", json=corpo, headers=cabecalhos
-        ) as resposta:
-            texto = await resposta.text()
-            if resposta.status == 404:
-                logger.warning(
-                    "[mercado_pago] %s %s: recurso inexistente", metodo, caminho
-                )
-                raise RecursoInexistente(caminho)
-            if resposta.status >= 400:
-                logger.error(
-                    "[mercado_pago] %s %s devolveu %s: %s",
-                    metodo,
-                    caminho,
-                    resposta.status,
-                    texto[:300],
-                )
-                resposta.raise_for_status()
-            return await resposta.json()
+    try:
+        async with aiohttp.ClientSession(timeout=tempo) as sessao:
+            async with sessao.request(
+                metodo, f"{BASE_URL}{caminho}", json=corpo, headers=cabecalhos
+            ) as resposta:
+                texto = await resposta.text()
+                if resposta.status == 404:
+                    logger.warning(
+                        "[mercado_pago] %s %s: recurso inexistente", metodo, caminho
+                    )
+                    raise RecursoInexistente(caminho)
+                if resposta.status >= 400:
+                    logger.error(
+                        "[mercado_pago] %s %s devolveu %s: %s",
+                        metodo,
+                        caminho,
+                        resposta.status,
+                        texto[:300],
+                    )
+                    raise FalhaDoProvedor(resposta.status, texto[:300])
+                return await resposta.json()
+    except (aiohttp.ClientError, TimeoutError) as exc:
+        # Rede, DNS, conexão recusada, estouro do `TIMEOUT`. Não houve resposta,
+        # então não há status — e é justamente o caso em que tentar de novo mais
+        # tarde costuma resolver, que é o que a mensagem na tela vai dizer.
+        logger.error("[mercado_pago] %s %s não completou: %r", metodo, caminho, exc)
+        raise FalhaDoProvedor(None) from exc
 
 
 async def criar_assinatura(

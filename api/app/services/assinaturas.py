@@ -19,6 +19,8 @@ fim do ciclo que já pagou, porque o dinheiro daquele ciclo já entrou. Ver o it
 """
 
 import logging
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from datetime import datetime
 from uuid import UUID
 
@@ -44,6 +46,39 @@ AUTORIZADA = "authorized"
 #: fica de fora de propósito: ele avisa que o *preço* mudou, não que alguém
 #: assinou, e reagir a ele mexendo em plano de gente seria confundir as coisas.
 TOPICOS = frozenset({"subscription_preapproval", "subscription_authorized_payment"})
+
+
+@asynccontextmanager
+async def _provedor(acao: str) -> AsyncIterator[None]:
+    """Falha do Mercado Pago vira erro de negócio, para quem está na tela.
+
+    **Só no caminho de quem está esperando.** O webhook e os jobs continuam
+    deixando a exceção subir: virar 500 lá é o que faz o Mercado Pago reenviar a
+    notificação, e engolir isso significaria dar por tratado um aviso que não
+    foi.
+
+    Aqui é o contrário — quem clicou em "Assinar" precisa de uma frase, e sem
+    esta tradução ela não chegava. A exceção crua subia até o
+    `ServerErrorMiddleware`, que responde por fora do `CORSMiddleware`: o 500
+    saía sem `access-control-allow-origin`, o navegador bloqueava a resposta, e
+    o `fetch` do PWA rejeitava como se a rede tivesse caído. Em 2026-08-23 um
+    400 do Mercado Pago apareceu na tela como "Confira sua conexão", e foram
+    cinco tentativas antes de alguém olhar o log do servidor.
+
+    502 e não 400: o pedido de quem clicou estava certo, quem recusou foi o
+    intermediário. O `codigo` é o mesmo nos dois casos porque a diferença entre
+    "recusaram" e "não deu para perguntar" não muda nada do que a pessoa pode
+    fazer — o detalhe fica no log, com o corpo da resposta deles.
+    """
+    try:
+        yield
+    except mercado_pago.FalhaDoProvedor as exc:
+        logger.error("[assinaturas] %s falhou no provedor: %s", acao, exc)
+        raise RegraNegocio(
+            "PAGAMENTO_INDISPONIVEL",
+            f"Não foi possível {acao} agora. Tente de novo em alguns minutos.",
+            status_code=502,
+        ) from exc
 
 
 async def _email(session: AsyncSession, user_id: UUID) -> str:
@@ -82,13 +117,14 @@ async def iniciar(session: AsyncSession, user_id: UUID, periodo: str) -> dict:
     # de ambiente, e a checagem era "o plano está configurado?". Agora a pergunta
     # não faz sentido: o valor é constante do código, não configuração, e um
     # período fora do mapa já foi recusado acima.
-    recurso = await mercado_pago.criar_assinatura(
-        periodo=periodo,
-        valor=PRECOS[periodo],
-        email=await _email(session, user_id),
-        referencia=str(user_id),
-        back_url=settings.MERCADO_PAGO_BACK_URL,
-    )
+    async with _provedor("iniciar a assinatura"):
+        recurso = await mercado_pago.criar_assinatura(
+            periodo=periodo,
+            valor=PRECOS[periodo],
+            email=await _email(session, user_id),
+            referencia=str(user_id),
+            back_url=settings.MERCADO_PAGO_BACK_URL,
+        )
 
     await session.execute(
         text("""
@@ -182,7 +218,11 @@ async def cancelar(session: AsyncSession, user_id: UUID) -> None:
         )
 
     preapproval_id = linha["preapproval_id"]
-    await mercado_pago.cancelar_assinatura(preapproval_id)
+    # Antes do `_registrar` de propósito: se o Mercado Pago não confirmou o
+    # cancelamento, gravar "cancelled" aqui deixaria o app dizendo que a
+    # renovação parou enquanto a cobrança continua saindo todo mês.
+    async with _provedor("cancelar a assinatura"):
+        await mercado_pago.cancelar_assinatura(preapproval_id)
     await _registrar(session, preapproval_id, "cancelled", None)
 
     # `_registrar` acabou de gravar `now() + 7 dias`, porque para ele `cancelled`
