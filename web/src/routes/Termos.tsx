@@ -1,7 +1,6 @@
-import { Link } from 'react-router-dom'
+import { Link } from "react-router-dom";
 
-import { NaoAfiliacao } from '@/components/Isencao'
-
+import { NaoAfiliacao } from "@/components/Isencao";
 
 /**
  * Versão registrada em `term_acceptances` a cada aceite.
@@ -9,8 +8,15 @@ import { NaoAfiliacao } from '@/components/Isencao'
  * Precisa bater com TERMOS_VERSAO no `api/.env`. Sempre que o texto mudar de
  * conteúdo — não de vírgula — suba a data: quem aceitou a versão anterior não
  * aceitou esta, e o registro de aceite existe justamente para provar o quê.
+ *
+ * **2026-08-22 subiu sem re-aceite, e isso é exceção declarada.** A mudança é
+ * integralmente favorável: conserta o cancelamento (o PRO passa a valer até o fim
+ * do ciclo pago, e não 7 dias) e separa os dois prazos de 7 dias que estavam se
+ * confundindo no §8. Ninguém perde direito. Alteração que só amplia direito vale
+ * contra quem se obriga sem novo aceite — o contrário não seria verdade, e a
+ * próxima mudança restritiva é que aciona o fluxo de re-aceite que o §10 promete.
  */
-const VERSAO = '2026-08-15'
+const VERSAO = "2026-08-22";
 
 /**
  * Canal do controlador para pedidos de LGPD. Caixa pessoal por enquanto: o
@@ -21,7 +27,7 @@ const VERSAO = '2026-08-15'
  * A troca do endereço morto por este não subiu a VERSAO de propósito: quem
  * aceitou não perdeu direito nenhum, ganhou um canal que responde.
  */
-const CONTATO = 'eduardowav@icloud.com'
+const CONTATO = "eduardowav@icloud.com";
 
 export default function Termos() {
   return (
@@ -103,15 +109,24 @@ export default function Termos() {
           compra é limite maior — nunca acesso a quem trocar com você.
           <Lista
             itens={[
-              'A cobrança é feita pelo Mercado Pago. Seus dados de pagamento ficam com eles; o TrocaTCG não vê nem guarda número de cartão.',
-              'A assinatura se renova sozinha ao fim de cada ciclo, mensal ou anual, até você cancelar.',
-              'Você cancela quando quiser, pelo próprio app, sem multa. O PRO continua valendo até o fim do período já pago.',
-              'Nos primeiros 7 dias você pode desistir e receber o valor de volta, por inteiro (art. 49 do Código de Defesa do Consumidor).',
-              'Se o preço mudar, avisamos antes, e o valor novo só vale a partir do ciclo seguinte.',
+              "A cobrança é feita pelo Mercado Pago. Seus dados de pagamento ficam com eles; o TrocaTCG não vê nem guarda número de cartão.",
+              "A assinatura se renova sozinha ao fim de cada ciclo, mensal ou anual, até você cancelar.",
+              "Você cancela quando quiser, pelo próprio app, sem multa e sem precisar falar com ninguém.",
+              "Cancelar interrompe a renovação e não corta o que você já pagou: o PRO continua valendo até o fim do ciclo pago. No plano anual, isso vale até o dia em que ele se renovaria — mesmo que você cancele no primeiro mês. Depois dessa data a conta volta ao FREE.",
+              "Como o serviço continua disponível até o fim do ciclo pago, não há devolução proporcional do valor já pago, fora do caso de arrependimento abaixo.",
+              "Se o preço mudar, avisamos antes, e o valor novo só vale a partir do ciclo seguinte.",
             ]}
           />
-          Se o pagamento falhar, você tem 7 dias com os limites do PRO para
-          resolver. Passados eles, a conta volta ao plano FREE e{' '}
+          <strong className="text-paper">Arrependimento.</strong> Nos primeiros
+          7 dias contados do pagamento você pode desistir da assinatura e
+          receber o valor de volta por inteiro, pelo mesmo meio em que pagou
+          (art. 49 do Código de Defesa do Consumidor). Nesse caso o PRO se
+          encerra junto com a devolução, e não vale até o fim do ciclo.{" "}
+          <strong className="text-paper">Pagamento que falha.</strong> Se uma
+          cobrança não for paga — cartão recusado, Pix não pago —, a conta segue
+          com os limites do PRO por 7 dias, tempo de resolver. Esse prazo é
+          outro, e nada tem a ver com os 7 dias de arrependimento acima. Em
+          qualquer um dos casos, quando a conta volta ao plano FREE{" "}
           <strong className="text-paper">nada é apagado</strong>: as ofertas que
           passam do limite saem do ar, continuam no seu acervo e você escolhe
           quais reativar.
@@ -133,7 +148,7 @@ export default function Termos() {
 
         <Secao titulo="11. Quem é o responsável">
           O TrocaTCG é o controlador dos seus dados. Para qualquer pedido sobre
-          privacidade, fale com{' '}
+          privacidade, fale com{" "}
           <a
             href={`mailto:${CONTATO}`}
             className="text-paper underline underline-offset-2"
@@ -146,13 +161,13 @@ export default function Termos() {
         <Secao titulo="12. Que dados guardamos">
           <Lista
             itens={[
-              'E-mail — para você entrar na conta.',
-              'Nome de exibição e @ — é como a comunidade te vê.',
-              'Telefone de WhatsApp — para combinarem a troca depois do aceite.',
-              'Suas listas de Ofereço e Procuro, com condição e acabamento.',
-              'Histórico de trocas e o resultado delas, que alimenta a reputação.',
-              'Data e IP de cada aceite destes termos, como comprovação legal — o do cadastro e o de antes de ver o contato de alguém, este último junto do identificador da troca.',
-              'Se você assinar o PRO: o identificador da assinatura no Mercado Pago, a situação dela e a data da próxima cobrança. Nada de cartão, conta ou CPF.',
+              "E-mail — para você entrar na conta.",
+              "Nome de exibição e @ — é como a comunidade te vê.",
+              "Telefone de WhatsApp — para combinarem a troca depois do aceite.",
+              "Suas listas de Ofereço e Procuro, com condição e acabamento.",
+              "Histórico de trocas e o resultado delas, que alimenta a reputação.",
+              "Data e IP de cada aceite destes termos, como comprovação legal — o do cadastro e o de antes de ver o contato de alguém, este último junto do identificador da troca.",
+              "Se você assinar o PRO: o identificador da assinatura no Mercado Pago, a situação dela e a data da próxima cobrança. Nada de cartão, conta ou CPF.",
             ]}
           />
           Não pedimos CPF, endereço, bairro nem localização, e não usamos
@@ -167,19 +182,18 @@ export default function Termos() {
 
         <Secao titulo="14. Quem vê o quê">
           Seu nome, @ e reputação são públicos, assim como suas listas — é o que
-          torna a troca possível. <strong className="text-paper">
-            Seu telefone não é público
-          </strong>{' '}
-          e só é mostrado à outra pessoa depois que as duas aceitam a mesma
-          troca. Não vendemos nem cedemos seus dados a terceiros.
+          torna a troca possível.{" "}
+          <strong className="text-paper">Seu telefone não é público</strong> e
+          só é mostrado à outra pessoa depois que as duas aceitam a mesma troca.
+          Não vendemos nem cedemos seus dados a terceiros.
         </Secao>
 
         <Secao titulo="15. Onde os dados ficam">
           Em servidores da Supabase, na região de São Paulo (Brasil). Quem
           processa o pagamento da assinatura é o Mercado Pago, sob a política de
           privacidade deles — o que sai daqui para lá é o seu e-mail, e o que
-          volta é a situação da assinatura. O envio de
-          e-mails de confirmação usa serviço de terceiro apenas para esse fim.
+          volta é a situação da assinatura. O envio de e-mails de confirmação
+          usa serviço de terceiro apenas para esse fim.
         </Secao>
 
         <Secao titulo="16. Por quanto tempo">
@@ -193,13 +207,13 @@ export default function Termos() {
           A LGPD te dá direito a confirmar o tratamento, acessar, corrigir,
           anonimizar, portar e apagar seus dados, além de revogar o
           consentimento. Nome, @ e telefone você edita direto no app. Para os
-          demais pedidos, escreva para{' '}
+          demais pedidos, escreva para{" "}
           <a
             href={`mailto:${CONTATO}`}
             className="text-paper underline underline-offset-2"
           >
             {CONTATO}
-          </a>{' '}
+          </a>{" "}
           — respondemos em até 15 dias.
         </Secao>
 
@@ -214,7 +228,7 @@ export default function Termos() {
         <NaoAfiliacao className="mt-2 border-t border-edge pt-6 text-muted" />
       </div>
     </div>
-  )
+  );
 }
 
 function Titulo({ children }: { children: React.ReactNode }) {
@@ -222,22 +236,22 @@ function Titulo({ children }: { children: React.ReactNode }) {
     <h2 className="mt-2 border-b border-edge pb-2 text-[20px] text-paper">
       {children}
     </h2>
-  )
+  );
 }
 
 function Secao({
   titulo,
   children,
 }: {
-  titulo: string
-  children: React.ReactNode
+  titulo: string;
+  children: React.ReactNode;
 }) {
   return (
     <section>
       <h3 className="text-[17px] text-paper">{titulo}</h3>
       <div className="mt-1.5 flex flex-col gap-2">{children}</div>
     </section>
-  )
+  );
 }
 
 function Lista({ itens }: { itens: string[] }) {
@@ -247,5 +261,5 @@ function Lista({ itens }: { itens: string[] }) {
         <li key={item}>{item}</li>
       ))}
     </ul>
-  )
+  );
 }

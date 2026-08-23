@@ -1,10 +1,16 @@
-import { useQuery } from '@tanstack/react-query'
-import { useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { toast } from 'sonner'
+import { useQuery } from "@tanstack/react-query";
+import { useCallback } from "react";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
-import { ApiError } from '@/lib/api'
-import { eLimiteDePlano, obterPlanos, type Planos } from '@/lib/planos'
+import { ApiError } from "@/lib/api";
+import {
+  eLimiteDePlano,
+  obterPlanos,
+  obterSituacao,
+  type Planos,
+  type SituacaoDoPlano,
+} from "@/lib/planos";
 
 /**
  * Os planos, com os limites vindos da API.
@@ -14,10 +20,10 @@ import { eLimiteDePlano, obterPlanos, type Planos } from '@/lib/planos'
  */
 export function usePlanos() {
   return useQuery<Planos>({
-    queryKey: ['planos'],
+    queryKey: ["planos"],
     queryFn: obterPlanos,
     staleTime: 60 * 60_000,
-  })
+  });
 }
 
 /**
@@ -36,22 +42,39 @@ export function usePlanos() {
  * Uso: `onError: (e) => avisar(e, 'Não foi possível cadastrar agora.')`
  */
 export function useAvisoDeErro() {
-  const navegar = useNavigate()
+  const navegar = useNavigate();
 
   return useCallback(
     (erro: unknown, generica: string) => {
       if (eLimiteDePlano(erro)) {
         toast.error(erro.message, {
-          action: { label: 'Ver planos', onClick: () => navegar('/planos') },
+          action: { label: "Ver planos", onClick: () => navegar("/planos") },
           // Mais tempo que o padrão: este toast pede uma decisão, e o de sempre
           // some antes de alguém terminar de ler a regra e resolver se quer.
           duration: 8000,
-        })
-        return
+        });
+        return;
       }
 
-      toast.error(erro instanceof ApiError ? erro.message : generica)
+      toast.error(erro instanceof ApiError ? erro.message : generica);
     },
     [navegar],
-  )
+  );
+}
+
+/**
+ * A assinatura desta pessoa, do lado do Mercado Pago.
+ *
+ * Separado do `usePlanos`: aquilo é tabela de preço, pública e quase imutável;
+ * isto é estado de conta, muda quando o webhook chega e não pode ficar em cache
+ * de uma hora. `staleTime` curto porque a volta do checkout é exatamente o
+ * momento em que a resposta velha estaria errada.
+ */
+export function useAssinatura(ligado = true) {
+  return useQuery<SituacaoDoPlano>({
+    queryKey: ["assinatura"],
+    queryFn: obterSituacao,
+    enabled: ligado,
+    staleTime: 30_000,
+  });
 }

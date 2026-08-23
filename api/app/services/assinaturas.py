@@ -8,9 +8,14 @@ não decide plano — ela mostra. Uma pessoa que chega à tela de sucesso do Mer
 Pago antes de a notificação chegar continua FREE por alguns segundos, e isso é
 correto: o dinheiro é que promove, não o redirecionamento.
 
-**A queda tem carência.** Assinatura que deixa de estar autorizada (cartão
-recusado, Pix não pago, cancelamento) não derruba ninguém na hora: são 7 dias com
-os limites do PRO, tempo de resolver o pagamento. Ver o item 10 da seção 16.
+**A queda tem carência — e cancelar não é queda.** Assinatura que deixa de estar
+autorizada por *falha de pagamento* (cartão recusado, Pix não pago) não derruba
+ninguém na hora: são 7 dias com os limites do PRO, tempo de resolver.
+
+Cancelamento voluntário é outro evento, e este módulo tratou os dois como um só
+até 2026-08-22 — ver o docstring de `cancelar`. Quem cancela mantém o PRO até o
+fim do ciclo que já pagou, porque o dinheiro daquele ciclo já entrou. Ver o item
+10 da seção 16.
 """
 
 import logging
@@ -137,26 +142,68 @@ async def situacao(session: AsyncSession, user_id: UUID) -> dict:
 
 
 async def cancelar(session: AsyncSession, user_id: UUID) -> None:
-    """Cancela a assinatura ativa. O PRO continua até o fim da carência.
+    """Cancela a renovação. **O PRO continua até o fim do ciclo já pago.**
 
-    Cortar na hora seria cobrar o mês inteiro e entregar até o dia do
-    cancelamento — o contrário do que a tela promete.
+    Corrigido em 2026-08-22, e o que estava aqui antes era um bug com dinheiro
+    dentro: o cancelamento abria a carência de 7 dias, que é regra pensada para
+    *falha de pagamento*. Para quem paga R$ 199,90 no anual e cancela no segundo
+    mês, isso retinha o valor de dez meses e cortava o serviço correspondente.
+
+    **Os dois eventos não são o mesmo, e o módulo os tratava como se fossem.**
+    Quando o pagamento falha, o dinheiro não entrou: os 7 dias são um favor, o app
+    entrega serviço não pago enquanto a pessoa resolve. Quando alguém cancela, o
+    dinheiro entrou por inteiro e referente ao ciclo todo — a pessoa não pediu
+    para parar de receber, pediu para não ser cobrada de novo.
+
+    E é o modelo que sustenta não haver devolução proporcional: não se devolve
+    porque **o serviço continua sendo prestado** até o fim do ciclo pago. Cortar o
+    acesso derrubaria essa justificativa e traria a devolução de volta.
+
+    Os Termos (§8) sempre disseram isto; era o código que discordava do contrato.
     """
-    preapproval_id = await session.scalar(
-        text("""
-            select preapproval_id from subscriptions
-            where user_id = :u and status <> 'cancelled'
-            order by criado_em desc limit 1
-        """),
-        {"u": str(user_id)},
+    linha = (
+        (
+            await session.execute(
+                text("""
+                    select preapproval_id, proxima_cobranca_em
+                    from subscriptions
+                    where user_id = :u and status <> 'cancelled'
+                    order by criado_em desc limit 1
+                """),
+                {"u": str(user_id)},
+            )
+        )
+        .mappings()
+        .first()
     )
-    if not preapproval_id:
+    if not linha:
         raise RegraNegocio(
             "SEM_ASSINATURA", "Não há assinatura ativa para cancelar.", status_code=404
         )
 
+    preapproval_id = linha["preapproval_id"]
     await mercado_pago.cancelar_assinatura(preapproval_id)
     await _registrar(session, preapproval_id, "cancelled", None)
+
+    # `_registrar` acabou de gravar `now() + 7 dias`, porque para ele `cancelled`
+    # e "pagamento falhou" são o mesmo evento. Para cancelamento voluntário não
+    # são, e esta linha corrige por cima — a ordem é proposital.
+    #
+    # Sem o `and plano_expira_em is null` que `_registrar` usa: aqui sobrescrever
+    # é o ponto, não o acidente.
+    await session.execute(
+        text("""
+            update profiles
+               set plano_expira_em = case
+                     when cast(:fim as timestamptz) > now()
+                       then cast(:fim as timestamptz)
+                     else coalesce(plano_expira_em, now() + interval '7 days')
+                   end
+             where id = cast(:u as uuid)
+               and plano = 'PRO'
+        """),
+        {"fim": _quando(linha["proxima_cobranca_em"]), "u": str(user_id)},
+    )
     await session.commit()
 
 

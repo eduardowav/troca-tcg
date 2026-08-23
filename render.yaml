@@ -97,7 +97,7 @@ services:
       # aceitou. O default do config.py acompanha os dois desde 2026-08-14 —
       # antes ele estava defasado e registraria uma versão que não existe.
       - key: TERMOS_VERSAO
-        value: '2026-08-15'
+        value: '2026-08-22'
 
       # As origens do PWA. **As duas ficam**, e isso não é indecisão: o endereço
       # do Render continua no ar depois que o domínio entra, e quem instalou o

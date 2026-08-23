@@ -96,6 +96,10 @@ async def cancelar(
     user_id: UUID = Depends(usuario_atual),
     session: AsyncSession = Depends(get_session),
 ) -> None:
-    """Cancela a renovação. O PRO fica até o fim da carência de 7 dias."""
+    """Cancela a renovação. O PRO fica até o fim do ciclo já pago.
+
+    Não é a carência de 7 dias — essa é para pagamento que falha. Ver o
+    docstring de `assinaturas.cancelar`, corrigido em 2026-08-22.
+    """
     _exigir_ligada()
     await assinaturas.cancelar(session, user_id)

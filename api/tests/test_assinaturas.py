@@ -546,6 +546,55 @@ async def test_sem_credencial_a_rota_recusa_com_503():
     assert mercado_pago.ativo() is bool(settings.MERCADO_PAGO_ACCESS_TOKEN)
 
 
+@pytest.mark.parametrize(
+    ("proxima", "espera_data"),
+    [
+        # Anual cancelado com 11 meses pela frente: o PRO vai até lá.
+        ("2027-07-22T12:00:00.000-04:00", True),
+        # Sem data conhecida: cai no piso conservador dos 7 dias.
+        (None, False),
+    ],
+)
+async def test_cancelar_mantem_o_pro_ate_o_fim_do_ciclo_pago(
+    monkeypatch, proxima, espera_data
+):
+    """Cancelar não é o mesmo que o pagamento falhar — corrigido em 2026-08-22.
+
+    O código abria a carência de 7 dias no cancelamento voluntário, que é regra
+    pensada para cartão recusado. Para quem paga R$ 199,90 no anual e cancela no
+    segundo mês, isso retinha o valor de dez meses e cortava o serviço
+    correspondente. Os Termos (§8) sempre disseram o contrário; o código é que
+    discordava do contrato.
+
+    O `case` do SQL é o que este teste fixa: com data futura conhecida, ela manda;
+    sem data, os 7 dias voltam como piso — não se sabe até quando está pago.
+    """
+    cancelados: list[str] = []
+
+    async def falso_cancelar(preapproval_id):
+        cancelados.append(preapproval_id)
+        return {"status": "cancelled"}
+
+    monkeypatch.setattr(mercado_pago, "cancelar_assinatura", falso_cancelar)
+
+    sessao = SessaoFalsa(
+        linha={"preapproval_id": "pp-1", "proxima_cobranca_em": proxima}
+    )
+    await assinaturas.cancelar(sessao, uuid4())  # type: ignore[arg-type]
+
+    assert cancelados == ["pp-1"]
+
+    # O UPDATE que sobrescreve a carência precisa existir e vir depois dela.
+    sobrescreve = [s for s in sessao.sqls if "plano_expira_em = case" in s]
+    assert sobrescreve, "o override do fim de ciclo não foi executado"
+
+    fim = [p["fim"] for p in sessao.params if "fim" in p][0]
+    if espera_data:
+        assert isinstance(fim, datetime) and fim.year == 2027
+    else:
+        assert fim is None
+
+
 async def test_recurso_inexistente_responde_200_e_nao_reenvia(monkeypatch):
     """404 do provedor é fim de linha: 200 com `desconhecido`, não 500.
 

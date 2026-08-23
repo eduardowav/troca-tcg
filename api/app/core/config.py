@@ -107,7 +107,18 @@ class Settings(BaseSettings):
     # é este valor que vai para `term_acceptances`, e um default defasado grava
     # o aceite de uma versão que ninguém leu. Subiu em 2026-08-14 com a cláusula
     # da assinatura, e em 2026-08-15 com a isenção antes de revelar o contato.
-    TERMOS_VERSAO: str = "2026-08-15"
+    #
+    # **2026-08-22 — e esta subiu sem re-aceite, por decisão do Eduardo.** O §10
+    # promete pedir o aceite de novo a cada versão, e não foi pedido: a mudança é
+    # integralmente favorável a quem usa. Ela conserta o cancelamento (o PRO passa
+    # a valer até o fim do ciclo pago, e não 7 dias) e separa dois prazos de 7 dias
+    # que estavam se confundindo na mesma seção. Ninguém perde direito; ganha-se o
+    # ciclo inteiro e clareza.
+    #
+    # Alteração que só amplia direito vale contra quem se obriga — que é o app —
+    # sem novo aceite. O re-aceite continua devendo, e o gatilho dele é a próxima
+    # mudança **restritiva**, não esta. Está na fila da seção 17.
+    TERMOS_VERSAO: str = "2026-08-22"
 
     # Monitoramento de erro (item 15 da seção 17). Vazio é o estado normal: sem
     # DSN o `core/monitoramento.py` não inicializa nada e o app sobe igual.
