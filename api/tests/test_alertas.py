@@ -72,12 +72,22 @@ async def test_pro_cria_alerta(monkeypatch):
     assert sessao.commits == 1
 
 
-async def test_portao_aberto_enquanto_ninguem_cobra():
-    """Quebra de propósito no dia da virada, como os outros dois."""
-    assert limites.COBRANCA_ATIVA is False
+async def test_portao_fechado_agora_que_a_cobranca_esta_ligada():
+    """Invertido em 2026-08-22, quando `COBRANCA_ATIVA` virou para o lançamento.
+
+    Ele afirmava o contrário — que o FREE passava, porque `plano_vigente()` devolvia
+    PRO para todo mundo enquanto ninguém pagava. Quebrou de propósito no dia da
+    virada, que era o serviço que ele prestava.
+
+    Agora prova a outra metade da mesma regra: alerta de carta é do PRO, e o FREE
+    é recusado sem tocar no banco.
+    """
+    assert limites.COBRANCA_ATIVA is True
     sessao = SessaoFalsa("FREE")
-    await alertas.criar(sessao, uuid4(), uuid4())  # type: ignore[arg-type]
-    assert sessao.commits == 1
+    with pytest.raises(RegraNegocio) as e:
+        await alertas.criar(sessao, uuid4(), uuid4())  # type: ignore[arg-type]
+    assert e.value.status_code == 402
+    assert sessao.commits == 0
 
 
 async def test_criar_e_idempotente():

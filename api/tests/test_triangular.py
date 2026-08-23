@@ -135,10 +135,15 @@ def test_triangular_e_do_pro_quando_a_cobranca_ligar(monkeypatch):
     assert triangular._planos_com_triangular() == ["PRO"]
 
 
-def test_portao_aberto_enquanto_ninguem_cobra():
-    """Quebra de propósito no dia da virada, como os outros da Fase A."""
-    assert limites.COBRANCA_ATIVA is False
-    assert set(triangular._planos_com_triangular()) == {"FREE", "PRO"}
+def test_portao_fechado_agora_que_a_cobranca_esta_ligada():
+    """Invertido em 2026-08-22, quando `COBRANCA_ATIVA` virou para o lançamento.
+
+    Ele afirmava que os dois planos entravam no triangular, porque
+    `plano_vigente()` devolvia PRO para todo mundo. Agora só o PRO entra — que é
+    o que a tabela de planos promete vender.
+    """
+    assert limites.COBRANCA_ATIVA is True
+    assert set(triangular._planos_com_triangular()) == {"PRO"}
 
 
 # ------------------------------------------------------------------ desligado

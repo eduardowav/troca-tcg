@@ -431,18 +431,25 @@ async def test_preapproval_desconhecido_nao_mexe_em_plano(monkeypatch):
 # ------------------------------------------------------------------ o interruptor
 
 
-def test_rotas_de_assinatura_estao_desligadas():
-    """Enquanto `COBRANCA_ATIVA` for falso, `plano_vigente()` devolve PRO para
-    todo mundo — vender assinatura nesse estado seria cobrar pelo que já está na
-    mão. Este teste quebra de propósito no dia da virada."""
-    assert COBRANCA_ATIVA is False
+def test_rotas_de_assinatura_estao_ligadas():
+    """Invertido em 2026-08-22, quando `COBRANCA_ATIVA` virou para o lançamento.
+
+    Ele afirmava que a rota recusava: vender assinatura enquanto `plano_vigente()`
+    dava PRO a todo mundo seria cobrar pelo que já estava na mão.
+
+    Agora o portão de cobrança está aberto e o que barra é a sessão. Continua
+    valendo o essencial — **sem credencial válida ninguém cria assinatura** —, e o
+    503 permanece possível porque `_exigir_ligada` ainda recusa se o Mercado Pago
+    não estiver configurado no ambiente.
+    """
+    assert COBRANCA_ATIVA is True
 
     resp = TestClient(app).post(
         "/v1/me/assinatura",
         json={"periodo": "mensal"},
         headers={"Authorization": "Bearer nao-importa"},
     )
-    # 401 (sessão) ou 503 (desligada) — o que não pode é 201.
+    # 401 (sessão inválida) ou 503 (provedor sem credencial). Nunca 201.
     assert resp.status_code in (401, 503)
 
 

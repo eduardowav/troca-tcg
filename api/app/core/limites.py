@@ -19,10 +19,26 @@ Ver seção 16 da doc.
 from dataclasses import dataclass
 from decimal import Decimal
 
-#: Vira True junto com a Fase C (Mercado Pago, webhook, tela de planos). Até lá,
-#: os limites de plano estão escritos e desligados — ligar é trocar esta linha,
-#: não refatorar.
-COBRANCA_ATIVA = False
+#: **Ligada em 2026-08-22, para o lançamento.** Ficou falsa de julho até aqui, e
+#: durante todo esse tempo `plano_vigente()` devolveu PRO para todo mundo — os
+#: limites existiam escritos e não valiam para ninguém.
+#:
+#: A decisão foi do Eduardo, contra uma ressalva minha que vale registrar porque
+#: ela pode voltar: com a cobrança ligada, o teto de 20 ofertas do FREE passa a
+#: valer **inclusive no onboarding**, já que `criar_bulk` chama
+#: `_checar_teto_de_ofertas`. Quem colar uma lista maior que 20 no cadastro tem o
+#: lote inteiro recusado com 402, e isso aconteceria na frente de quem estivesse
+#: ajudando, no dia do evento.
+#:
+#: O que derrubou a ressalva foi conhecimento da comunidade, que o código não
+#: tem: ninguém chega com lista de 60 cartas pronta, e o cadastro típico é de 10
+#: a 15. É o mesmo número que o comentário do FREE abaixo já usava para escolher
+#: o teto — "raramente passa de dez cartas". A ressalva estava superdimensionada.
+#:
+#: **O sintoma a vigiar no dia**, se aparecer: 402 com código `LIMITE_DE_OFERTAS`
+#: no cadastro de alguém. Se acontecer mais de uma ou duas vezes, o conserto é
+#: subir `max_ofertas` do FREE — uma linha logo abaixo — e não desligar isto.
+COBRANCA_ATIVA = True
 
 
 @dataclass(frozen=True)

@@ -9,6 +9,7 @@ from pydantic import ValidationError
 from sqlalchemy.exc import IntegrityError
 
 from app.core import limites
+from app.core.errors import RegraNegocio
 from app.main import app
 from app.schemas.listing import AnuncioAtualizar
 from app.services import listings
@@ -233,15 +234,25 @@ async def test_teto_deixa_passar_quem_esta_no_limite(monkeypatch):
     await listings._checar_teto_de_ofertas(sessao, uuid4())  # type: ignore[arg-type]
 
 
-async def test_portao_fechado_nao_bloqueia_ninguem():
-    """Enquanto não há como pagar, bloquear é pedágio: a regra existe desligada.
+async def test_teto_do_free_passou_a_valer():
+    """Invertido em 2026-08-22, quando `COBRANCA_ATIVA` virou para o lançamento.
 
-    Este teste é o que quebra no dia em que `COBRANCA_ATIVA` virar True — de
-    propósito, para a virada ser uma decisão e não um efeito colateral.
+    Ele afirmava que ninguém era bloqueado — enquanto não havia como pagar,
+    bloquear era pedágio. Quebrar no dia da virada era o serviço que ele prestava.
+
+    Agora existe como pagar, e o teto vale. **É o portão que mais aparece no dia
+    a dia**, porque `criar_bulk` também passa por aqui: quem colar mais de 20
+    ofertas no onboarding leva 402. Isso foi pesado e aceito na virada — ver o
+    comentário de `COBRANCA_ATIVA` —, e o conserto, se doer, é subir
+    `max_ofertas` do FREE, não desligar a cobrança.
     """
-    assert limites.COBRANCA_ATIVA is False
+    assert limites.COBRANCA_ATIVA is True
     sessao = _SessaoDeUmaLinha({"plano": "FREE", "ofertas": 999})
-    await listings._checar_teto_de_ofertas(sessao, uuid4())  # type: ignore[arg-type]
+    with pytest.raises(RegraNegocio) as e:
+        await listings._checar_teto_de_ofertas(sessao, uuid4())  # type: ignore[arg-type]
+    # 409 e não 402: o teto de ofertas é conflito com o estado da conta, não
+    # "pagamento requerido". O 402 é do `RECURSO_DO_PRO`, que é outro portão.
+    assert e.value.status_code == 409
 
 
 async def test_pro_anuncia_sem_limite(monkeypatch):

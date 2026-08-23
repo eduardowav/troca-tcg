@@ -90,18 +90,26 @@ async def test_pro_cola_lista(monkeypatch):
     assert sessao.commits == 1
 
 
-async def test_portao_aberto_enquanto_ninguem_cobra(monkeypatch):
-    """Antes da cobrança existir, todo mundo é PRO — é o desenho da seção 16.
+async def test_portao_fechado_agora_que_a_cobranca_esta_ligada(monkeypatch):
+    """Invertido em 2026-08-22, quando `COBRANCA_ATIVA` virou para o lançamento.
 
-    Este teste quebra de propósito no dia em que `COBRANCA_ATIVA` virar, junto
-    do que já existe para o teto de ofertas: virar a chave tem de ser decisão,
-    nunca efeito colateral.
+    Ele afirmava que o FREE passava, porque `plano_vigente()` devolvia PRO para
+    todo mundo enquanto ninguém pagava — e quebrar no dia da virada era o serviço
+    que ele prestava: ligar a chave tinha de ser decisão, nunca efeito colateral.
+
+    Agora prova a outra metade: colar a lista de uma vez é do PRO, e o FREE leva
+    402 com o código que a tela sabe traduzir. **O onboarding não passa por aqui**
+    — `criar_bulk` é outro caminho, e travá-lo por plano fecharia a porta da
+    frente do app.
     """
-    assert limites.COBRANCA_ATIVA is False
+    assert limites.COBRANCA_ATIVA is True
     await sem_acabamentos(monkeypatch)
 
     sessao = SessaoFalsa("FREE")
-    assert await listings.importar_lote(sessao, uuid4(), [item()]) == 1  # type: ignore[arg-type]
+    with pytest.raises(RegraNegocio) as e:
+        await listings.importar_lote(sessao, uuid4(), [item()])  # type: ignore[arg-type]
+    assert e.value.codigo == "RECURSO_DO_PRO"
+    assert e.value.status_code == 402
 
 
 # ------------------------------------------------------------------ o que ele não fecha
