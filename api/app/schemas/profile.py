@@ -106,6 +106,16 @@ class PerfilPublicoOut(BaseModel):
     # Aparece como contador próprio — o custo da desistência é transparência.
     trocas_desistidas: int = 0
     reputacao: int | None = None
+    #: Selo de reconhecimento, ou nulo. Hoje só existe `FOUNDER`.
+    #:
+    #: **Público de propósito** — é a razão de ele existir. Um selo que só o dono
+    #: enxerga não reconhece ninguém; o que ele faz é dizer a quem vai trocar com
+    #: essa pessoa que ela estava aqui antes de haver app.
+    #:
+    #: Não é plano e não concede nada: quem manda no limite é `profiles.plano`.
+    #: Ver `db/schema/37_founder.sql` para por que isto não virou `plano =
+    #: 'FOUNDER'`.
+    selo: str | None = None
     #: `datetime`, nunca `str` — o `::text` do Postgres não é ISO 8601 e o Safari
     #: do iOS devolve Invalid Date. A história completa está em schemas/match.py.
     desde: datetime

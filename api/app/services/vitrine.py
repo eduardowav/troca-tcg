@@ -216,7 +216,7 @@ async def feed(
 _QUEM_TEM = text("""
     select l.id::text as listing_id, l.card_id::text as card_id,
            l.condicao::text as condicao, l.finish_id, l.quantidade, l.idioma,
-           p.username, p.nome_exibicao,
+           p.username, p.nome_exibicao, p.selo,
            p.trocas_concluidas, p.trocas_furadas, p.trocas_desistidas
     from listings l
     join profiles p on p.id = l.user_id

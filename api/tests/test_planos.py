@@ -71,3 +71,41 @@ def test_o_pro_nao_e_pior_que_o_free_em_nada():
     assert pro.cadastro_em_massa >= free.cadastro_em_massa
     assert pro.triangular >= free.triangular
     assert pro.alerta_carta >= free.alerta_carta
+
+
+# --------------------------------------------------------------------------
+# O selo de perfil (2026-08-23) — e a fronteira que ele não pode cruzar
+# --------------------------------------------------------------------------
+
+
+def test_selo_nao_e_plano():
+    """`FOUNDER` é identidade, e não pode virar um terceiro conjunto de limites.
+
+    O pedido nasceu como "um plano novo, FOUNDER". Virou selo justamente porque
+    os limites seriam idênticos aos do PRO — e `36_parceiro.sql` já havia
+    descartado um `plano = 'PARCEIRO'` pelo mesmo motivo, um dia antes.
+
+    Este teste é o que impede a regressão silenciosa: no dia em que alguém
+    acrescentar `"FOUNDER"` a `PLANOS` para "ficar completo", a rota passa a
+    anunciar um plano que ninguém pode comprar e a tela de planos ganha uma
+    terceira coluna. Quem quiser mesmo fazer isso vai ter de apagar este teste,
+    que é o ponto: a decisão fica visível.
+    """
+    assert set(PLANOS) == {"FREE", "PRO"}
+    assert "FOUNDER" not in _corpo()["planos"]
+
+
+def test_selo_sai_no_perfil_publico():
+    """O selo é público — é a razão de ele existir.
+
+    Um selo que só o dono enxerga não reconhece ninguém. A afirmação é sobre o
+    **schema**, não sobre uma consulta: é `PerfilPublicoOut` quem decide o que
+    terceiros veem, e o campo estar nele é o que faz o selo aparecer no perfil
+    de outra pessoa, na lista de trocas e na vitrine.
+    """
+    from app.schemas.profile import PerfilPublicoOut
+
+    assert "selo" in PerfilPublicoOut.model_fields
+    # Nulo por padrão: a esmagadora maioria não tem selo, e um default obrigatório
+    # forçaria toda consulta de perfil a lembrar de trazer a coluna.
+    assert PerfilPublicoOut.model_fields["selo"].default is None

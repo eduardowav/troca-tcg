@@ -661,7 +661,7 @@ async def _participantes_por_match(
         return {}
 
     colunas = (
-        "p.id::text as user_id, p.username, p.nome_exibicao, "
+        "p.id::text as user_id, p.username, p.nome_exibicao, p.selo, "
         "p.trocas_concluidas, p.trocas_furadas, p.trocas_desistidas, "
         "mp.aceitou, mp.confirmou_conclusao"
     )
@@ -693,6 +693,7 @@ async def _participantes_por_match(
                 user_id=r["user_id"],
                 username=r["username"],
                 nome_exibicao=r["nome_exibicao"],
+                selo=r["selo"],
                 trocas_concluidas=r["trocas_concluidas"],
                 trocas_furadas=r["trocas_furadas"],
                 trocas_desistidas=r["trocas_desistidas"],

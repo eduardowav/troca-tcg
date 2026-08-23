@@ -26,6 +26,12 @@ class ParticipanteResumo(BaseModel):
     user_id: str
     username: str
     nome_exibicao: str
+    #: Selo de reconhecimento, ou nulo. Ver `db/schema/37_founder.sql`.
+    #:
+    #: Aparece aqui, e não só no perfil, porque é aqui que se decide encontrar
+    #: alguém — o selo é sobre a pessoa, e vale onde a pessoa é avaliada. Não é
+    #: plano e não concede nada.
+    selo: str | None = None
     trocas_concluidas: int = 0
     trocas_furadas: int = 0
     # Desistência declarada não é furo e fica fora da razão da reputação — mas

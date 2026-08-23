@@ -4,6 +4,7 @@ import { Link, useParams } from 'react-router-dom'
 import { Cartela, IconeEstrela } from '@/components/brutal/Pecas'
 import { AvisarQuandoAparecer } from '@/components/carta/AvisarQuandoAparecer'
 import { CartaThumb } from '@/components/carta/CartaThumb'
+import { SeloDaPessoa } from '@/components/perfil/SeloDaPessoa'
 import { estiloBotao } from '@/components/ui/Button'
 import { useAcabamentoPorId } from '@/hooks/useAcabamentos'
 import { useCartasPorId } from '@/hooks/useAnuncios'
@@ -134,12 +135,15 @@ function LinhaDeOferta({ oferta }: { oferta: OfertaNaVitrine }) {
       </span>
 
       <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <Link
-          to={`/u/${oferta.username}`}
-          className="truncate font-titulo text-[15px] font-bold text-tinta underline underline-offset-2"
-        >
-          @{oferta.username}
-        </Link>
+        <span className="flex min-w-0 items-center gap-1.5">
+          <Link
+            to={`/u/${oferta.username}`}
+            className="truncate font-titulo text-[15px] font-bold text-tinta underline underline-offset-2"
+          >
+            @{oferta.username}
+          </Link>
+          <SeloDaPessoa selo={oferta.selo} />
+        </span>
         {reputacao && (
           <span className="flex items-center gap-1">
             <IconeEstrela className="size-3 shrink-0 text-azul" />

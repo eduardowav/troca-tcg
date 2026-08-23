@@ -11,6 +11,7 @@ import {
   ParDeCartas,
   Selo,
 } from '@/components/brutal/Pecas'
+import { SeloDaPessoa } from '@/components/perfil/SeloDaPessoa'
 import { IconeTroca } from '@/components/ui/Icone'
 import { Falha, motivoDoErro } from '@/components/Falha'
 import { useAnuncios, useCartasPorId, useProcuradas } from '@/hooks/useAnuncios'
@@ -137,8 +138,11 @@ function CartaoMatch({
           </span>
 
           <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-            <span className="truncate font-titulo text-[15px] font-bold text-tinta">
-              @{outro?.username ?? 'alguém'}
+            <span className="flex min-w-0 items-center gap-1.5">
+              <span className="truncate font-titulo text-[15px] font-bold text-tinta">
+                @{outro?.username ?? 'alguém'}
+              </span>
+              <SeloDaPessoa selo={outro?.selo} />
             </span>
             {reputacao && (
               <span className="flex items-center gap-1">

@@ -13,6 +13,8 @@ export interface ParticipanteMatch {
   user_id: string
   username: string
   nome_exibicao: string
+  /** Selo de reconhecimento, ou nulo. Ver `Selo.tsx`. */
+  selo?: string | null
   trocas_concluidas: number
   trocas_furadas: number
   /** Desistências declaradas. Não são furo, mas são ditas. */

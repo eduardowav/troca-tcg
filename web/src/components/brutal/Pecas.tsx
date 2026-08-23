@@ -543,13 +543,19 @@ export function Selo({
   tom = 'neutro',
 }: {
   children: ReactNode
-  tom?: 'neutro' | 'acao'
+  //: `marca` é o âmbar chapado, e entrou em 2026-08-23 com o selo de perfil.
+  //: Mesma escolha da `SeloRaridade` de topo: o amarelo da marca só existe como
+  //: área — escrito, dá 1,92:1 —, e é o que faz uma etiqueta se ler como
+  //: prêmio em vez de estado. Use com parcimônia: se tudo é prêmio, nada é.
+  tom?: 'neutro' | 'acao' | 'marca'
 }) {
   return (
     <span
       className={cn(
         'shrink-0 rounded-full border-2 border-tinta px-2.5 py-1 font-dado text-[11px] font-bold uppercase whitespace-nowrap',
-        tom === 'acao' ? 'bg-azul text-azul-tinta' : 'bg-cartela text-tinta',
+        tom === 'acao' && 'bg-azul text-azul-tinta',
+        tom === 'marca' && 'bg-ambar-marca text-ambar-tinta',
+        tom === 'neutro' && 'bg-cartela text-tinta',
       )}
     >
       {children}

@@ -57,6 +57,8 @@ class OfertaNaVitrine(BaseModel):
     card_id: str
     username: str
     nome_exibicao: str
+    #: Selo de reconhecimento de quem anuncia, ou nulo. Ver `37_founder.sql`.
+    selo: str | None = None
     condicao: str
     finish_id: int
     quantidade: int

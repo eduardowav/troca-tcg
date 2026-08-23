@@ -37,6 +37,8 @@ export interface OfertaNaVitrine {
   card_id: string
   username: string
   nome_exibicao: string
+  /** Selo de reconhecimento de quem anuncia, ou nulo. Ver `Selo.tsx`. */
+  selo?: string | null
   condicao: Condicao
   finish_id: number
   quantidade: number

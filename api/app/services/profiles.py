@@ -23,9 +23,12 @@ from app.services import assinaturas
 # O que qualquer pessoa logada pode ver. Sem contato_visivel, sem plano e sem
 # onboarding_ok: contato tem regra própria (só após aceite mútuo), e os outros
 # dois são estado interno da conta, não informação sobre quem é a pessoa.
+# `selo` está entre as públicas de propósito, e é a única coisa aqui que não
+# descreve comportamento: é reconhecimento, e reconhecimento que só o dono vê não
+# reconhece. Ver `db/schema/37_founder.sql`.
 _COLUNAS_PUBLICAS = """
   id::text, username, nome_exibicao, cidade, bairro, avatar_url, bio,
-  trocas_concluidas, trocas_furadas, trocas_desistidas, criado_em as desde
+  trocas_concluidas, trocas_furadas, trocas_desistidas, selo, criado_em as desde
 """
 
 # contato_visivel entra aqui porque estas colunas só alimentam o PerfilOut, que

@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 
 import { IconeEstrela } from '@/components/brutal/Pecas'
+import { SeloDaPessoa } from '@/components/perfil/SeloDaPessoa'
 import { cn } from '@/lib/cn'
 import { membroDesde, type PerfilPublico } from '@/lib/perfil'
 
@@ -58,9 +59,15 @@ export function FichaPerfil({
         )}
 
         <div className="flex min-w-0 flex-col gap-1">
-          <p className="truncate font-titulo text-[22px] leading-none font-black text-tinta">
-            @{perfil.username}
-          </p>
+          {/* O @ e o selo na mesma linha: o selo qualifica o nome, e separado
+              dele viraria enfeite solto no card. `min-w-0` com `truncate` no
+              texto mantém o corte no @ longo em vez de espremer o selo. */}
+          <span className="flex min-w-0 items-center gap-2">
+            <p className="truncate font-titulo text-[22px] leading-none font-black text-tinta">
+              @{perfil.username}
+            </p>
+            <SeloDaPessoa selo={perfil.selo} />
+          </span>
           {desde && (
             <p className="truncate font-dado text-[12px] text-apagado">
               Membro desde {desde}

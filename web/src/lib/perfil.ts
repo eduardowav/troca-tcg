@@ -21,6 +21,13 @@ export interface PerfilPublico {
   /** Desistências declaradas. Fora da razão da reputação — não são furo. */
   trocas_desistidas?: number
   reputacao: number | null
+  /**
+   * Selo de reconhecimento, ou nulo. Hoje só existe `FOUNDER`.
+   *
+   * Público de propósito — um selo que só o dono vê não reconhece ninguém.
+   * Não é plano e não libera nada: quem manda no limite é `plano`.
+   */
+  selo?: string | null
   /** Quando a conta foi criada, em ISO 8601. */
   desde: string
 }
