@@ -662,7 +662,7 @@ async def _participantes_por_match(
 
     colunas = (
         "p.id::text as user_id, p.username, p.nome_exibicao, p.selo, "
-        f"{profiles.PRO_PUBLICO}, "
+        f"{profiles.pro_publico()}, "
         "p.trocas_concluidas, p.trocas_furadas, p.trocas_desistidas, "
         "mp.aceitou, mp.confirmou_conclusao"
     )

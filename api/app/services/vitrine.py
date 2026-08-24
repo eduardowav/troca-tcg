@@ -21,7 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import RegraNegocio
 from app.schemas.vitrine import CartaDoAcervo, CartaNaVitrine, OfertaNaVitrine
-from app.services.profiles import PRO_PUBLICO
+from app.services.profiles import pro_publico
 
 #: Cartas por página do feed. O mesmo 24 da busca de catálogo
 #: (`buscar_cartas`, db/schema/13) — as duas telas são a mesma grade.
@@ -217,7 +217,7 @@ async def feed(
 _QUEM_TEM = text(f"""
     select l.id::text as listing_id, l.card_id::text as card_id,
            l.condicao::text as condicao, l.finish_id, l.quantidade, l.idioma,
-           p.username, p.nome_exibicao, p.selo, {PRO_PUBLICO},
+           p.username, p.nome_exibicao, p.selo, {pro_publico()},
            p.trocas_concluidas, p.trocas_furadas, p.trocas_desistidas
     from listings l
     join profiles p on p.id = l.user_id

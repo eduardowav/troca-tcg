@@ -120,14 +120,42 @@ def test_o_pro_e_publico_e_derivado_nunca_guardado_como_selo():
 
 
 def test_uma_fonte_so_para_o_pro_publico():
-    """Três consultas alimentam o selo, e um `p.plano = 'PRO'` copiado em cada
-    uma é como a vitrine e o perfil passam a discordar sobre a mesma pessoa."""
+    """Três consultas alimentam o selo, e um `plano = 'PRO'` copiado em cada uma
+    é como a vitrine e o perfil passam a discordar sobre a mesma pessoa."""
     from app.services import matching, vitrine
-    from app.services.profiles import _COLUNAS_PUBLICAS, PRO_PUBLICO
+    from app.services.profiles import _COLUNAS_PUBLICAS, pro_publico
 
-    assert PRO_PUBLICO in _COLUNAS_PUBLICAS
-    assert PRO_PUBLICO in str(vitrine._QUEM_TEM)
-    assert matching.profiles.PRO_PUBLICO is PRO_PUBLICO
+    assert pro_publico("") in _COLUNAS_PUBLICAS
+    assert pro_publico() in str(vitrine._QUEM_TEM)
+    assert matching.profiles.pro_publico is pro_publico
+
+
+def test_o_alias_de_cada_consulta_bate_com_o_from():
+    """O 500 de 2026-08-24, virado teste.
+
+    `pro_publico` era constante com `p.` chumbado. Funciona onde há `join
+    profiles p`; em `_COLUNAS_PUBLICAS`, cuja consulta é `from profiles` sem
+    alias, o Postgres respondeu `missing FROM-clause entry for table "p"` — 500
+    em toda leitura de perfil, para todo mundo logado, e o health continuou 200
+    porque não toca em perfil.
+
+    **Nenhum teste pegou porque todos dublam a sessão**, e um dublê aceita SQL
+    que o banco recusa. Este não roda SQL, mas prende a regra que o erro
+    violou: coluna com prefixo `p.` só pode existir onde a consulta declara
+    esse alias.
+    """
+    from app.services import vitrine
+    from app.services.profiles import _COLUNAS, _COLUNAS_PUBLICAS
+
+    # As duas consultas de perfil são `from profiles` sem alias — nenhuma coluna
+    # delas pode vir com prefixo de tabela.
+    for colunas in (_COLUNAS_PUBLICAS, _COLUNAS):
+        assert "p." not in colunas, colunas
+
+    # A da vitrine tem, e declara.
+    consulta = str(vitrine._QUEM_TEM)
+    assert "join profiles p" in consulta
+    assert "(p.plano = 'PRO') as pro" in consulta
 
 
 def test_selo_sai_no_perfil_publico():

@@ -19,10 +19,27 @@ from app.schemas.profile import (
     PerfilPublicoOut,
 )
 
-#: "Esta pessoa tem o PRO?", como as consultas públicas o calculam. Uma
-#: constante e não três cópias: três `p.plano = 'PRO'` espalhados é como a
-#: vitrine e o perfil passam a discordar sobre a mesma pessoa.
-PRO_PUBLICO = "(p.plano = 'PRO') as pro"
+
+def pro_publico(prefixo: str = "p.") -> str:
+    """ "Esta pessoa tem o PRO?", como as consultas públicas o calculam.
+
+    Uma fonte e não três cópias: três `plano = 'PRO'` espalhados por perfil,
+    matching e vitrine é como as três telas passam a discordar sobre a mesma
+    pessoa.
+
+    **É função e não constante por causa do alias, e isso custou um 500 em
+    produção em 2026-08-24.** Era `"(p.plano = 'PRO') as pro"` chumbado. Funciona
+    em `matching` e `vitrine`, que fazem `join profiles p`; quebra aqui, onde a
+    consulta é `from profiles` sem alias — `missing FROM-clause entry for table
+    "p"`, em toda leitura de perfil, para todo mundo logado.
+
+    Nenhum teste pegou porque todos dublam a sessão: um dublê aceita SQL que o
+    Postgres recusa. É a terceira vez que esta classe de erro passa por aqui —
+    ver `mercado_pago.criar_assinatura` (22/08) e `_quando` (22/08). O que pega
+    é consulta rodada contra banco de verdade.
+    """
+    return f"({prefixo}plano = 'PRO') as pro"
+
 
 # O que qualquer pessoa logada pode ver. Sem contato_visivel, sem plano e sem
 # onboarding_ok: contato tem regra própria (só após aceite mútuo), e os outros
@@ -40,7 +57,7 @@ PRO_PUBLICO = "(p.plano = 'PRO') as pro"
 _COLUNAS_PUBLICAS = f"""
   id::text, username, nome_exibicao, cidade, bairro, avatar_url, bio,
   trocas_concluidas, trocas_furadas, trocas_desistidas, selo,
-  {PRO_PUBLICO}, criado_em as desde
+  {pro_publico("")}, criado_em as desde
 """
 
 # contato_visivel entra aqui porque estas colunas só alimentam o PerfilOut, que
