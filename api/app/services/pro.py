@@ -173,12 +173,21 @@ async def comprar(session: AsyncSession, user_id: UUID, periodo: str) -> dict:
     para a mesma compra na mão da mesma pessoa — e o Pix não pergunta se já foi
     pago antes de aceitar o segundo.
 
-    O reaproveitamento vale mesmo que a pessoa peça outro período: quem tem um
-    QR mensal vivo e clica no anual recebe o mensal de volta. É o
-    comportamento menos ruim dos dois — o outro é cancelar a cobrança anterior,
-    e uma cobrança cancelada que já foi paga nesse meio tempo é dinheiro que
-    entrou sem nada para creditar. A folha diz qual período está pendente, e
-    trinta minutos depois o QR morre sozinho.
+    **Reaproveita só quando o período é o mesmo.** Pedir outro período troca a
+    cobrança: a anterior é cancelada no Mercado Pago e uma nova nasce.
+
+    Isto era o contrário até 2026-08-24, e o Eduardo achou o defeito usando o
+    app: gerou o mensal, clicou no anual e recebeu o mensal de volta. Quem toca
+    no plano errado ficava trinta minutos preso a ele. O argumento que sustentava
+    o desenho antigo — "cancelar uma cobrança que talvez já tenha sido paga é
+    dinheiro entrando sem nada para creditar" — não se sustenta: **o Mercado Pago
+    recusa cancelar pagamento aprovado**. Cancelamento que passa é prova de que o
+    dinheiro não entrou, e não há corrida a perder.
+
+    Quando o cancelamento falha, a cobrança antiga volta como estava. É o
+    caminho seguro: pode ser que ela tenha acabado de ser paga, e nesse caso
+    gerar a segunda seria pedir para pagar duas vezes. Quem resolve é o webhook,
+    segundos depois.
     """
     if periodo not in mercado_pago.PERIODOS:
         raise RegraNegocio(
@@ -190,7 +199,13 @@ async def comprar(session: AsyncSession, user_id: UUID, periodo: str) -> dict:
     viva = (
         (await session.execute(_COBRANCA_VIVA, {"u": str(user_id)})).mappings().first()
     )
-    if viva:
+    if viva and viva["periodo"] == periodo:
+        return {**dict(viva), "reaproveitada": True}
+
+    if viva and not await _trocar_de_periodo(session, viva):
+        # Não deu para matar a anterior — provavelmente porque acabou de ser
+        # paga. Devolver a que existe é o único caminho que não arrisca uma
+        # segunda cobrança viva.
         return {**dict(viva), "reaproveitada": True}
 
     valor = PRECOS[periodo]
@@ -252,6 +267,41 @@ async def comprar(session: AsyncSession, user_id: UUID, periodo: str) -> dict:
     await session.commit()
 
     return {**dict(linha or {}), "reaproveitada": False}
+
+
+async def _trocar_de_periodo(session: AsyncSession, viva: dict) -> bool:
+    """Mata a cobrança pendente para dar lugar a outra. Devolve se conseguiu.
+
+    **A recusa do provedor é a trava, e é ela que torna isto seguro.** O Mercado
+    Pago não cancela pagamento aprovado: se a chamada passa, ninguém pagou. Se
+    ela falha, o motivo mais provável é que alguém acabou de pagar — e aí a
+    resposta certa é não gerar cobrança nenhuma, deixar o webhook creditar, e
+    devolver a que existe.
+
+    Não levanta. Falar com o provedor pode não dar certo por rede também, e
+    nesse caso o resultado desejado é o mesmo: fique com a cobrança que já
+    existe. Quem chama decide o que mostrar.
+    """
+    try:
+        await mercado_pago.cancelar_pagamento(viva["payment_id"])
+    except Exception:
+        logger.warning(
+            "[pro] não deu para cancelar %s ao trocar de período",
+            viva["payment_id"],
+            exc_info=True,
+        )
+        return False
+
+    await session.execute(
+        text("""
+            update pro_pagamentos
+               set status = 'cancelled', atualizado_em = now()
+             where payment_id = :p and status = 'pending'
+        """),
+        {"p": viva["payment_id"]},
+    )
+    logger.info("[pro] cobrança %s cancelada para troca de período", viva["payment_id"])
+    return True
 
 
 async def situacao(session: AsyncSession, user_id: UUID) -> dict:

@@ -270,6 +270,18 @@ async def buscar_pagamento(payment_id: str) -> dict[str, Any]:
     return await _chamar("GET", f"/v1/payments/{payment_id}")
 
 
+async def cancelar_pagamento(payment_id: str) -> dict[str, Any]:
+    """Mata uma cobrança Pix pendente. **Só funciona se ninguém pagou.**
+
+    É essa recusa que torna a operação segura, e é por isso que ela existe: o
+    Mercado Pago responde 400 para cancelamento de pagamento já aprovado. Logo,
+    cancelamento que passa é prova de que o dinheiro não entrou — não há corrida
+    a perder. Quem chama trata a falha como "não cancele, use a cobrança que já
+    existe". Ver `pro.comprar`.
+    """
+    return await _chamar("PUT", f"/v1/payments/{payment_id}", {"status": "cancelled"})
+
+
 def qr_do_pagamento(recurso: dict[str, Any]) -> str | None:
     """O "copia e cola" de dentro da resposta, ou nada.
 

@@ -601,7 +601,17 @@ async def test_preco_nao_vira_dizima_no_corpo(monkeypatch):
     assert esperado in json.dumps(enviados[0])
 
 
-async def test_cobranca_viva_e_reaproveitada_sem_tocar_no_provedor(monkeypatch):
+def _viva(periodo="mensal", payment_id="pay-antigo"):
+    return {
+        "payment_id": payment_id,
+        "periodo": periodo,
+        "valor": PRECOS[periodo],
+        "qr_code": "00020126...",
+        "expira_em": datetime.now(UTC) + timedelta(minutes=20),
+    }
+
+
+async def test_mesmo_periodo_reaproveita_sem_tocar_no_provedor(monkeypatch):
     """Duas cobranças válidas na mão da mesma pessoa é como se paga duas vezes.
 
     O Pix não pergunta se a outra já foi paga antes de aceitar a segunda.
@@ -615,21 +625,75 @@ async def test_cobranca_viva_e_reaproveitada_sem_tocar_no_provedor(monkeypatch):
 
     monkeypatch.setattr(mercado_pago, "_chamar", falso_chamar)
 
-    viva = {
-        "payment_id": "pay-antigo",
-        "periodo": "mensal",
-        "valor": PRECOS["mensal"],
-        "qr_code": "00020126...",
-        "expira_em": datetime.now(UTC) + timedelta(minutes=20),
-    }
-    sessao = SessaoFalsa(linhas=[viva])
-    resultado = await pro.comprar(sessao, uuid4(), "anual")  # type: ignore[arg-type]
+    sessao = SessaoFalsa(linhas=[_viva("mensal")])
+    resultado = await pro.comprar(sessao, uuid4(), "mensal")  # type: ignore[arg-type]
 
     assert resultado["payment_id"] == "pay-antigo"
     assert resultado["reaproveitada"] is True
     # Nem o e-mail foi buscado: a função devolve antes de qualquer trabalho.
     assert chamou is False
     assert sessao.commits == 0
+
+
+async def test_trocar_de_periodo_cancela_a_anterior_e_gera_outra(monkeypatch):
+    """O defeito que o Eduardo achou usando o app, em 2026-08-24.
+
+    Gerou o mensal, clicou no anual, recebeu o mensal de volta — trinta minutos
+    preso ao plano errado. Reaproveitar só vale quando o período é o mesmo.
+    """
+    chamadas: list[tuple[str, str]] = []
+
+    async def falso_chamar(metodo, caminho, corpo=None, *, chave=None):
+        chamadas.append((metodo, caminho))
+        if metodo == "PUT":
+            return {"id": "pay-antigo", "status": "cancelled"}
+        return _pagamento(id="pay-novo")
+
+    monkeypatch.setattr(mercado_pago, "_chamar", falso_chamar)
+
+    sessao = SessaoFalsa(
+        retornos=["alguem@exemplo.com"],
+        linhas=[_viva("mensal"), {"payment_id": "pay-novo", "periodo": "anual"}],
+    )
+    resultado = await pro.comprar(sessao, uuid4(), "anual")  # type: ignore[arg-type]
+
+    assert resultado["reaproveitada"] is False
+    assert resultado["payment_id"] == "pay-novo"
+    # A anterior morre antes de a nova nascer, e nessa ordem: o contrário deixa
+    # dois códigos válidos vivos ao mesmo tempo.
+    assert chamadas == [
+        ("PUT", "/v1/payments/pay-antigo"),
+        ("POST", "/v1/payments"),
+    ]
+    marcada = [s for s in sessao.sqls if "status = 'cancelled'" in s]
+    assert len(marcada) == 1
+    assert "status = 'pending'" in marcada[0]
+
+
+async def test_cancelamento_recusado_devolve_a_cobranca_que_existe(monkeypatch):
+    """O Mercado Pago não cancela pagamento aprovado — e é essa recusa que
+    torna a troca segura.
+
+    Cancelamento que falha quer dizer, no caso mais provável, que alguém acabou
+    de pagar. Gerar a segunda cobrança aí seria pedir para pagar duas vezes.
+    """
+    chamadas: list[str] = []
+
+    async def falso_chamar(metodo, caminho, corpo=None, *, chave=None):
+        chamadas.append(metodo)
+        if metodo == "PUT":
+            raise mercado_pago.FalhaDoProvedor(400, "payment already approved")
+        return _pagamento(id="pay-novo")
+
+    monkeypatch.setattr(mercado_pago, "_chamar", falso_chamar)
+
+    sessao = SessaoFalsa(linhas=[_viva("mensal")])
+    resultado = await pro.comprar(sessao, uuid4(), "anual")  # type: ignore[arg-type]
+
+    assert resultado["payment_id"] == "pay-antigo"
+    assert resultado["reaproveitada"] is True
+    # Nenhuma cobrança nova saiu.
+    assert "POST" not in chamadas
 
 
 async def test_pagamento_sem_qr_nao_vira_folha_vazia(monkeypatch):
