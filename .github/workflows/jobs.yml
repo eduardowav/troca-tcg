@@ -31,8 +31,17 @@ jobs:
           # para ser avisado que a carta apareceu no Ofereço de alguém.
           chamar notify-wanted || echo "notify-wanted falhou"
           chamar notify-alerts || echo "notify-alerts falhou"
-          # Tarefas diárias: só na janela das 06:00 BRT (09:00 UTC).
-          if [ "$(date -u +%H:%M)" = "09:00" ]; then
+          # Tarefas diárias: na janela das 06:00 BRT (09:00 UTC) — ou sempre
+          # que alguém dispara o workflow à mão.
+          #
+          # **O `workflow_dispatch` entrou na condição em 2026-08-24, e é o que
+          # torna job diário testável.** Sem ele, disparar à mão rodava só as
+          # notificações de 15 em 15 minutos, e provar `avisar-vencimento`
+          # exigiria esperar o dia seguinte ou colar o `JOB_SECRET` num terminal
+          # — que é como um segredo vaza para um log de sessão. Todos os jobs
+          # daqui são idempotentes: rodar duas vezes no mesmo dia não duplica
+          # nada, e o dedupe das notificações cobre o resto.
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ] || [ "$(date -u +%H:%M)" = "09:00" ]; then
             chamar triangular || echo "triangular falhou"
             chamar expire || echo "expire falhou"
             # Pagamentos: webhook se perde, e quando se perde ninguém percebe —
