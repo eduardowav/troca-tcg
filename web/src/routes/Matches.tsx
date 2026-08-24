@@ -142,7 +142,7 @@ function CartaoMatch({
               <span className="truncate font-titulo text-[15px] font-bold text-tinta">
                 @{outro?.username ?? 'alguém'}
               </span>
-              <SeloDaPessoa selo={outro?.selo} />
+              <SeloDaPessoa selo={outro?.selo} pro={outro?.pro} />
             </span>
             {reputacao && (
               <span className="flex items-center gap-1">

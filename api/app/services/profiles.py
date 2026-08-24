@@ -19,15 +19,28 @@ from app.schemas.profile import (
     PerfilPublicoOut,
 )
 
+#: "Esta pessoa tem o PRO?", como as consultas públicas o calculam. Uma
+#: constante e não três cópias: três `p.plano = 'PRO'` espalhados é como a
+#: vitrine e o perfil passam a discordar sobre a mesma pessoa.
+PRO_PUBLICO = "(p.plano = 'PRO') as pro"
+
 # O que qualquer pessoa logada pode ver. Sem contato_visivel, sem plano e sem
 # onboarding_ok: contato tem regra própria (só após aceite mútuo), e os outros
 # dois são estado interno da conta, não informação sobre quem é a pessoa.
 # `selo` está entre as públicas de propósito, e é a única coisa aqui que não
 # descreve comportamento: é reconhecimento, e reconhecimento que só o dono vê não
 # reconhece. Ver `db/schema/37_founder.sql`.
-_COLUNAS_PUBLICAS = """
+#
+# **`pro` é derivado, e continua sem expor `plano`.** Sai daqui um booleano, não
+# a coluna: "esta pessoa apoia o app" é o que o selo diz, e mandar o `plano` cru
+# abriria a porta para a tela inventar regra de limite a partir de um campo
+# público. Quem manda em limite é o backend, sempre. Parceiro dá verdadeiro
+# junto, e é honesto — ele tem o PRO, só não pagou; o que o distingue é
+# `parceiro`, que fica nas colunas privadas.
+_COLUNAS_PUBLICAS = f"""
   id::text, username, nome_exibicao, cidade, bairro, avatar_url, bio,
-  trocas_concluidas, trocas_furadas, trocas_desistidas, selo, criado_em as desde
+  trocas_concluidas, trocas_furadas, trocas_desistidas, selo,
+  {PRO_PUBLICO}, criado_em as desde
 """
 
 # contato_visivel entra aqui porque estas colunas só alimentam o PerfilOut, que

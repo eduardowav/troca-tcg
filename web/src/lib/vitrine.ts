@@ -39,6 +39,11 @@ export interface OfertaNaVitrine {
   nome_exibicao: string
   /** Selo de reconhecimento de quem anuncia, ou nulo. Ver `Selo.tsx`. */
   selo?: string | null
+  /**
+   * Esta pessoa tem o PRO? Derivado de `profiles.plano` no servidor — não é um
+   * valor de `selo`, e os dois convivem. Ver `SeloDaPessoa`.
+   */
+  pro?: boolean
   condicao: Condicao
   finish_id: number
   quantidade: number

@@ -32,6 +32,9 @@ class ParticipanteResumo(BaseModel):
     #: alguém — o selo é sobre a pessoa, e vale onde a pessoa é avaliada. Não é
     #: plano e não concede nada.
     selo: str | None = None
+    #: Esta pessoa tem o PRO hoje? Derivado de `profiles.plano`, nunca guardado
+    #: como selo — ver `PerfilPublicoOut.pro`.
+    pro: bool = False
     trocas_concluidas: int = 0
     trocas_furadas: int = 0
     # Desistência declarada não é furo e fica fora da razão da reputação — mas

@@ -66,7 +66,7 @@ export function FichaPerfil({
             <p className="truncate font-titulo text-[22px] leading-none font-black text-tinta">
               @{perfil.username}
             </p>
-            <SeloDaPessoa selo={perfil.selo} />
+            <SeloDaPessoa selo={perfil.selo} pro={perfil.pro} />
           </span>
           {desde && (
             <p className="truncate font-dado text-[12px] text-apagado">

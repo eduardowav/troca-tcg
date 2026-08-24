@@ -59,6 +59,9 @@ class OfertaNaVitrine(BaseModel):
     nome_exibicao: str
     #: Selo de reconhecimento de quem anuncia, ou nulo. Ver `37_founder.sql`.
     selo: str | None = None
+    #: Esta pessoa tem o PRO hoje? Derivado de `profiles.plano`, nunca guardado
+    #: como selo — ver `PerfilPublicoOut.pro`.
+    pro: bool = False
     condicao: str
     finish_id: int
     quantidade: int

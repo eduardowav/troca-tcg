@@ -41,7 +41,7 @@ from app.schemas.match import (
     ParticipanteCompleto,
     ParticipanteResumo,
 )
-from app.services import listings, notificacoes, termos
+from app.services import listings, notificacoes, profiles, termos
 
 # Uma OFERTA atende uma PROCURA quando é a mesma carta, no mesmo idioma, em
 # condição pelo menos tão boa quanto a pedida, e com o acabamento que a pessoa
@@ -662,6 +662,7 @@ async def _participantes_por_match(
 
     colunas = (
         "p.id::text as user_id, p.username, p.nome_exibicao, p.selo, "
+        f"{profiles.PRO_PUBLICO}, "
         "p.trocas_concluidas, p.trocas_furadas, p.trocas_desistidas, "
         "mp.aceitou, mp.confirmou_conclusao"
     )
@@ -694,6 +695,7 @@ async def _participantes_por_match(
                 username=r["username"],
                 nome_exibicao=r["nome_exibicao"],
                 selo=r["selo"],
+                pro=r["pro"],
                 trocas_concluidas=r["trocas_concluidas"],
                 trocas_furadas=r["trocas_furadas"],
                 trocas_desistidas=r["trocas_desistidas"],

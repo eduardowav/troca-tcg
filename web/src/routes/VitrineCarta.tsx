@@ -142,7 +142,7 @@ function LinhaDeOferta({ oferta }: { oferta: OfertaNaVitrine }) {
           >
             @{oferta.username}
           </Link>
-          <SeloDaPessoa selo={oferta.selo} />
+          <SeloDaPessoa selo={oferta.selo} pro={oferta.pro} />
         </span>
         {reputacao && (
           <span className="flex items-center gap-1">

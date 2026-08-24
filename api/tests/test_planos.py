@@ -95,6 +95,41 @@ def test_selo_nao_e_plano():
     assert "FOUNDER" not in _corpo()["planos"]
 
 
+def test_o_pro_e_publico_e_derivado_nunca_guardado_como_selo():
+    """O selo de PRO sai das três telas onde a pessoa é avaliada, e é derivado.
+
+    Decisão do Eduardo em 2026-08-24: aparece em tudo, como o FOUNDER. O que
+    **não** pode acontecer é `PRO` virar um valor de `profiles.selo` — a coluna
+    guarda um só, então quem fosse FOUNDER e PRO perderia um dos dois, e o selo
+    teria de ser apagado à mão toda vez que um plano vence. Derivado de `plano`,
+    ele some sozinho.
+
+    O `plano` continua fora do público: sai um booleano. Mandar a coluna crua
+    abriria a porta para a tela inventar regra de limite a partir de um campo
+    público, e quem manda em limite é o backend.
+    """
+    from app.schemas.match import ParticipanteResumo
+    from app.schemas.profile import PerfilPublicoOut
+    from app.schemas.vitrine import OfertaNaVitrine
+
+    for modelo in (PerfilPublicoOut, ParticipanteResumo, OfertaNaVitrine):
+        assert "pro" in modelo.model_fields, modelo.__name__
+        assert modelo.model_fields["pro"].annotation is bool
+        # O plano cru não atravessa para quem não é dono.
+        assert "plano" not in modelo.model_fields, modelo.__name__
+
+
+def test_uma_fonte_so_para_o_pro_publico():
+    """Três consultas alimentam o selo, e um `p.plano = 'PRO'` copiado em cada
+    uma é como a vitrine e o perfil passam a discordar sobre a mesma pessoa."""
+    from app.services import matching, vitrine
+    from app.services.profiles import _COLUNAS_PUBLICAS, PRO_PUBLICO
+
+    assert PRO_PUBLICO in _COLUNAS_PUBLICAS
+    assert PRO_PUBLICO in str(vitrine._QUEM_TEM)
+    assert matching.profiles.PRO_PUBLICO is PRO_PUBLICO
+
+
 def test_selo_sai_no_perfil_publico():
     """O selo é público — é a razão de ele existir.
 

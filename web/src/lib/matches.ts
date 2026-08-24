@@ -15,6 +15,11 @@ export interface ParticipanteMatch {
   nome_exibicao: string
   /** Selo de reconhecimento, ou nulo. Ver `Selo.tsx`. */
   selo?: string | null
+  /**
+   * Esta pessoa tem o PRO? Derivado de `profiles.plano` no servidor — não é um
+   * valor de `selo`, e os dois convivem. Ver `SeloDaPessoa`.
+   */
+  pro?: boolean
   trocas_concluidas: number
   trocas_furadas: number
   /** Desistências declaradas. Não são furo, mas são ditas. */

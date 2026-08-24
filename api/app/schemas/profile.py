@@ -116,6 +116,22 @@ class PerfilPublicoOut(BaseModel):
     #: Ver `db/schema/37_founder.sql` para por que isto não virou `plano =
     #: 'FOUNDER'`.
     selo: str | None = None
+    #: Esta pessoa tem o PRO hoje?
+    #:
+    #: **Derivado de `profiles.plano`, e nunca guardado como selo.** Um `selo =
+    #: 'PRO'` precisaria ser apagado toda vez que um plano vence, e quem fosse
+    #: FOUNDER e PRO ao mesmo tempo perderia um dos dois — a coluna guarda um só.
+    #: Derivando, o selo some sozinho no dia em que o tempo comprado acaba.
+    #:
+    #: **Diz que a pessoa apoia o app, não que ela vale mais.** O §9 dos Termos
+    #: promete que ter o PRO não garante troca e não dá prioridade sobre ninguém,
+    #: e a explicação do selo na tela repete isso — um selo pago ao lado de um
+    #: nome é fácil demais de ler como "este passa na frente".
+    #:
+    #: Verdadeiro também para quem é Parceiro, e isso é honesto: essa pessoa tem
+    #: o PRO, só não pagou por ele. O que a distingue é `parceiro`, que é privado
+    #: e só o dono vê.
+    pro: bool = False
     #: `datetime`, nunca `str` — o `::text` do Postgres não é ISO 8601 e o Safari
     #: do iOS devolve Invalid Date. A história completa está em schemas/match.py.
     desde: datetime

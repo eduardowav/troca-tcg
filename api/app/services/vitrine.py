@@ -21,6 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import RegraNegocio
 from app.schemas.vitrine import CartaDoAcervo, CartaNaVitrine, OfertaNaVitrine
+from app.services.profiles import PRO_PUBLICO
 
 #: Cartas por página do feed. O mesmo 24 da busca de catálogo
 #: (`buscar_cartas`, db/schema/13) — as duas telas são a mesma grade.
@@ -213,10 +214,10 @@ async def feed(
 # Quem tem esta carta. A ordem é de produto: quem já concluiu troca aparece
 # antes, porque a pergunta de quem está escolhendo é "com quem eu marco?" — e
 # entre dois anúncios iguais o que decide é a pessoa, não a carta.
-_QUEM_TEM = text("""
+_QUEM_TEM = text(f"""
     select l.id::text as listing_id, l.card_id::text as card_id,
            l.condicao::text as condicao, l.finish_id, l.quantidade, l.idioma,
-           p.username, p.nome_exibicao, p.selo,
+           p.username, p.nome_exibicao, p.selo, {PRO_PUBLICO},
            p.trocas_concluidas, p.trocas_furadas, p.trocas_desistidas
     from listings l
     join profiles p on p.id = l.user_id

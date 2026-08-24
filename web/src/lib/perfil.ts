@@ -28,6 +28,11 @@ export interface PerfilPublico {
    * Não é plano e não libera nada: quem manda no limite é `plano`.
    */
   selo?: string | null
+  /**
+   * Esta pessoa tem o PRO? Derivado de `profiles.plano` no servidor — não é um
+   * valor de `selo`, e os dois convivem. Ver `SeloDaPessoa`.
+   */
+  pro?: boolean
   /** Quando a conta foi criada, em ISO 8601. */
   desde: string
 }
