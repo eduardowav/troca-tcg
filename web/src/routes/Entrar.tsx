@@ -5,9 +5,9 @@ import { z } from 'zod'
 import {
   AcaoSecundaria,
   Cartela,
-  LinkNoTexto,
   LockupTrocaTCG,
 } from '@/components/brutal/Pecas'
+import { FolhaDosTermos } from '@/components/termos/FolhaDosTermos'
 import { Campo } from '@/components/ui/Campo'
 import { Button } from '@/components/ui/Button'
 import { ForcaSenha } from '@/components/ui/ForcaSenha'
@@ -542,28 +542,61 @@ export function CampoTelefone({ erro }: { erro?: string }) {
 
 /* ---------- Aceite dos termos ---------- */
 
+/**
+ * O aceite, com os termos abrindo **por cima** em vez de navegar.
+ *
+ * **Consertado em 2026-08-24, e era um defeito com custo real:** o link levava
+ * para `/termos`, a tela de cadastro desmontava, e quem voltava encontrava nome,
+ * e-mail, senha e telefone em branco. A tela punia exatamente quem fez a coisa
+ * certa — ler antes de aceitar —, e o caminho barato passava a ser marcar a
+ * caixinha sem ler. Achado pelo Eduardo usando o app.
+ *
+ * O botão é `type="button"`, e isso não é detalhe: dentro de um `<form>`, botão
+ * sem tipo é `submit`, e abrir os termos enviaria o cadastro pela metade.
+ *
+ * **Fica fora do `<label>`**, porque um clique dentro dele também marca a
+ * caixinha — a pessoa tocaria em "termos de uso" para ler e teria aceitado sem
+ * ver uma linha.
+ */
 function AceiteTermos({ erro }: { erro?: string }) {
+  const [lendo, setLendo] = useState(false)
+
   return (
     <div className="flex flex-col gap-1.5">
-      <label className="flex cursor-pointer items-start gap-3">
-        <input
-          type="checkbox"
-          name="aceite"
-          className="mt-0.5 size-5 shrink-0 accent-[var(--color-azul)]"
-          aria-invalid={erro ? true : undefined}
-        />
-        <span className="text-[14px] leading-relaxed text-apagado">
-          Li e aceito os{' '}
-          <LinkNoTexto to="/termos">termos de uso</LinkNoTexto>
-          . Entendo que o TrocaTCG apenas conecta pessoas — a troca acontece
-          entre vocês, presencialmente, por conta e risco de cada um.
-        </span>
-      </label>
+      <div className="flex items-start gap-3">
+        <label className="flex cursor-pointer items-start gap-3">
+          <input
+            type="checkbox"
+            name="aceite"
+            className="mt-0.5 size-5 shrink-0 accent-[var(--color-azul)]"
+            aria-invalid={erro ? true : undefined}
+          />
+          <span className="text-[14px] leading-relaxed text-apagado">
+            Li e aceito os{' '}
+            <button
+              type="button"
+              onClick={(e) => {
+                // O `preventDefault` cobre o caso de este trecho voltar para
+                // dentro de um label um dia: sem ele, o clique marcaria a
+                // caixinha de quem só queria ler.
+                e.preventDefault()
+                setLendo(true)
+              }}
+              className="font-medium text-tinta underline underline-offset-2"
+            >
+              termos de uso
+            </button>
+            . Entendo que o TrocaTCG apenas conecta pessoas — a troca acontece
+            entre vocês, presencialmente, por conta e risco de cada um.
+          </span>
+        </label>
+      </div>
       {erro && (
         <p role="alert" className="text-[13px] text-alerta">
           {erro}
         </p>
       )}
+      <FolhaDosTermos aberta={lendo} aoFechar={() => setLendo(false)} />
     </div>
   )
 }

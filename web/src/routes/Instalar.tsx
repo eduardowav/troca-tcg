@@ -75,10 +75,10 @@ export default function Instalar() {
         <p className="font-dado text-[11px] uppercase text-apagado">
           Não deu certo? Escreva para{' '}
           <a
-            href="mailto:eduardowav@icloud.com"
+            href="mailto:trocatcg.contato@gmail.com"
             className="text-tinta underline underline-offset-2"
           >
-            eduardowav@icloud.com
+            trocatcg.contato@gmail.com
           </a>
         </p>
       </footer>

@@ -518,10 +518,10 @@ function ContaBloqueada() {
         Você ainda pode ver seu perfil e apagar sua conta. Se achar que houve
         engano, fale com{' '}
         <a
-          href="mailto:eduardowav@icloud.com"
+          href="mailto:trocatcg.contato@gmail.com"
           className="text-tinta underline underline-offset-2"
         >
-          eduardowav@icloud.com
+          trocatcg.contato@gmail.com
         </a>
         .
       </p>

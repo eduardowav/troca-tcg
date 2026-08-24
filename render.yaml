@@ -122,7 +122,7 @@ services:
       # Precisa ser uma caixa que alguém leia: era `contato@trocatcg.com.br`, e
       # esse domínio não é do projeto — está registrado por outra pessoa.
       - key: VAPID_SUBJECT
-        value: mailto:eduardowav@icloud.com
+        value: mailto:trocatcg.contato@gmail.com
 
       # Mercado Pago — pagamento do PRO (Fase C da seção 16).
       #
