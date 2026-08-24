@@ -2416,6 +2416,89 @@ limite, o que lê como pedágio. **A cobrança não liga antes desta fase termin
    O interruptor continua sendo `COBRANCA_ATIVA`; enquanto ele for falso, as
    rotas de assinatura respondem 503 e nenhuma tela as chama.
 
+   > ### ⚠️ 2026-08-23: o PRO deixou de ser assinatura e virou Pix avulso
+   >
+   > **Tudo o que este item 7 descreve abaixo é história a partir daqui.** O
+   > desenho de assinatura recorrente existiu de 13/08 a 23/08, funcionou, e foi
+   > substituído. O que ficou desta parte é a validação HMAC do webhook, a
+   > idempotência por id de notificação e a queda de plano com aparo das
+   > ofertas; o resto saiu.
+   >
+   > **Por que trocou.** Recorrência no Mercado Pago é cartão de crédito e mais
+   > nada: `POST /preapproval` engole `payment_methods_allowed` em silêncio e
+   > devolve o recurso com `payment_method_id: null` — provado em 23/08, criando
+   > uma assinatura que pedia só `bank_transfer`/`pix`. O público do TrocaTCG é
+   > de Belém e é jovem; exigir cartão de crédito não é cobrar caro, é cobrar de
+   > quem já tem banco. A decisão do Eduardo foi trocar a recorrência pelo
+   > acesso: **o PRO vira tempo comprado por Pix**, com `POST /v1/payments`.
+   >
+   > O Asaas resolveria a recorrência por Pix (`billingType: PIX`, Pix
+   > Automático com `paymentCreationMode: SUBSCRIPTION`) e continua sendo o
+   > caminho do dia em que a renovação automática valer a reescrita. Não foi
+   > escolhido agora porque o problema real era a **barreira de entrada**, não a
+   > renovação, e ela se resolve sem trocar de provedor.
+   >
+   > **O que entrou.** A migração `38` (tabela `pro_pagamentos`;
+   > `profiles.plano_expira_em` muda de significado), `services/pro.py` (a regra,
+   > no lugar de `services/assinaturas.py`), `routers/pro.py` (`/v1/me/pro` GET e
+   > `/v1/me/pro/pagamentos` POST), o webhook agora no tópico `payment`, e dois
+   > jobs diários: `/internal/jobs/reconciliar-pagamentos` e
+   > `/internal/jobs/avisar-vencimento`. No PWA, a folha do Pix em `Planos.tsx`
+   > — copia e cola primeiro, QR desenhado no navegador a partir dele — e a data
+   > de validade em Configurações. `tests/test_pro.py` cobre a decisão inteira.
+   >
+   > **`plano_expira_em` mudou de significado, e é a chave do desenho.** Era o
+   > fim da carência de 7 dias depois de uma cobrança falhar; passou a ser **até
+   > quando o PRO comprado vale**. O job que derruba quem passou da data é o
+   > mesmo, com outro nome (`expirar_vencidos`), porque a pergunta é a mesma.
+   >
+   > **Comprar empilha.** `greatest(coalesce(plano_expira_em, now()), now()) +
+   > make_interval(months => N)`. Quem renova faltando dez dias soma o período
+   > novo aos dez que sobravam; quem voltou depois de ter caído soma a partir de
+   > hoje. Sem o `greatest`, o único momento seguro de pagar seria o último dia
+   > — justamente o dia em que se esquece.
+   >
+   > **Três travas que o Pix exige e a assinatura não exigia:**
+   >
+   > 1. *Crédito idempotente por transição.* `payment.created` e
+   >    `payment.updated` são dois avisos legítimos do mesmo dinheiro, com ids de
+   >    notificação diferentes: os dois passam pelo dedupe de `webhook_events`. O
+   >    que impede o segundo de creditar outro mês é o `where status <>
+   >    'approved'` do `update` — se ele não devolve linha, nada é creditado.
+   > 2. *Cobrança viva é reaproveitada.* Quem fecha a folha e volta recebe o
+   >    mesmo "copia e cola". Gerar outro deixaria dois códigos válidos na mão da
+   >    mesma pessoa, e o Pix não pergunta se o outro já foi pago.
+   > 3. *Chave de idempotência determinística.* `pro:<user>:<periodo>:<janela>`,
+   >    com a janela do tamanho do QR. Um uuid por chamada não protegeria de
+   >    nada: se o POST sai e a resposta se perde, não há linha local, a checagem
+   >    de cobrança viva não acha nada, e a tentativa seguinte criaria a segunda
+   >    cobrança.
+   >
+   > **O que sumiu, e por quê.** A carência de 7 dias existia porque cartão
+   > recusa — o app entregava serviço não pago enquanto a pessoa resolvia. Pix ou
+   > entrou ou não entrou. O cancelamento sumiu porque não há renovação a
+   > cancelar, e com ele some o bug que retinha dez meses de quem pagava o anual
+   > (corrigido em 22/08, agora impossível de reintroduzir). O
+   > `cancelar_ao_sair` na exclusão de conta sumiu porque não há cobrança futura
+   > a interromper. O `MERCADO_PAGO_BACK_URL` sumiu porque o Pix não leva ninguém
+   > para fora do app.
+   >
+   > **O que entrou no lugar: o aviso de vencimento.** Sem renovação automática,
+   > quem esquece cai — e cair sem aviso é a única forma de alguém perder algo
+   > neste desenho. `TIPO_PRO_VENCENDO`, três dias antes, in-app e push, com
+   > dedupe de 72 horas para o job diário não repetir o aviso nas três execuções
+   > que a janela cobre.
+   >
+   > **Termos:** o §8 foi reescrito e a `VERSAO` subiu para `2026-08-23`, pela
+   > mesma exceção declarada de 22/08 — nenhum direito encolhe, e nenhum pagante
+   > existia na data.
+   >
+   > **O que falta, e não é código:** cadastrar o tópico `payment` no painel do
+   > Mercado Pago (hoje só os dois de assinatura estão), conferir que a conta
+   > vendedora tem chave Pix — sem ela o `POST /v1/payments` devolve 201 sem QR,
+   > e `comprar` recusa com `PIX_INDISPONIVEL` —, aplicar a migração `38` no
+   > Supabase e provar o pagamento ponta a ponta.
+
    **O que entrou.** A migração `30` (`profiles.plano_expira_em`, tabela
    `subscriptions`, tabela `webhook_events`), `services/mercado_pago.py` (o
    provedor inteiro atrás de um arquivo só), `services/assinaturas.py` (a

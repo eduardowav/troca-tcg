@@ -15,8 +15,18 @@ import { NaoAfiliacao } from '@/components/Isencao'
  * confundindo no §8. Ninguém perde direito. Alteração que só amplia direito vale
  * contra quem se obriga sem novo aceite — o contrário não seria verdade, e a
  * próxima mudança restritiva é que aciona o fluxo de re-aceite que o §10 promete.
+ *
+ * **2026-08-23 sobe pela mesma exceção, e o teste foi refeito item a item.** O
+ * PRO deixou de ser assinatura recorrente e virou tempo comprado por Pix. O que
+ * a pessoa ganha: nada mais é debitado dela sem que peça, e não é preciso ter
+ * cartão de crédito para comprar. O que ela perde é a renovação automática, que
+ * é conveniência e não direito, e a carência de 7 dias por pagamento falho —
+ * que só existia para cobrança recorrente e não tem como ser acionada quando o
+ * serviço é pré-pago. Direito nenhum encolhe, e o de arrependimento do art. 49
+ * continua inteiro. **Nenhum pagante existia nesta data**, o que torna a
+ * pergunta teórica: não há quem tenha aceitado a versão anterior tendo pago.
  */
-const VERSAO = '2026-08-22'
+const VERSAO = '2026-08-23'
 
 /**
  * Canal do controlador para pedidos de LGPD. Caixa pessoal por enquanto: o
@@ -104,38 +114,35 @@ export default function Termos() {
           com antecedência para você salvar suas listas.
         </Secao>
 
-        <Secao titulo="8. Assinatura do PRO">
-          O PRO é opcional. O TrocaTCG funciona de graça, e o que a assinatura
-          compra é limite maior — nunca acesso a quem trocar com você.
+        <Secao titulo="8. O PRO">
+          O PRO é opcional. O TrocaTCG funciona de graça, e o que o PRO compra é
+          limite maior — nunca acesso a quem trocar com você.
           <Lista
             itens={[
-              'A cobrança é feita pelo Mercado Pago. Seus dados de pagamento ficam com eles; o TrocaTCG não vê nem guarda número de cartão.',
-              'A assinatura se renova sozinha ao fim de cada ciclo, mensal ou anual, até você cancelar.',
-              'Você cancela quando quiser, pelo próprio app, sem multa e sem precisar falar com ninguém.',
-              'Cancelar interrompe a renovação e não corta o que você já pagou: o PRO continua valendo até o fim do ciclo pago. No plano anual, isso vale até o dia em que ele se renovaria — mesmo que você cancele no primeiro mês. Depois dessa data a conta volta ao FREE.',
-              'Como o serviço continua disponível até o fim do ciclo pago, não há devolução proporcional do valor já pago, fora do caso de arrependimento abaixo.',
-              'Se o preço mudar, avisamos antes, e o valor novo só vale a partir do ciclo seguinte.',
+              'Você compra tempo, não assinatura: um mês ou doze meses, pagos por Pix de uma vez. Não existe cobrança automática, e nada é debitado de você sem que peça.',
+              'O pagamento é processado pelo Mercado Pago. O TrocaTCG não vê nem guarda dados bancários, número de cartão ou CPF.',
+              'Não há o que cancelar, porque não há renovação. Quando o tempo comprado acaba, a conta volta ao plano FREE sozinha.',
+              'Comprar de novo antes de vencer soma ao que ainda falta: você não perde os dias que sobraram por pagar antes.',
+              'Avisamos dentro do app quando faltarem poucos dias para o seu PRO vencer.',
+              'Se o preço mudar, avisamos antes, e o valor novo só vale para compras feitas depois disso — o que você já pagou não muda.',
             ]}
           />
           <strong className="text-paper">Arrependimento.</strong> Nos primeiros
-          7 dias contados do pagamento você pode desistir da assinatura e
-          receber o valor de volta por inteiro, pelo mesmo meio em que pagou
-          (art. 49 do Código de Defesa do Consumidor). Nesse caso o PRO se
-          encerra junto com a devolução, e não vale até o fim do ciclo.{' '}
-          <strong className="text-paper">Pagamento que falha.</strong> Se uma
-          cobrança não for paga — cartão recusado, Pix não pago —, a conta segue
-          com os limites do PRO por 7 dias, tempo de resolver. Esse prazo é
-          outro, e nada tem a ver com os 7 dias de arrependimento acima. Em
-          qualquer um dos casos, quando a conta volta ao plano FREE{' '}
-          <strong className="text-paper">nada é apagado</strong>: as ofertas que
-          passam do limite saem do ar, continuam no seu acervo e você escolhe
-          quais reativar.
+          7 dias contados do pagamento você pode desistir e receber o valor de
+          volta por inteiro, pelo mesmo Pix em que pagou (art. 49 do Código de
+          Defesa do Consumidor). Basta pedir pelo e-mail de contato desta
+          página. Nesse caso o PRO se encerra junto com a devolução.{' '}
+          <strong className="text-paper">
+            Quando o PRO acaba, nada é apagado
+          </strong>
+          : as ofertas que passam do limite do FREE saem do ar, continuam no seu
+          acervo e você escolhe quais reativar.
         </Secao>
 
-        <Secao titulo="9. A assinatura não tem relação com as trocas">
+        <Secao titulo="9. O PRO não tem relação com as trocas">
           O que você paga é o uso da plataforma, e o pagamento é entre você e o
           TrocaTCG. As trocas continuam sendo entre as pessoas, do jeito que a
-          seção 3 descreve: assinar não garante troca, não dá prioridade sobre
+          seção 3 descreve: ter o PRO não garante troca, não dá prioridade sobre
           ninguém e não nos coloca dentro da negociação.
         </Secao>
 
@@ -167,7 +174,7 @@ export default function Termos() {
               'Suas listas de Ofereço e Procuro, com condição e acabamento.',
               'Histórico de trocas e o resultado delas, que alimenta a reputação.',
               'Data e IP de cada aceite destes termos, como comprovação legal — o do cadastro e o de antes de ver o contato de alguém, este último junto do identificador da troca.',
-              'Se você assinar o PRO: o identificador da assinatura no Mercado Pago, a situação dela e a data da próxima cobrança. Nada de cartão, conta ou CPF.',
+              'Se você comprar o PRO: o identificador do pagamento no Mercado Pago, a situação dele, o valor e até quando o seu PRO vale. Nada de cartão, conta bancária ou CPF.',
             ]}
           />
           Não pedimos CPF, endereço, bairro nem localização, e não usamos

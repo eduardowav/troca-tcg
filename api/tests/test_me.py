@@ -67,20 +67,18 @@ class SessaoQueAnota:
         pass
 
 
-async def test_excluir_conta_limpa_o_que_trava_a_fk(monkeypatch):
+async def test_excluir_conta_limpa_o_que_trava_a_fk():
     """A ordem das três instruções é o teste, e ela custou um 500 em produção.
 
     `match_items`, `match_events`, `term_acceptances.match_id` e
     `propostas.vez_de` apontam sem ON DELETE. Enquanto as propostas e os matches
     não saíam antes, apagar a conta de quem tinha negociado — ou só revelado um
     contato — respondia 500. Ver `db/schema/34`.
+
+    **O dublê do provedor de pagamento saiu em 2026-08-23.** Esta função abria
+    avisando o Mercado Pago para parar a cobrança recorrente; com o PRO comprado
+    por Pix não há cobrança futura, e não há nada a cancelar antes de apagar.
     """
-
-    async def _nada(*args, **kwargs):
-        return None
-
-    monkeypatch.setattr(profiles.assinaturas, "cancelar_ao_sair", _nada)
-
     sessao = SessaoQueAnota()
     await profiles.excluir_conta(sessao, uuid4())  # type: ignore[arg-type]
 

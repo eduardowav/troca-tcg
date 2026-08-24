@@ -17,7 +17,7 @@ Pública e sem sessão: é tabela de preço. Quem ainda não tem conta pode olha
 então: que o preço não era do backend e que na Fase C quem mandaria nele seria o
 Mercado Pago. Deixou de ser verdade quando a assinatura passou a ser criada sem
 plano associado — o valor viaja na chamada, e `PRECOS` em `core/limites.py` é o
-dono. Ver o docstring de `mercado_pago.criar_assinatura` para o porquê do fluxo.
+dono. Ver o docstring de `mercado_pago.criar_pagamento_pix` para o porquê do fluxo.
 
 Servir o preço junto dos limites é o mesmo argumento de cima, com consequência
 pior: tela que promete R$ 19,90 e cobrança que debita outro valor não é um

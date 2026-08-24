@@ -19,7 +19,7 @@ import type { Limites, Periodo } from '@/lib/planos'
  * **vendo rodar**, e não descrita numa mensagem. Só que aqui há um motivo a
  * mais, e ele é prático: a tela de planos tem quatro estados e **nenhum deles é
  * alcançável à vontade numa conta de verdade**. Para ver o estado "você é PRO"
- * seria preciso assinar; para ver "Parceiro", editar o banco; para ver "ainda
+ * seria preciso comprar; para ver "Parceiro", editar o banco; para ver "ainda
  * não estamos cobrando", desligar a cobrança em produção.
  *
  * Aqui os quatro trocam num toque, com dados de mentira.
@@ -29,7 +29,7 @@ import type { Limites, Periodo } from '@/lib/planos'
  * verdade continuar como estava, ou pior, o contrário — ajustar a tela e o
  * laboratório seguir mostrando a versão velha como se fosse a atual.
  *
- * **O botão não cobra.** `Oferta` recebe `aoAssinar`, e aqui ele só mostra um
+ * **O botão não cobra.** `useCompra` recebe `aoComprar`, e aqui ele só mostra um
  * aviso com o período escolhido. Sem isso, cada toque no laboratório criaria uma
  * assinatura pendente de verdade no Mercado Pago.
  *
@@ -86,9 +86,9 @@ const ESTADOS: { chave: Estado; rotulo: string; explica: string }[] = [
 
 export default function LabPlanos() {
   const [estado, setEstado] = useState<Estado>('oferta')
-  // O desvio que impede o laboratório de criar assinatura de verdade.
+  // O desvio que impede o laboratório de gerar cobrança de verdade.
   const compra = useCompra((periodo) =>
-    toast.success(`Assinaria o ${periodo} — no laboratório não cobra.`),
+    toast.success(`Geraria o Pix do ${periodo} — no laboratório não cobra.`),
   )
   // O preço vem da API na tela de verdade. Aqui é editável para experimentar
   // número — é a pergunta que mais volta quando se olha uma tela de preço.
@@ -103,7 +103,7 @@ export default function LabPlanos() {
       </h1>
       <p className="mt-2 font-corpo text-[13px] leading-relaxed text-apagado">
         As peças são as mesmas de <code>routes/Planos.tsx</code>. O botão de
-        assinar não cobra nada aqui.
+        pagar não gera Pix nenhum aqui.
       </p>
 
       <div className="mt-4 flex flex-wrap gap-2">

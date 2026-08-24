@@ -28,7 +28,7 @@ from fastapi import APIRouter, Depends, Header, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_session
-from app.services import assinaturas, mercado_pago
+from app.services import mercado_pago, pro
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +43,7 @@ async def mercadopago(
     x_request_id: str | None = Header(default=None),
     session: AsyncSession = Depends(get_session),
 ) -> dict[str, str]:
-    """Trata uma notificação de assinatura.
+    """Trata uma notificação de pagamento.
 
     O `data.id` vem tanto na query (`?data.id=...`, que é como o Mercado Pago
     monta a URL) quanto no corpo. A query tem precedência porque é sobre ela que
@@ -57,7 +57,7 @@ async def mercadopago(
         # Corpo ilegível não é motivo para 500: a assinatura ainda decide. Mas
         # engolir calado é como uma integração quebrada vira mistério — se o
         # Mercado Pago mudar o formato do corpo, este log é o único lugar onde
-        # isso aparece antes de virar "as assinaturas pararam de funcionar".
+        # isso aparece antes de virar "os pagamentos pararam de funcionar".
         logger.info("[webhook] corpo ilegivel (request-id %s)", x_request_id)
 
     data_id = request.query_params.get("data.id") or str(
@@ -82,7 +82,7 @@ async def mercadopago(
     # request-id + recurso é o mais próximo de único que sobra.
     notificacao_id = str(corpo.get("id") or f"{x_request_id}:{data_id}")
 
-    resultado = await assinaturas.aplicar_notificacao(
+    resultado = await pro.aplicar_notificacao(
         session,
         notificacao_id=notificacao_id,
         topico=topico,

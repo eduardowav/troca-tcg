@@ -18,7 +18,6 @@ from app.schemas.profile import (
     PerfilOut,
     PerfilPublicoOut,
 )
-from app.services import assinaturas
 
 # O que qualquer pessoa logada pode ver. Sem contato_visivel, sem plano e sem
 # onboarding_ok: contato tem regra própria (só após aceite mútuo), e os outros
@@ -222,12 +221,13 @@ async def excluir_conta(session: AsyncSession, user_id: UUID) -> None:
     Por fim removemos a linha em `auth.users`; o ON DELETE CASCADE dela leva
     junto o perfil, os anúncios, o aceite dos termos e as inscrições de push.
 
-    **A assinatura é cancelada antes de tudo**, e a ordem não é estética: o
-    cascade apaga `subscriptions` e não fala com o Mercado Pago, então apagar
-    primeiro deixaria a cobrança rodando lá sem o `preapproval_id` para desfazê-la
-    aqui. Falha no provedor não interrompe a exclusão — ver `cancelar_ao_sair`.
+    **Não há mais assinatura a cancelar antes.** Até 2026-08-23 esta função
+    começava avisando o Mercado Pago, porque o cascade apagava o `preapproval_id`
+    — a única chave para parar a cobrança — e quem apagasse a conta continuaria
+    sendo cobrado todo mês por um app onde não tem mais conta. Com o PRO comprado
+    por Pix não existe cobrança futura: o que a pessoa pagou já entrou, e nada
+    volta a sair da conta dela. Ver `services/pro.py`.
     """
-    await assinaturas.cancelar_ao_sair(session, user_id)
     await session.execute(
         text("""
             delete from propostas

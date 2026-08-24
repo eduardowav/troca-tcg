@@ -12,13 +12,13 @@ from app.core.monitoramento import iniciar as iniciar_monitoramento
 from app.db.session import engine
 from app.routers import (
     alertas,
-    assinaturas,
     health,
     internal,
     listings,
     matches,
     notificacoes,
     planos,
+    pro,
     propostas,
     users,
     verificacao,
@@ -87,7 +87,7 @@ app.include_router(alertas.router, prefix="/v1")
 app.include_router(planos.router, prefix="/v1")
 # Assinatura: registrada e desligada por `COBRANCA_ATIVA`, como a verificação de
 # número. Nenhuma tela do app a chama enquanto a cobrança não ligar.
-app.include_router(assinaturas.router, prefix="/v1")
+app.include_router(pro.router, prefix="/v1")
 # Receptor do Mercado Pago. Público por natureza — quem chama é o servidor deles,
 # que não tem sessão aqui. Quem prova a origem é o HMAC do `x-signature`.
 app.include_router(webhooks.router, prefix="/v1")

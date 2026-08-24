@@ -23,6 +23,7 @@ verdade, não zelo: quase toda função aqui recebe os dois lados de uma troca, 
 trocar a ordem dos argumentos seria fácil demais.
 """
 
+from datetime import datetime
 from uuid import UUID
 
 from sqlalchemy import text
@@ -52,6 +53,10 @@ TIPO_MATCH_EXPIRADO = "MATCH_EXPIRADO"
 TIPO_CARTA_PROCURADA = "CARTA_PROCURADA"
 TIPO_CARTA_DISPONIVEL = "CARTA_DISPONIVEL"
 TIPO_PLANO_EXPIROU = "PLANO_EXPIROU"
+#: O PRO comprado está a três dias de vencer. Nasceu em 2026-08-23, junto com a
+#: troca da assinatura por Pix avulso: cartão renovava sozinho, Pix não renova, e
+#: sem este aviso a pessoa só descobre que caiu ao esbarrar num limite.
+TIPO_PRO_VENCENDO = "PRO_VENCENDO"
 
 #: Quais destes vibram o celular. É a coluna "Push" da matriz da seção 12: o que
 #: espera resposta de alguém, mais a carta procurada, que é a única varredura e
@@ -78,6 +83,11 @@ TIPOS_COM_PUSH = frozenset(
         # fazer a respeito tem prazo. Descobrir dias depois, ao abrir o app por
         # outro motivo, é descobrir tarde.
         TIPO_PLANO_EXPIROU,
+        # O vencimento que se aproxima. Push porque ele **existe para chegar
+        # antes**: um aviso de três dias que a pessoa lê no quarto dia é um
+        # aviso que não serviu para nada. É o preço de não ter renovação
+        # automática, e o app aceita pagá-lo com uma vibração por ciclo.
+        TIPO_PRO_VENCENDO,
     }
 )
 
@@ -665,4 +675,40 @@ async def plano_expirou(
             "abra o acervo para escolher quais reativar."
         ),
         link="/minhas-cartas",
+    )
+
+
+async def pro_vencendo(
+    session: AsyncSession,
+    *,
+    para: UUID | str,
+    em: datetime,
+) -> bool:
+    """O PRO vence em poucos dias. Avisa uma vez, com a data na frase.
+
+    **Existe porque Pix avulso não renova sozinho.** Enquanto o PRO foi
+    assinatura de cartão, este aviso não fazia sentido — a cobrança saía e
+    pronto. Agora quem não pagar de novo cai, e cair sem ter sido avisado é a
+    única forma de alguém perder algo neste desenho.
+
+    **Diz o dia, e não "em breve".** A pessoa precisa decidir se paga hoje ou
+    depois de amanhã, e "seu plano está acabando" não permite decidir nada.
+
+    O dedupe de 72 horas é o que impede o job diário de repetir o mesmo aviso a
+    cada execução dentro da janela de três dias. O link vai para a tela de
+    planos: aqui, ao contrário da queda, não há nada para consertar no acervo —
+    há uma compra a fazer, e mandar para outro lugar seria esconder o botão.
+    """
+    return await _notificar(
+        session,
+        para=para,
+        tipo=TIPO_PRO_VENCENDO,
+        titulo="Seu PRO vence em breve",
+        corpo=(
+            f"Ele vale até {em.strftime('%d/%m')}. "
+            "Renove pelo Pix para não perder as ofertas que passam do limite "
+            "do plano FREE."
+        ),
+        link="/planos",
+        dedupe_horas=72,
     )

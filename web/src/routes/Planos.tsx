@@ -1,20 +1,23 @@
 import type { ReactNode } from 'react'
-import { useReducedMotion } from 'motion/react'
-import { useState } from 'react'
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
+import { useQueryClient } from '@tanstack/react-query'
+import { QRCodeSVG } from 'qrcode.react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 
 import { AcaoSecundaria, Cartela, Selo } from '@/components/brutal/Pecas'
 import { useMarcaOculta } from '@/hooks/useMundo'
 import { usePerfil } from '@/hooks/usePerfil'
-import { useAssinatura, usePlanos } from '@/hooks/usePlanos'
+import { usePlanos, usePro } from '@/hooks/usePlanos'
 import { ApiError } from '@/lib/api'
 import { cn } from '@/lib/cn'
 import {
-  assinar,
-  cancelarAssinatura,
+  type CobrancaPix,
+  comprarPro,
   ECONOMIA_ANUAL,
   formatarPreco,
+  diasAte,
   type Limites,
   type Periodo,
 } from '@/lib/planos'
@@ -72,8 +75,22 @@ export default function Planos() {
 
   // O período mora aqui, e não dentro da `Oferta`, porque agora há **dois**
   // botões na tela. Com estado local em cada um, alguém escolheria "mensal" em
-  // cima, rolaria, e assinaria o anual embaixo sem perceber.
+  // cima, rolaria, e compraria o anual embaixo sem perceber.
   const compra = useCompra()
+
+  const clienteDeQueries = useQueryClient()
+
+  // Chamado pela folha quando o servidor confirma o crédito. **O perfil precisa
+  // ser invalidado junto**, e não só a situação do PRO: é dele que sai o
+  // `plano` que esta tela lê para decidir o que mostrar, e sem isso a pessoa
+  // pagaria, a folha fecharia, e a tela continuaria oferecendo o que ela acabou
+  // de comprar.
+  const confirmarPagamento = useCallback(() => {
+    compra.fechar()
+    void clienteDeQueries.invalidateQueries({ queryKey: ['perfil'] })
+    void clienteDeQueries.invalidateQueries({ queryKey: ['pro'] })
+    toast.success('Pagamento confirmado. O PRO já está valendo.')
+  }, [clienteDeQueries, compra])
 
   return (
     <div className="mx-auto flex min-h-[100dvh] w-full max-w-xl flex-col px-6 pt-5 pb-10">
@@ -121,6 +138,18 @@ export default function Planos() {
           <Principio />
         </>
       )}
+
+      {/* A folha só existe depois de haver um código, e some no instante em que
+          o pagamento é confirmado. Fica fora do `isPending` de propósito: quem
+          está pagando não pode ver a folha piscar porque a tabela de preço
+          resolveu revalidar. */}
+      {compra.cobranca && (
+        <FolhaPix
+          cobranca={compra.cobranca}
+          aoFechar={compra.fechar}
+          aoPagar={confirmarPagamento}
+        />
+      )}
     </div>
   )
 }
@@ -131,46 +160,65 @@ export default function Planos() {
 export interface Compra {
   periodo: Periodo
   escolher: (p: Periodo) => void
-  enviando: boolean
-  assinarAgora: () => void
+  gerando: boolean
+  /** A cobrança aberta, ou nada. É ela que faz a folha do Pix aparecer. */
+  cobranca: CobrancaPix | null
+  pagarAgora: () => void
+  fechar: () => void
 }
 
 /**
- * O período escolhido e a ida ao checkout, num lugar só.
+ * O período escolhido e a geração do Pix, num lugar só.
  *
- * **Existe porque a tela tem dois botões de assinar** — um na oferta e outro
+ * **Existe porque a tela tem dois botões de comprar** — um na oferta e outro
  * depois da tabela. Com estado local em cada um, alguém escolheria "mensal" em
- * cima, rolaria, e assinaria o anual embaixo sem perceber que trocou. Cobrar o
- * plano errado é o defeito que a pessoa descobre na fatura.
+ * cima, rolaria, e compraria o anual embaixo sem perceber que trocou. Pagar o
+ * plano errado é o defeito que a pessoa descobre no extrato.
  *
- * `aoAssinar` é o desvio do `/lab/planos`: com ele, nada sai para o Mercado
- * Pago. Sem ele, cada toque no laboratório criaria uma assinatura pendente de
- * verdade.
+ * **Reescrito em 2026-08-23, quando o PRO virou compra por Pix.** Antes daqui
+ * saía um `window.location.replace(init_point)` — a pessoa ia para o checkout do
+ * Mercado Pago e voltava, se voltasse. Agora nada sai da tela: o código nasce
+ * aqui, a folha abre por cima, e a pessoa só sai do app para abrir o banco.
+ *
+ * `aoComprar` é o desvio do `/lab/planos`: com ele, nada sai para o Mercado
+ * Pago. Sem ele, cada toque no laboratório geraria uma cobrança de verdade.
  */
-export function useCompra(aoAssinar?: (periodo: Periodo) => void): Compra {
+export function useCompra(aoComprar?: (periodo: Periodo) => void): Compra {
   const [periodo, setPeriodo] = useState<Periodo>('anual')
-  const [enviando, setEnviando] = useState(false)
+  const [gerando, setGerando] = useState(false)
+  const [cobranca, setCobranca] = useState<CobrancaPix | null>(null)
 
-  async function assinarAgora() {
-    if (aoAssinar) return aoAssinar(periodo)
-    setEnviando(true)
+  async function pagarAgora() {
+    if (aoComprar) return aoComprar(periodo)
+    setGerando(true)
     try {
-      const { init_point } = await assinar(periodo)
-      // `replace` e não `href`: se a pessoa voltar do Mercado Pago sem concluir,
-      // o botão do navegador tem de trazê-la para os planos, não para o
-      // checkout de novo — que criaria uma segunda assinatura pendente.
-      window.location.replace(init_point)
+      const nova = await comprarPro(periodo)
+      setCobranca(nova)
+      if (nova.reaproveitada) {
+        // Dizer isto importa: a pessoa pediu o anual, recebeu de volta o mensal
+        // que deixou aberto há dez minutos, e sem o aviso ela pagaria o valor
+        // errado achando que pagou o que escolheu agora.
+        toast.info('Você já tinha um Pix aberto. Este é o mesmo código.')
+      }
     } catch (erro) {
-      setEnviando(false)
       toast.error(
         erro instanceof ApiError
           ? erro.message
-          : 'Não foi possível abrir o pagamento. Tente de novo em instantes.',
+          : 'Não foi possível gerar o Pix. Tente de novo em instantes.',
       )
+    } finally {
+      setGerando(false)
     }
   }
 
-  return { periodo, escolher: setPeriodo, enviando, assinarAgora }
+  return {
+    periodo,
+    escolher: setPeriodo,
+    gerando,
+    cobranca,
+    pagarAgora,
+    fechar: () => setCobranca(null),
+  }
 }
 
 /** Para onde o botão do topo leva, e onde a oferta de verdade mora. */
@@ -188,13 +236,15 @@ const ANCORA_OFERTA = 'oferta'
  * animações que mais incomodam quem tem sensibilidade vestibular, e aqui ela é
  * enfeite pleno — o salto seco leva ao mesmo lugar.
  */
-function BotaoAssinar({
+function BotaoComprar({
   compra,
   leva,
+  rotulo = 'Pagar com Pix',
 }: {
   compra: Compra
   /** Em vez de comprar, rola até a oferta. É o botão do topo. */
   leva?: boolean
+  rotulo?: string
 }) {
   const semMovimento = useReducedMotion()
 
@@ -208,8 +258,8 @@ function BotaoAssinar({
   return (
     <button
       type="button"
-      onClick={leva ? rolar : compra.assinarAgora}
-      disabled={!leva && compra.enviando}
+      onClick={leva ? rolar : compra.pagarAgora}
+      disabled={!leva && compra.gerando}
       className={cn(
         'flex w-full items-center justify-center gap-2 rounded-[var(--radius-controle)] border-2 border-tinta bg-azul px-5 py-3',
         'font-titulo text-[15px] font-extrabold uppercase text-azul-tinta',
@@ -218,7 +268,7 @@ function BotaoAssinar({
         'disabled:opacity-60 disabled:shadow-none disabled:active:translate-x-0 disabled:active:translate-y-0',
       )}
     >
-      {!leva && compra.enviando ? 'Abrindo o pagamento…' : 'Assinar o PRO'}
+      {!leva && compra.gerando ? 'Gerando o Pix…' : rotulo}
     </button>
   )
 }
@@ -233,7 +283,7 @@ function BotaoAssinar({
  *
  * Sem seletor de período também: a escolha é feita embaixo, onde o preço está.
  * Quem toca aqui leva o padrão, que é o anual — e o padrão está dito em texto,
- * porque botão que compra sem dizer o quê é o que gera estorno.
+ * porque botão que compra sem dizer o quê é o que gera reclamação.
  */
 export function GanchoDoTopo({ compra }: { compra: Compra }) {
   return (
@@ -246,7 +296,7 @@ export function GanchoDoTopo({ compra }: { compra: Compra }) {
         tetos.
       </p>
       <div className="mt-4">
-        <BotaoAssinar compra={compra} leva />
+        <BotaoComprar compra={compra} leva />
       </div>
     </Cartela>
   )
@@ -257,9 +307,11 @@ export function GanchoDoTopo({ compra }: { compra: Compra }) {
 /**
  * A primeira coisa da tela. Quatro estados, e só um deles vende.
  *
- * Os outros três existem para **não** vender: para quem já é PRO, para quem é
- * Parceiro e para o caso de a cobrança estar desligada. Oferecer assinatura a
- * quem já tem tudo é o erro que faz a pessoa desconfiar do resto da tela.
+ * Os outros três não vendem a *primeira* compra. Quem já é PRO vê a data e um
+ * botão de renovar — desde 2026-08-23 renovar é uma ação de verdade, porque o
+ * Pix não renova sozinho. Parceiro e cobrança desligada não veem botão nenhum:
+ * oferecer o que a pessoa já tem de graça é o erro que faz ela desconfiar do
+ * resto da tela.
  */
 export function Topo(props: {
   cobrando: boolean
@@ -280,7 +332,7 @@ export function Topo(props: {
         <p className="mt-2 font-corpo text-[14px] leading-relaxed text-apagado">
           Nenhum limite desta tabela está valendo — nem o de cartas, nem o de
           propostas por dia. Ela está aqui para você ver o que vai mudar quando
-          a assinatura entrar, e nada muda sem aviso antes.
+          o PRO entrar, e nada muda sem aviso antes.
         </p>
       </Cartela>
     )
@@ -295,124 +347,297 @@ export function Topo(props: {
         </p>
         <p className="mt-2 font-corpo text-[14px] leading-relaxed text-apagado">
           Tudo do PRO está liberado na sua conta, por acordo com o TrocaTCG. Não
-          tem cobrança, não tem vencimento e não há nada para cancelar.
+          tem cobrança e não tem vencimento — você não precisa pagar nada.
         </p>
       </Cartela>
     )
   }
 
-  if (ePro) return <Assinante />
+  if (ePro) return <JaEPro compra={compra} />
 
   return <Oferta precos={precos} compra={compra} />
 }
 
 /**
- * Quem já assina: o estado da cobrança e a porta de saída.
+ * Quem já tem o PRO: até quando ele vale, e como esticar.
  *
- * **O botão de cancelar existe porque os Termos o prometem.** O §8 diz "você
- * cancela quando quiser, pelo próprio app, sem multa", e até 2026-08-22 a rota
- * existia (`DELETE /me/assinatura`, testada) sem nenhuma tela chamando. Cláusula
- * em vigor sem interface é promessa quebrada por omissão, e a cobrança ligou no
- * mesmo dia em que isso foi notado.
+ * **O botão de cancelar sumiu em 2026-08-23, e não é regressão.** Ele existia
+ * porque o §8 dos Termos promete "você cancela quando quiser, pelo próprio app,
+ * sem multa" — e enquanto o PRO foi assinatura de cartão isso exigia uma tela.
+ * Com o PRO comprado por Pix não há renovação para cancelar: nada volta a sair
+ * da conta de ninguém, e um botão de cancelar aqui teria de responder à pergunta
+ * "cancelar o quê?".
  *
- * **Dois toques, e o primeiro não cancela nada.** Cancelamento é irreversível do
- * lado do provedor — desfazer é assinar de novo, com cobrança nova. O segundo
- * toque fica atrás de um aviso que diz o que vai acontecer, e o botão de fugir
- * ("Continuar PRO") é o que recebe o azul: numa dupla de botões, o destaque vai
- * para a saída segura, não para a irreversível.
+ * **A data é o centro da cartela, e é a mudança que mais importa.** Assinatura
+ * renovava sozinha, então o prazo era detalhe; agora ele é a única coisa que a
+ * pessoa precisa saber, porque é ela quem tem de agir. Por isso a data aparece
+ * grande, e não numa frase.
  *
- * **O que a tela diz sobre prazo é o que a API responde**, e não uma frase fixa
- * daqui. O `assinaturas.py` abria carência de 7 dias no cancelamento e o §8 dos
- * Termos prometia "até o fim do período já pago" — dez meses de diferença para
- * quem paga o anual. Enquanto a divergência não for resolvida, esta tela mostra a
- * data que o servidor devolve e não afirma regra nenhuma.
+ * **A renovação empilha, e a tela diz isso.** Quem paga faltando dez dias soma o
+ * período novo aos dez que sobravam — ver `services/pro.py`. Sem essa frase, o
+ * incentivo seria esperar o último dia, que é justamente o dia em que se
+ * esquece.
  */
-function Assinante() {
-  const { data, refetch } = useAssinatura()
-  const [confirmando, setConfirmando] = useState(false)
-  const [cancelando, setCancelando] = useState(false)
+function JaEPro({ compra }: { compra: Compra }) {
+  const { data } = usePro()
 
-  const proxima = data?.proxima_cobranca_em
-    ? new Date(data.proxima_cobranca_em).toLocaleDateString('pt-BR')
+  const expira = data?.plano_expira_em ?? null
+  const dias = diasAte(expira)
+  const quando = expira
+    ? new Date(expira).toLocaleDateString('pt-BR', {
+        day: '2-digit',
+        month: 'long',
+      })
     : null
-  const jaCancelada = data?.status === 'cancelled'
 
-  async function cancelar() {
-    setCancelando(true)
-    try {
-      await cancelarAssinatura()
-      await refetch()
-      setConfirmando(false)
-      toast.success('Assinatura cancelada. Não haverá nova cobrança.')
-    } catch (erro) {
-      toast.error(
-        erro instanceof ApiError
-          ? erro.message
-          : 'Não foi possível cancelar agora. Tente de novo em instantes.',
-      )
-    } finally {
-      setCancelando(false)
-    }
-  }
+  // Sete dias, e não os três do aviso por notificação: aqui a pessoa **já está**
+  // na tela de planos, e o custo de destacar o prazo é zero. O aviso que vibra o
+  // celular é que precisa ser raro.
+  const acabando = dias !== null && dias <= 7
 
   return (
     <Cartela className="mt-6 p-5">
-      <Selo>{jaCancelada ? 'Assinatura cancelada' : 'Você é PRO'}</Selo>
+      <Selo>Você é PRO</Selo>
       <p className="mt-3 font-titulo text-[18px] leading-tight font-black text-tinta">
         Está tudo liberado na sua conta.
       </p>
 
-      {jaCancelada ? (
-        <p className="mt-2 font-corpo text-[14px] leading-relaxed text-apagado">
-          Não haverá nova cobrança. Nada do que você cadastrou é apagado, e você
-          pode assinar de novo quando quiser.
-        </p>
+      {quando ? (
+        <>
+          <p
+            className={cn(
+              'mt-4 font-titulo text-[22px] leading-none font-black',
+              acabando ? 'text-alerta' : 'text-tinta',
+            )}
+          >
+            Vale até {quando}
+          </p>
+          <p className="mt-2 font-corpo text-[14px] leading-relaxed text-apagado">
+            {acabando
+              ? `Falta${dias === 1 ? '' : 'm'} ${dias} dia${dias === 1 ? '' : 's'}. Renove pelo Pix e os dias que sobram entram na conta — você não perde nada por pagar antes.`
+              : 'Não há renovação automática e nada é cobrado de você sem que peça. Quando renovar, os dias que sobrarem entram na conta.'}
+          </p>
+        </>
       ) : (
         <p className="mt-2 font-corpo text-[14px] leading-relaxed text-apagado">
-          Sua assinatura está ativa e renova sozinha
-          {proxima ? `, com a próxima cobrança em ${proxima}` : ''}. Se o
-          pagamento falhar, você tem 7 dias com os limites do PRO para resolver,
-          e nada do que você cadastrou é apagado.
+          Nada do que você cadastrou é apagado, e não há cobrança automática.
         </p>
       )}
 
-      {!jaCancelada &&
-        (confirmando ? (
-          <div className="mt-4 rounded-[var(--radius-controle)] border-2 border-tinta bg-papel p-4">
-            <p className="font-corpo text-[14px] leading-relaxed text-tinta">
-              Cancelar não apaga nada do seu acervo. A renovação para, e para
-              voltar ao PRO depois é preciso assinar de novo.
-            </p>
-            <div className="mt-3 flex gap-2">
-              <button
-                type="button"
-                onClick={cancelar}
-                disabled={cancelando}
-                className="flex-1 rounded-[var(--radius-controle)] border-2 border-tinta bg-cartela px-4 py-2.5 font-titulo text-[13px] font-extrabold uppercase text-tinta disabled:opacity-60"
-              >
-                {cancelando ? 'Cancelando…' : 'Sim, cancelar'}
-              </button>
-              <button
-                type="button"
-                onClick={() => setConfirmando(false)}
-                disabled={cancelando}
-                className="flex-1 rounded-[var(--radius-controle)] border-2 border-tinta bg-azul px-4 py-2.5 font-titulo text-[13px] font-extrabold uppercase text-azul-tinta disabled:opacity-60"
-              >
-                Continuar PRO
-              </button>
-            </div>
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setConfirmando(true)}
-            className="mt-4 font-corpo text-[13px] text-apagado underline underline-offset-2"
-          >
-            Cancelar assinatura
-          </button>
-        ))}
+      <div className="mt-4">
+        <BotaoComprar compra={compra} rotulo="Renovar com Pix" />
+      </div>
     </Cartela>
   )
+}
+
+/* --------------------------------------------------------------- a folha do Pix */
+
+/**
+ * O Pix, por cima da tela. Nasceu em 2026-08-23, com a troca do cartão.
+ *
+ * **O "copia e cola" vem antes do QR, e é decisão de contexto.** Isto é um PWA
+ * de celular: quem está com o app aberto na mão não tem uma segunda câmera para
+ * apontar para a própria tela. O caminho real é copiar o código, abrir o banco e
+ * colar. O QR fica embaixo, para quem paga do computador ou usa o celular de
+ * outra pessoa.
+ *
+ * **A folha se fecha sozinha quando o dinheiro entra**, e é o que faz este fluxo
+ * parecer instantâneo: enquanto ela está aberta, a tela pergunta ao servidor de
+ * cinco em cinco segundos se o pagamento foi creditado — ver `usePro`. Quem
+ * recebe o aviso do Mercado Pago é o servidor, e a pessoa está no aplicativo do
+ * banco quando isso acontece.
+ *
+ * **Não há botão de "já paguei".** Ele existiria só para acalmar, não faria nada
+ * que a espera já não faça, e ensinaria a pessoa a tocar nele antes de pagar.
+ */
+function FolhaPix({
+  cobranca,
+  aoFechar,
+  aoPagar,
+}: {
+  cobranca: CobrancaPix
+  aoFechar: () => void
+  /** Chamado quando o servidor confirma o crédito. */
+  aoPagar: () => void
+}) {
+  const { data } = usePro(true, true)
+  const [copiado, setCopiado] = useState(false)
+  const restante = useContagem(cobranca.expira_em)
+
+  // O crédito é do servidor, e a folha só reage a ele. Comparar com `pago_em` e
+  // não com `plano === 'PRO'`: quem renova já era PRO antes de pagar, e a
+  // segunda condição nunca mudaria de valor.
+  const pago = data?.status === 'approved' && Boolean(data?.pago_em)
+
+  useEffect(() => {
+    if (pago) aoPagar()
+  }, [pago, aoPagar])
+
+  async function copiar() {
+    try {
+      await navigator.clipboard.writeText(cobranca.qr_code)
+      setCopiado(true)
+      // Volta ao rótulo de antes: "Copiado" preso para sempre não diz se o
+      // segundo toque funcionou, e alguém toca de novo justamente por dúvida.
+      setTimeout(() => setCopiado(false), 2500)
+    } catch {
+      // `clipboard` exige contexto seguro e permissão, e falha calada em alguns
+      // navegadores embutidos. Selecionar o texto na tela é a saída manual, e
+      // ela precisa existir — por isso o código fica visível, e não escondido
+      // atrás do botão.
+      toast.error('Não foi possível copiar. Selecione o código abaixo.')
+    }
+  }
+
+  const vencido = restante === 0
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.18 }}
+        onClick={aoFechar}
+        className="fixed inset-0 z-40 bg-tinta/70 backdrop-blur-[2px]"
+      />
+      <motion.div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Pagamento por Pix"
+        initial={{ y: '100%' }}
+        animate={{ y: 0 }}
+        exit={{ y: '100%' }}
+        transition={{ type: 'spring', stiffness: 320, damping: 34 }}
+        className={cn(
+          'fixed inset-x-0 bottom-0 z-50 max-h-[92dvh] overflow-y-auto',
+          'rounded-t-[20px] border-t-2 border-tinta bg-cartela',
+          'shadow-[var(--shadow-duro)]',
+        )}
+      >
+        <div className="mx-auto w-full max-w-xl px-5 pt-3 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
+          <div
+            aria-hidden
+            className="mx-auto mb-4 h-1 w-10 rounded-full bg-tinta/30"
+          />
+
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="font-titulo text-[20px] leading-tight font-black text-tinta">
+                {formatarPreco(cobranca.valor)} no Pix
+              </p>
+              <p className="mt-1 font-corpo text-[13px] text-apagado">
+                PRO {cobranca.periodo === 'anual' ? 'por 12 meses' : 'por 1 mês'}
+                {restante !== null && !vencido
+                  ? ` — o código vale por mais ${restante}`
+                  : ''}
+              </p>
+            </div>
+            <AcaoSecundaria onClick={aoFechar}>Fechar</AcaoSecundaria>
+          </div>
+
+          {vencido ? (
+            /* Vencido é estado próprio, e não um erro: o código morreu porque
+               ninguém pagou, que é o normal de quem desistiu. Gerar outro é um
+               toque, e a folha não fica mostrando um código que o banco recusa. */
+            <div className="mt-5 rounded-[var(--radius-controle)] border-2 border-tinta bg-papel p-4">
+              <p className="font-corpo text-[14px] leading-relaxed text-tinta">
+                Este código venceu. Nada foi cobrado — feche e gere outro quando
+                quiser pagar.
+              </p>
+            </div>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={copiar}
+                className={cn(
+                  'mt-5 flex w-full items-center justify-center gap-2 rounded-[var(--radius-controle)] border-2 border-tinta bg-azul px-5 py-3',
+                  'font-titulo text-[15px] font-extrabold uppercase text-azul-tinta',
+                  'shadow-[var(--shadow-duro-sm)] transition-[box-shadow,transform]',
+                  'hover:shadow-[var(--shadow-duro)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none',
+                )}
+              >
+                {copiado ? 'Código copiado' : 'Copiar código Pix'}
+              </button>
+
+              <p className="mt-2.5 text-center font-corpo text-[12px] leading-relaxed text-apagado">
+                Cole no aplicativo do seu banco, em Pix → Pix Copia e Cola. Assim
+                que o pagamento cair, esta tela se fecha sozinha.
+              </p>
+
+              {/* O código à vista, e não escondido atrás do botão: quando a
+                  cópia falha — contexto inseguro, navegador embutido —, marcar
+                  o texto com o dedo é a única saída que sobra. */}
+              <p className="mt-4 rounded-[var(--radius-controle)] border-2 border-tinta bg-papel p-3 font-dado text-[11px] leading-relaxed break-all text-tinta select-all">
+                {cobranca.qr_code}
+              </p>
+
+              <div className="mt-5 flex flex-col items-center">
+                <div className="rounded-[var(--radius-controle)] border-2 border-tinta bg-white p-3">
+                  {/* Desenhado no navegador a partir do "copia e cola" — a
+                      imagem nunca trafega pela rede nem ocupa linha no banco.
+                      SVG e não PNG: escala sem borrar e não precisa de
+                      `img-src data:` na CSP. */}
+                  <QRCodeSVG
+                    value={cobranca.qr_code}
+                    size={168}
+                    // Nível médio: o payload do Pix é longo, e correção alta
+                    // engorda o QR a ponto de os módulos ficarem pequenos
+                    // demais para a câmera de um celular mais velho.
+                    level="M"
+                    aria-label="QR Code do pagamento Pix"
+                  />
+                </div>
+                <p className="mt-2 text-center font-corpo text-[12px] text-apagado">
+                  Ou aponte a câmera do banco, se estiver pagando de outro
+                  aparelho.
+                </p>
+              </div>
+
+              <div className="mt-5 flex items-center justify-center gap-2">
+                <span
+                  aria-hidden
+                  className="size-2 animate-pulse rounded-full bg-azul"
+                />
+                <p className="font-corpo text-[13px] text-apagado">
+                  Esperando o pagamento…
+                </p>
+              </div>
+            </>
+          )}
+        </div>
+      </motion.div>
+    </AnimatePresence>
+  )
+}
+
+/**
+ * Quanto falta para o código vencer, como `"12 min"` ou `"48 s"`.
+ *
+ * `null` quando não há data; `0` quando já venceu — e a folha usa o zero para
+ * trocar de estado, porque um contador parado em "0 min" continua parecendo um
+ * código válido.
+ *
+ * Conta de dez em dez segundos, não de um em um: a precisão que a pessoa precisa
+ * é "ainda dá tempo", e um relógio que pisca a cada segundo numa tela de
+ * pagamento cria pressa em vez de informar.
+ */
+function useContagem(expiraEm: string | null): string | number | null {
+  const [agora, setAgora] = useState(() => Date.now())
+
+  useEffect(() => {
+    if (!expiraEm) return
+    const t = setInterval(() => setAgora(Date.now()), 10_000)
+    return () => clearInterval(t)
+  }, [expiraEm])
+
+  if (!expiraEm) return null
+  const restante = new Date(expiraEm).getTime() - agora
+  if (restante <= 0) return 0
+  const minutos = Math.floor(restante / 60_000)
+  return minutos >= 1 ? `${minutos} min` : `${Math.ceil(restante / 1000)} s`
 }
 
 /**
@@ -423,11 +648,11 @@ function Assinante() {
  * ano, não de mês. Quem quiser mensal troca com um toque, e o mensal está do lado
  * com o mesmo peso visual, não escondido.
  *
- * **O preço aparece por mês nos dois**, com o total do ano embaixo. "R$ 199,90"
- * sozinho parece caro ao lado de "R$ 19,90"; "R$ 16,66 por mês" é a mesma coisa
+ * **O preço aparece por mês nos dois**, com o total embaixo. "R$ 149,90"
+ * sozinho parece caro ao lado de "R$ 14,90"; "R$ 12,49 por mês" é a mesma coisa
  * dita na unidade em que a pessoa compara. O total continua na tela porque
- * esconder o valor que sai do cartão seria o tipo de conversão que gera
- * estorno.
+ * esconder o valor que sai da conta seria o tipo de conversão que gera
+ * reclamação.
  */
 export function Oferta({
   precos,
@@ -450,11 +675,11 @@ export function Oferta({
     <div id={ANCORA_OFERTA} className="scroll-mt-4">
       <Cartela className="mt-6 p-5">
         <p className="font-titulo text-[20px] leading-tight font-black text-tinta">
-          Escolha como quer pagar.
+          Escolha por quanto tempo.
         </p>
         <div
           role="radiogroup"
-          aria-label="Período da assinatura"
+          aria-label="Por quanto tempo"
           className="mt-4 flex gap-2"
         >
           <Periodicidade
@@ -477,20 +702,22 @@ export function Oferta({
         </p>
         <p className="mt-1 font-corpo text-[13px] text-apagado">
           {periodo === 'anual'
-            ? `Cobrado ${formatarPreco(precos.anual)} uma vez por ano — ${ECONOMIA_ANUAL}.`
-            : `Cobrado ${formatarPreco(precos.mensal)} todo mês.`}
+            ? `${formatarPreco(precos.anual)} de uma vez, por 12 meses de PRO — ${ECONOMIA_ANUAL}.`
+            : `${formatarPreco(precos.mensal)} de uma vez, por 1 mês de PRO.`}
         </p>
 
         <div className="mt-4">
-          <BotaoAssinar compra={compra} />
+          <BotaoComprar compra={compra} />
         </div>
 
-        {/* O que tira o dedo do freio, em uma linha. Cartão, Pix e boleto porque
-          cartão de crédito não é universal neste público — e é o Mercado Pago
-          que decide quais aparecem, conforme a conta que recebe. */}
+        {/* O que tira o dedo do freio, em uma linha. **Pix e só Pix desde
+          2026-08-23**, e dizer isso é a metade boa da troca: some a exigência
+          de cartão de crédito, que neste público exclui mais gente do que o
+          preço. A outra metade — não renova sozinho — está dita na mesma
+          frase, porque descobrir isso depois é pior do que ler agora. */}
         <p className="mt-2.5 text-center font-corpo text-[12px] leading-relaxed text-apagado">
-          Pix, cartão ou boleto pelo Mercado Pago. Cancele quando quiser, sem
-          multa — o PRO fica até o fim do período que você pagou.
+          Pagamento por Pix, sem cartão e sem cadastro. Não renova sozinho: você
+          paga de novo quando quiser, e avisamos antes de vencer.
         </p>
       </Cartela>
     </div>

@@ -35,11 +35,14 @@ jobs:
           if [ "$(date -u +%H:%M)" = "09:00" ]; then
             chamar triangular || echo "triangular falhou"
             chamar expire || echo "expire falhou"
-            # Assinaturas: webhook se perde, e quando se perde ninguém percebe —
-            # o app fica errado em silêncio, cobrando de quem caiu ou liberando
-            # quem parou de pagar. Esta passada confere no Mercado Pago e encerra
-            # as carências vencidas. Diário porque assinatura muda em dias.
-            chamar reconciliar-assinaturas || echo "reconciliar-assinaturas falhou"
+            # Pagamentos: webhook se perde, e quando se perde ninguém percebe —
+            # o Pix saiu da conta da pessoa e o app não mudou. Esta passada
+            # confere os pendentes no Mercado Pago e derruba quem passou da data
+            # comprada.
+            chamar reconciliar-pagamentos || echo "reconciliar-pagamentos falhou"
+            # E o aviso de vencimento, que é a contrapartida de o Pix não
+            # renovar sozinho: sem ele o churn é silencioso.
+            chamar avisar-vencimento || echo "avisar-vencimento falhou"
           fi
           # Câmbio: na janela das 11:30 BRT, e mais tarde de propósito. Pega
           # carona no disparo de 15 em 15 minutos, que já passa por aqui — uma

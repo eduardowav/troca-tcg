@@ -175,11 +175,11 @@ def _rotas_autenticadas():
     """Toda rota do app que exige sessão, lida dos routers de origem."""
     from app.routers import (
         alertas,
-        assinaturas,
         listings,
         matches,
         notificacoes,
         planos,
+        pro,
         propostas,
         users,
         verificacao,
@@ -188,11 +188,11 @@ def _rotas_autenticadas():
 
     for modulo in (
         alertas,
-        assinaturas,
         listings,
         matches,
         notificacoes,
         planos,
+        pro,
         propostas,
         users,
         verificacao,

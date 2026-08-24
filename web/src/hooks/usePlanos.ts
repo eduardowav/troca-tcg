@@ -9,7 +9,7 @@ import {
   obterPlanos,
   obterSituacao,
   type Planos,
-  type SituacaoDoPlano,
+  type SituacaoDoPro,
 } from '@/lib/planos'
 
 /**
@@ -63,18 +63,29 @@ export function useAvisoDeErro() {
 }
 
 /**
- * A assinatura desta pessoa, do lado do Mercado Pago.
+ * O PRO desta pessoa: até quando vale, e se há um Pix esperando pagamento.
  *
  * Separado do `usePlanos`: aquilo é tabela de preço, pública e quase imutável;
  * isto é estado de conta, muda quando o webhook chega e não pode ficar em cache
- * de uma hora. `staleTime` curto porque a volta do checkout é exatamente o
- * momento em que a resposta velha estaria errada.
+ * de uma hora.
+ *
+ * **`vigiando` liga a espera do pagamento, e é o que faz a folha do Pix se
+ * fechar sozinha.** Enquanto a folha está aberta, a tela pergunta de cinco em
+ * cinco segundos se o dinheiro entrou — não há como o navegador saber disso de
+ * outro jeito: quem recebe o aviso do Mercado Pago é o servidor, e a pessoa está
+ * no aplicativo do banco quando isso acontece.
+ *
+ * Cinco segundos, e não um: o Pix costuma levar alguns segundos para liquidar, e
+ * uma pergunta por segundo seria doze vezes mais carga no servidor para ganhar,
+ * no melhor caso, quatro segundos de percepção. Desligado, o `staleTime` curto
+ * cobre o caso comum — voltar ao app depois de pagar.
  */
-export function useAssinatura(ligado = true) {
-  return useQuery<SituacaoDoPlano>({
-    queryKey: ['assinatura'],
+export function usePro(ligado = true, vigiando = false) {
+  return useQuery<SituacaoDoPro>({
+    queryKey: ['pro'],
     queryFn: obterSituacao,
     enabled: ligado,
-    staleTime: 30_000,
+    staleTime: vigiando ? 0 : 30_000,
+    refetchInterval: vigiando ? 5_000 : false,
   })
 }

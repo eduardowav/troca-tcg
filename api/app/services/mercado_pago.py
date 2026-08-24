@@ -1,22 +1,29 @@
-"""Mercado Pago — o provedor da assinatura do PRO.
+"""Mercado Pago — o provedor do pagamento do PRO.
 
 Tudo que fala com a API deles mora aqui. O resto do app não sabe o que é um
-`preapproval`, e é assim que trocar de provedor um dia continua sendo reescrever
-um arquivo em vez de caçar chamadas espalhadas.
+`point_of_interaction`, e é assim que trocar de provedor um dia continua sendo
+reescrever um arquivo em vez de caçar chamadas espalhadas.
 
 **Escrito e desligado**, como o WhatsApp e o push: sem `MERCADO_PAGO_ACCESS_TOKEN`
 o `ativo()` é falso e nenhuma chamada sai. A regra continua exercitável pelos
 testes, e o dia de ligar é uma linha de ambiente.
 
-**O checkout não passa por aqui.** O app cria a assinatura, recebe um
-`init_point` e redireciona — quem coleta cartão é o Mercado Pago. Nenhum dado de
-cartão toca o TrocaTCG, o que tira do projeto a parte cara de guardar pagamento.
+**É Pix avulso, e não assinatura — 2026-08-23.** O módulo falava `/preapproval`
+até essa data. Recorrência no Mercado Pago é cartão de crédito e mais nada, e o
+público do app paga por Pix; a troca inteira está contada em `db/schema/38`. O
+que sobrou é mais simples: uma cobrança nasce, alguém paga, o webhook credita
+tempo de PRO.
+
+**Nenhum dado de pagamento toca o TrocaTCG.** O que volta daqui é um "copia e
+cola" do Pix, que é público por desenho — ele diz para quem vai o dinheiro e
+quanto. Não há cartão, não há token, não há o que vazar.
 """
 
 import hashlib
 import hmac
 import logging
 import time
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Any
 
@@ -33,14 +40,16 @@ BASE_URL = "https://api.mercadopago.com"
 #: responder. Nos dois casos, lentidão do provedor não pode virar timeout nosso.
 TIMEOUT = 10.0
 
-#: Os dois períodos vendidos, e a frequência de cada um em meses.
+#: Os dois períodos vendidos, e quantos meses de PRO cada um credita.
 #:
-#: O preço **não** está aqui, e desde 2026-08-22 por um motivo diferente do
-#: antigo: ele morava no plano do Mercado Pago, e agora mora em `PRECOS`, no
-#: `core/limites.py`. Quanto custa é regra de negócio; de quantos em quantos
-#: meses se cobra é vocabulário do provedor, e é só isso que este mapa é. Ele
-#: serve nas duas direções — monta o `auto_recurring` na criação e lê a
-#: frequência de volta em `_periodo_do_recurso`.
+#: Deixou de ser vocabulário do provedor em 2026-08-23. Enquanto o PRO foi
+#: assinatura, este mapa montava o `auto_recurring` e o Mercado Pago é que
+#: contava os ciclos. Com Pix avulso não há ciclo: a compra credita tempo, e
+#: quem soma a data é `services/pro.py`. Fica aqui porque é aqui que o período
+#: vira a descrição que aparece no extrato de quem paga.
+#:
+#: O preço não está aqui — mora em `PRECOS`, no `core/limites.py`. Quanto custa
+#: é regra de negócio.
 PERIODOS = {"mensal": 1, "anual": 12}
 
 
@@ -84,7 +93,7 @@ class FalhaDoProvedor(Exception):
     **Continua subindo para quem processa webhook**, que é o que o `_chamar`
     sempre prometeu: virar 500 ali é o que faz o Mercado Pago reenviar a
     notificação. Quem trata é só o caminho de quem está parado na tela — ver
-    `services/assinaturas.py`.
+    `services/pro.py`.
 
     `status` é o código HTTP deles quando houve resposta, e `None` quando nem
     isso (timeout, DNS, conexão recusada).
@@ -106,7 +115,11 @@ def ativo() -> bool:
 
 
 async def _chamar(
-    metodo: str, caminho: str, corpo: dict[str, Any] | None = None
+    metodo: str,
+    caminho: str,
+    corpo: dict[str, Any] | None = None,
+    *,
+    chave: str | None = None,
 ) -> dict[str, Any]:
     """Uma chamada à API do Mercado Pago, com erro que sobe para quem pediu.
 
@@ -124,9 +137,17 @@ async def _chamar(
     que muda é ser um tipo deste módulo, que quem chama consegue capturar sem
     importar `aiohttp`. Ver o docstring da exceção para o estrago que a falta
     disso causou na tela.
+
+    **`chave` é o `X-Idempotency-Key`, e a criação de pagamento exige um.** Sem
+    ele, um POST que sai daqui e cuja resposta se perde no caminho de volta vira
+    uma segunda cobrança na próxima tentativa — duas cobranças vivas para a
+    mesma compra, que é como alguém paga duas vezes. Com ele, o Mercado Pago
+    devolve o pagamento que já criou.
     """
     tempo = aiohttp.ClientTimeout(total=TIMEOUT)
     cabecalhos = {"Authorization": f"Bearer {settings.MERCADO_PAGO_ACCESS_TOKEN}"}
+    if chave:
+        cabecalhos["X-Idempotency-Key"] = chave
 
     try:
         async with aiohttp.ClientSession(timeout=tempo) as sessao:
@@ -157,94 +178,107 @@ async def _chamar(
         raise FalhaDoProvedor(None) from exc
 
 
-async def criar_assinatura(
-    *, periodo: str, valor: Decimal, email: str, referencia: str, back_url: str
+async def criar_pagamento_pix(
+    *,
+    periodo: str,
+    valor: Decimal,
+    email: str,
+    referencia: str,
+    chave: str,
+    minutos: int,
+    cpf: str | None = None,
+    nome: str | None = None,
 ) -> dict[str, Any]:
-    """Cria o `preapproval` e devolve o recurso, com `id` e `init_point`.
+    """Cria a cobrança Pix e devolve o pagamento, com `id` e o QR dentro.
 
-    `external_reference` leva o id do usuário no TrocaTCG. É o que amarra os dois
-    lados: sem ele, uma notificação chegaria dizendo que *alguma* assinatura
-    mudou, e descobrir de quem exigiria confiar no e-mail — que a pessoa troca.
+    **Substituiu o `POST /preapproval` em 2026-08-23**, e a troca não foi de
+    estilo. Assinatura no Mercado Pago é cartão de crédito e mais nada: o
+    endpoint de recorrência engole `payment_methods_allowed` em silêncio e
+    devolve o recurso com `payment_method_id: null`. Provado no mesmo dia,
+    pedindo só `bank_transfer`/`pix`. Quem troca carta em Belém paga por Pix, e
+    exigir cartão era cobrar de quem já tem banco. Ver `db/schema/38`.
 
-    O status nasce `pending`: ninguém está assinado até autorizar o pagamento na
-    tela do Mercado Pago.
+    O QR volta em `point_of_interaction.transaction_data`: `qr_code` é o "copia
+    e cola" e `qr_code_base64` é a imagem. **Só o `qr_code` é guardado** — a
+    imagem se desenha a partir dele no navegador, e gravar PNG em base64 no
+    Postgres seria pagar armazenamento por algo derivável.
 
-    **Assinatura sem plano associado, e a escolha não é de estilo — 2026-08-22.**
-    Esta função mandava `preapproval_plan_id` e o Mercado Pago recusava com
-    ``{"message": "card_token_id is required", "status": 400}``. Não é
-    contornável: assinatura ligada a plano só nasce pela API com o cartão já
-    tokenizado, o que significa coletar cartão no nosso frontend — exatamente o
-    que o cabeçalho deste módulo diz que o projeto não faz.
+    `external_reference` leva o id do usuário no TrocaTCG, e é o que amarra os
+    dois lados quando a nossa ponta do POST cai: se a resposta se perder, a
+    notificação ainda chega dizendo de quem é o dinheiro. Sem ele, restaria o
+    e-mail do pagador — que a pessoa troca.
 
-    Sem plano, manda-se o `auto_recurring` inteiro e `status: "pending"`, e o
-    Mercado Pago devolve o `init_point` para a pessoa autorizar na tela dele.
-    Provado ponta a ponta com credencial de teste: a assinatura voltou
-    `authorized`, com `external_reference`, `next_payment_date` e `auto_recurring`
-    corretos.
+    `chave` é o `X-Idempotency-Key`, e é o id da linha local que vai guardar
+    esta cobrança. A mesma chave devolve o mesmo pagamento em vez de criar
+    outro, que é o que separa "o POST demorou" de "a pessoa tem duas cobranças
+    vivas".
 
-    **E é o fluxo que preserva o `external_reference`.** Pelo caminho do plano ele
-    se perde — nem no corpo, nem como query no checkout ele sobrevive; a
-    assinatura autorizada volta com `external_reference: None` e `payer_email`
-    vazio, restando só o `payer_id`, que é identidade do Mercado Pago e não nossa.
-    Seria uma promoção a PRO sem saber de quem.
-
-    Some junto o `back_url` preso ao plano, que estava no domínio antigo desde a
-    troca de 21/08 e devolveria quem pagou para a origem errada. Agora ele viaja
-    por assinatura, e é o `MERCADO_PAGO_BACK_URL` que manda.
-
-    **Armadilha para quem for testar isto na mão.** O Mercado Pago filtra conteúdo
-    do corpo e recusa com ``{"code": "invalid_field_content"}`` — mensagem genérica
-    que não diz qual campo. Um `external_reference` de enfeite como
-    ``11111111-2222-3333-4444-555555555555`` cai nesse filtro, e o erro parece ser
-    do corpo inteiro. UUID de verdade passa, que é o que o app manda
-    (`str(user_id)`). Se este 400 aparecer num teste manual, desconfie do valor
-    inventado antes de desconfiar do desenho.
+    **`cpf` é opcional aqui de propósito.** O Mercado Pago aceita Pix só com o
+    e-mail do pagador; a identificação entra quando a conta dele exige, e nesse
+    caso a recusa é um 400 com `payer.identification` na causa. Mandar sempre
+    obrigaria a tela a pedir CPF de todo mundo — dado pessoal a mais, coletado
+    por precaução, que é exatamente o que a LGPD manda não fazer.
     """
-    return await _chamar(
-        "POST",
-        "/preapproval",
-        {
-            "reason": f"TrocaTCG PRO {periodo}",
-            "auto_recurring": {
-                "frequency": PERIODOS[periodo],
-                "frequency_type": "months",
-                # O valor é `Decimal` até aqui de propósito — ver `PRECOS` em
-                # `core/limites.py`. A conversão para `float` acontece só neste
-                # ponto, porque é o que o JSON aceita, e é segura para os valores
-                # que vendemos: `json.dumps` escreve a repr mais curta que
-                # round-trips, então 19.90 sai "19.9" e não "19.8999...".
-                "transaction_amount": float(valor),
-                "currency_id": "BRL",
-            },
-            "payer_email": email,
-            "external_reference": referencia,
-            "back_url": back_url,
-            # O que faz o Mercado Pago devolver `init_point` em vez de exigir
-            # cartão: a assinatura nasce à espera de autorização.
-            "status": "pending",
-        },
-    )
+    corpo: dict[str, Any] = {
+        # O que aparece no extrato de quem paga. Curto e reconhecível: quem lê
+        # "MERCADOPAGO*TROCATCG" três dias depois precisa saber o que comprou.
+        "description": f"TrocaTCG PRO {periodo}",
+        # O valor é `Decimal` até aqui de propósito — ver `PRECOS` em
+        # `core/limites.py`. A conversão para `float` acontece só neste ponto,
+        # porque é o que o JSON aceita, e é segura para os valores que vendemos:
+        # `json.dumps` escreve a repr mais curta que round-trips, então 14.90 sai
+        # "14.9" e não "14.8999...".
+        "transaction_amount": float(valor),
+        "payment_method_id": "pix",
+        "external_reference": referencia,
+        "date_of_expiration": _vencimento(minutos),
+        "payer": {"email": email},
+    }
+    if nome:
+        # O Mercado Pago parte o nome em dois campos. Quem tem um nome só entra
+        # com o sobrenome vazio, e não é erro — é o que o campo aceita.
+        primeiro, _, resto = nome.strip().partition(" ")
+        corpo["payer"]["first_name"] = primeiro
+        corpo["payer"]["last_name"] = resto
+    if cpf:
+        corpo["payer"]["identification"] = {"type": "CPF", "number": cpf}
+
+    return await _chamar("POST", "/v1/payments", corpo, chave=chave)
 
 
-async def buscar_assinatura(preapproval_id: str) -> dict[str, Any]:
-    """O estado real da assinatura, direto da fonte.
+def _vencimento(minutos: int) -> str:
+    """Quando o QR morre, no formato que o Mercado Pago aceita.
 
-    É esta chamada que torna o webhook confiável: o corpo da notificação traz
-    só um id, e é aqui que se descobre o que aconteceu de verdade.
+    Eles querem ISO 8601 **com milissegundos e com fuso explícito** —
+    `2026-08-23T20:30:00.000+00:00`. Sem os milissegundos a recusa é um 400 com
+    mensagem genérica, que é a mesma de outros seis erros e não diz qual campo
+    está errado.
+
+    UTC e não horário de Brasília: o offset viaja no texto, então o Mercado Pago
+    resolve sozinho, e o servidor não precisa saber em que fuso ele mesmo roda.
     """
-    return await _chamar("GET", f"/preapproval/{preapproval_id}")
+    quando = datetime.now(UTC) + timedelta(minutes=minutos)
+    return quando.strftime("%Y-%m-%dT%H:%M:%S.000+00:00")
 
 
-async def cancelar_assinatura(preapproval_id: str) -> dict[str, Any]:
-    """Cancela do nosso lado o que a pessoa pediu para cancelar.
+async def buscar_pagamento(payment_id: str) -> dict[str, Any]:
+    """O estado real do pagamento, direto da fonte.
 
-    Cancelamento não tira o PRO na hora — quem faz isso é a carência dos 7 dias,
-    conforme o item 10 da seção 16. Aqui só se avisa o Mercado Pago para não
-    cobrar de novo.
+    É esta chamada que torna o webhook confiável: o corpo da notificação traz só
+    um id, e é aqui que se descobre se o dinheiro entrou.
     """
-    return await _chamar(
-        "PUT", f"/preapproval/{preapproval_id}", {"status": "cancelled"}
-    )
+    return await _chamar("GET", f"/v1/payments/{payment_id}")
+
+
+def qr_do_pagamento(recurso: dict[str, Any]) -> str | None:
+    """O "copia e cola" de dentro da resposta, ou nada.
+
+    Existe para que o serviço não precise conhecer o caminho
+    `point_of_interaction.transaction_data.qr_code` — que é vocabulário do
+    provedor, e é isto que o cabeçalho deste módulo promete não vazar.
+    """
+    interacao = recurso.get("point_of_interaction") or {}
+    return (interacao.get("transaction_data") or {}).get("qr_code")
 
 
 def _carimbo_fresco(carimbo: str) -> bool:

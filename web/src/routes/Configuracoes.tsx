@@ -6,7 +6,7 @@ import { toast } from 'sonner'
 import { NaoAfiliacao } from '@/components/Isencao'
 import { usePerfil } from '@/hooks/usePerfil'
 import { useMarcaOculta } from '@/hooks/useMundo'
-import { usePlanos } from '@/hooks/usePlanos'
+import { usePlanos, usePro } from '@/hooks/usePlanos'
 import { useDesligarPush, useEstadoPush, useLigarPush } from '@/hooks/usePush'
 import { ApiError } from '@/lib/api'
 import { cn } from '@/lib/cn'
@@ -443,9 +443,28 @@ function Interruptor({
  * **Parceiro vem antes de Pro na escada**, e não é detalhe de ordem: quem é
  * parceiro também tem `plano = 'PRO'`, então testar o plano primeiro esconderia
  * a distinção para sempre. Ver `36_parceiro.sql`.
+ *
+ * **A data entrou em 2026-08-23, com o PRO comprado por Pix.** Enquanto era
+ * assinatura de cartão, dizer "Pro" bastava: renovava sozinho e o prazo era
+ * detalhe. Agora o prazo é a única coisa que exige ação da pessoa, e escondê-lo
+ * atrás de mais um toque é como alguém deixa o plano vencer sem perceber.
+ * Parceiro não tem data porque não tem vencimento.
  */
 function Plano({ perfil }: { perfil?: Perfil | null }) {
   const { data } = usePlanos()
+  const ePro =
+    (data?.cobranca_ativa ?? false) &&
+    perfil?.plano === 'PRO' &&
+    !perfil?.parceiro
+  // Só pergunta quando a resposta muda alguma coisa na tela.
+  const { data: pro } = usePro(ePro)
+
+  const ate = pro?.plano_expira_em
+    ? new Date(pro.plano_expira_em).toLocaleDateString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+      })
+    : null
 
   const valor = !data
     ? undefined
@@ -454,7 +473,9 @@ function Plano({ perfil }: { perfil?: Perfil | null }) {
       : perfil?.parceiro
         ? 'Parceiro'
         : perfil?.plano === 'PRO'
-          ? 'Pro'
+          ? ate
+            ? `Pro até ${ate}`
+            : 'Pro'
           : 'Free'
 
   return (

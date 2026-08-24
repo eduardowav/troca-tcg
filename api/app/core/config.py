@@ -72,11 +72,9 @@ class Settings(BaseSettings):
     # 2026-08-22. Na dúvida sobre um token, `GET /users/me` responde: usuário de
     # teste vem com a tag `test_user`.
     #
-    # Não há mais id de plano aqui. Até 2026-08-22 existiam
-    # `MERCADO_PAGO_PLANO_MENSAL` e `_ANUAL`, e eles saíram junto com a descoberta
-    # de que assinatura ligada a plano exige `card_token_id` — ver o docstring de
-    # `mercado_pago.criar_assinatura`. Menos duas variáveis para preencher errado
-    # no dia de ligar, e some com elas o `back_url` que ficava preso no plano.
+    # Não há mais id de plano aqui, e desde 2026-08-23 não há mais nada de
+    # assinatura: o PRO virou tempo comprado por Pix avulso, porque recorrência
+    # no Mercado Pago é cartão de crédito e mais nada. Ver `db/schema/38`.
     MERCADO_PAGO_ACCESS_TOKEN: str = ""
     # O segredo da assinatura do webhook, gerado no painel junto com a URL. Sem
     # ele o receptor recusa tudo, de propósito: webhook de pagamento sem
@@ -89,9 +87,16 @@ class Settings(BaseSettings):
     # provedor e o desvio de relógio entre as duas pontas. Zero desliga a
     # conferência, que é o que os testes usam para fixar um carimbo.
     MERCADO_PAGO_TOLERANCIA_SEGUNDOS: int = 300
-    # Para onde o Mercado Pago devolve a pessoa depois do checkout. Não é o mesmo
-    # que a origem do CORS: aqui é uma tela específica, e ela precisa existir.
-    MERCADO_PAGO_BACK_URL: str = "http://localhost:5173/planos"
+    # Quantos minutos o QR do Pix vale. Trinta, e a escolha é de produto: quem
+    # abriu a tela vai pagar agora. Janela longa produz pagamento chegando dias
+    # depois, quando a pessoa já esqueceu que comprou — e cobrança viva demais
+    # tempo é cobrança que se paga duas vezes.
+    #
+    # Substituiu o `MERCADO_PAGO_BACK_URL`, que existia porque o cartão levava a
+    # pessoa para fora do app e precisava trazê-la de volta. O Pix não sai da
+    # tela: o código é copiado, o banco é outro aplicativo, e o app fica onde
+    # estava esperando o webhook.
+    MERCADO_PAGO_PIX_MINUTOS: int = 30
 
     # Segurança
     # **Sem default, e é decisão de segurança** (item 5 do bloco da seção 17).
@@ -118,7 +123,7 @@ class Settings(BaseSettings):
     # Alteração que só amplia direito vale contra quem se obriga — que é o app —
     # sem novo aceite. O re-aceite continua devendo, e o gatilho dele é a próxima
     # mudança **restritiva**, não esta. Está na fila da seção 17.
-    TERMOS_VERSAO: str = "2026-08-22"
+    TERMOS_VERSAO: str = "2026-08-23"
 
     # Monitoramento de erro (item 15 da seção 17). Vazio é o estado normal: sem
     # DSN o `core/monitoramento.py` não inicializa nada e o app sobe igual.

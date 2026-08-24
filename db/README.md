@@ -47,6 +47,9 @@ foreign key entre eles (ex.: `listings` referencia `finishes`, `cards` e `profil
 | 33 | `schema/33_resolver_lista_exige_identificacao.sql` | a lista colada lê `xxx/xxx` e diz se identificou a carta ou só chutou |
 | 34 | `schema/34_exclusao_de_conta_nao_trava.sql` | o aceite da isenção deixa de prender o match, e apagar a conta volta a funcionar |
 | 35 | `schema/35_cotacao.sql` | cotação do dólar (PTAX), para quem prefere ler preço em real |
+| 36 | `schema/36_parceiro.sql` | Parceiro: PRO que não paga, e o registro do porquê |
+| 37 | `schema/37_founder.sql` | selo do perfil, começando pelo FOUNDER |
+| 38 | `schema/38_pro_por_pix.sql` | o PRO vira tempo comprado por Pix: `pro_pagamentos`, e `plano_expira_em` muda de significado |
 
 > **Dependência do Supabase Auth:** `profiles.id` referencia `auth.users(id)`.
 > Aplique este schema em um projeto Supabase (onde o schema `auth` já existe).

@@ -9,10 +9,13 @@ import { api, ApiError } from '@/lib/api'
  *
  * **O preço vem da API também, desde 2026-08-22.** Ele era a exceção deliberada
  * aqui — "texto de venda, e na Fase C quem manda é o Mercado Pago" —, e deixou de
- * ser: a assinatura passou a ser criada sem plano associado, então o valor viaja
- * na chamada e `PRECOS` em `core/limites.py` é o dono. A exceção virou o caso
- * mais forte da regra: limite divergente irrita, preço divergente é cobrança que
- * não bate com a tela.
+ * ser: o valor viaja na chamada e `PRECOS` em `core/limites.py` é o dono. A
+ * exceção virou o caso mais forte da regra: limite divergente irrita, preço
+ * divergente é cobrança que não bate com a tela.
+ *
+ * **O PRO é comprado por Pix desde 2026-08-23**, e não assinado. Não há
+ * renovação automática, não há cancelamento, e o que a pessoa compra é tempo —
+ * ver `services/pro.py` e `db/schema/38`.
  */
 
 export interface Limites {
@@ -90,50 +93,72 @@ export function eLimiteDePlano(erro: unknown): erro is ApiError {
   return erro instanceof ApiError && CODIGOS_DO_PRO.has(erro.codigo)
 }
 
-/** O que `POST /me/assinatura` devolve: para onde mandar a pessoa. */
-export interface AssinaturaCriada {
-  /** O checkout do Mercado Pago. É para lá que a pessoa vai. */
-  init_point: string
-  preapproval_id: string
+/** O que `POST /me/pro/pagamentos` devolve: a cobrança Pix, pronta para pagar. */
+export interface CobrancaPix {
+  payment_id: string
+  periodo: Periodo
+  /** Em reais, como texto — `"14.90"`. Mesmo motivo de `precos` acima. */
+  valor: string
+  /**
+   * O "copia e cola" do Pix. É o que a pessoa cola no banco, e é a partir dele
+   * que o QR é desenhado na tela — a imagem não viaja pela rede.
+   */
+  qr_code: string
+  /** Quando o código morre. São trinta minutos a contar da criação. */
+  expira_em: string | null
+  /**
+   * Esta cobrança já existia?
+   *
+   * A API devolve o Pix vivo em vez de criar um segundo — ver `services/pro.py`.
+   * A tela precisa saber para não dizer "código gerado" a quem está recebendo o
+   * mesmo de dois minutos atrás.
+   */
+  reaproveitada: boolean
 }
 
 /**
- * Cria a assinatura e devolve o checkout.
+ * Gera o Pix da compra do PRO e devolve o código.
  *
- * **Ninguém vira PRO aqui.** A linha nasce `pending` e quem promove é o webhook,
- * depois de o pagamento existir — ver `services/assinaturas.py`. Quem fecha a aba
- * no meio do caminho fica com uma assinatura pendente e o plano de antes, que é
- * o desenho certo: o dinheiro promove, não o clique.
+ * **Ninguém vira PRO aqui.** A cobrança nasce pendente e quem credita é o
+ * webhook, depois de o dinheiro existir — ver `services/pro.py`. Quem fecha a
+ * folha sem pagar fica com o plano de antes, que é o desenho certo: o dinheiro
+ * promove, não o clique.
  *
- * Nenhum dado de cartão passa por aqui. O app manda a pessoa para o Mercado Pago
- * e ela volta pelo `back_url`.
+ * **Substituiu o `assinar()` em 2026-08-23**, que mandava a pessoa para o
+ * checkout do Mercado Pago com `window.location.replace`. Não há mais para onde
+ * mandar: o Pix acontece dentro do app, e a pessoa nunca sai da tela.
  */
-export const assinar = (periodo: Periodo) =>
-  api.post<AssinaturaCriada>('/me/assinatura', { periodo })
+export const comprarPro = (periodo: Periodo) =>
+  api.post<CobrancaPix>('/me/pro/pagamentos', { periodo })
 
-/** O que `GET /me/assinatura` responde. Nulos são o normal de quem nunca assinou. */
-export interface SituacaoDoPlano {
+/** O que `GET /me/pro` responde. Nulos são o normal de quem nunca comprou. */
+export interface SituacaoDoPro {
   plano: string
-  /** Fim da carência, quando o pagamento falhou. Nulo é o normal. */
+  /** Até quando o PRO comprado vale. Nulo para quem não tem. */
   plano_expira_em: string | null
-  /** Status do lado do Mercado Pago. Nulo para quem nunca assinou. */
+  /** Status da última cobrança. Nulo para quem nunca comprou. */
   status: string | null
   periodo: Periodo | null
-  proxima_cobranca_em: string | null
+  /**
+   * O código da cobrança pendente, **só enquanto ela vale**. É o que faz a
+   * folha do Pix reabrir sozinha quando a pessoa volta ao app no meio do
+   * pagamento — sem isso, voltar significaria gerar outra cobrança.
+   */
+  qr_code: string | null
+  pix_expira_em: string | null
+  pago_em: string | null
 }
 
-export const obterSituacao = () => api.get<SituacaoDoPlano>('/me/assinatura')
+export const obterSituacao = () => api.get<SituacaoDoPro>('/me/pro')
 
 /**
- * Cancela a renovação da assinatura.
+ * Quantos dias faltam para a data, arredondado para cima. Negativo virou zero.
  *
- * **Não tira o PRO na hora**, e a tela precisa dizer isso antes de perguntar se
- * a pessoa tem certeza: quem cancela achando que perde o plano no mesmo instante
- * desiste de cancelar e fica pagando com raiva, que é pior para os dois lados.
- *
- * O que exatamente acontece depois do cancelamento está em revisão — o código e
- * o §8 dos Termos discordavam em 2026-08-22, e a diferença é de dez meses para
- * quem paga o anual. Enquanto não for resolvido, esta camada não afirma nada
- * sobre prazo: quem diz é a `situacao`, relida logo depois.
+ * A tela conta em dias porque é assim que a pessoa pensa em prazo de plano —
+ * "vence em 3 dias" decide, "vence em 71 horas" não.
  */
-export const cancelarAssinatura = () => api.del('/me/assinatura')
+export function diasAte(quando: string | null): number | null {
+  if (!quando) return null
+  const ms = new Date(quando).getTime() - Date.now()
+  return Math.max(0, Math.ceil(ms / 86_400_000))
+}

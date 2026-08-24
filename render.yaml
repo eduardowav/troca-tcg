@@ -124,29 +124,24 @@ services:
       - key: VAPID_SUBJECT
         value: mailto:eduardowav@icloud.com
 
-      # Mercado Pago — assinatura do PRO (Fase C da seção 16).
+      # Mercado Pago — pagamento do PRO (Fase C da seção 16).
       #
       # O access token e o segredo do webhook entram pelo painel (`sync: false`):
       # o token move dinheiro e o segredo é o que separa uma notificação do
-      # Mercado Pago de um POST qualquer na rota pública. Vazios, as rotas de
-      # assinatura respondem 503 e o receptor recusa tudo — que é o estado certo
+      # Mercado Pago de um POST qualquer na rota pública. Vazios, a rota de
+      # pagamento responde 503 e o receptor recusa tudo — que é o estado certo
       # de um ambiente sem credencial.
       #
-      # **Os ids de plano saíram em 2026-08-22**, e com eles duas armadilhas.
-      # Assinatura ligada a `preapproval_plan_id` exige `card_token_id` — ou seja,
-      # exige coletar cartão no nosso frontend, que este projeto não faz. A
-      # assinatura passou a ser criada sem plano, com o valor vindo de `PRECOS`
-      # em `core/limites.py`. Some junto o `back_url`, que morava no plano e
-      # apontava para o domínio antigo desde a troca de 21/08: agora ele viaja
-      # por assinatura, e quem manda nele é o `MERCADO_PAGO_BACK_URL` abaixo.
+      # **O PRO deixou de ser assinatura em 2026-08-23.** Recorrência no Mercado
+      # Pago é cartão de crédito e mais nada: o `POST /preapproval` engole
+      # `payment_methods_allowed` em silêncio. O público do app paga por Pix, e o
+      # PRO virou tempo comprado por Pix avulso — ver `db/schema/38`. Saiu com a
+      # troca o `MERCADO_PAGO_BACK_URL`: o Pix não leva ninguém para fora do app,
+      # então não há de onde voltar.
       - key: MERCADO_PAGO_ACCESS_TOKEN
         sync: false
       - key: MERCADO_PAGO_WEBHOOK_SECRET
         sync: false
-      # Para onde o Mercado Pago devolve quem terminou o checkout. Endereço
-      # único, e por isso o novo: quem volta do checkout volta para o domínio.
-      - key: MERCADO_PAGO_BACK_URL
-        value: https://trocatcg.com/planos
 
       # Painel de erro (item 15 da seção 17). Pelo painel (`sync: false`) porque
       # DSN é endereço de escrita: quem o tem manda evento para a conta do

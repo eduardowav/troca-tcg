@@ -18,9 +18,9 @@ from app.jobs.catalog.sync import sincronizar_sets
 from app.jobs.catalog.tcgdex import TCGdex
 from app.services import (
     alertas,
-    assinaturas,
     cambio,
     matching,
+    pro,
     propostas,
     triangular,
 )
@@ -149,23 +149,41 @@ async def notify_alerts(
     return {"notificadas": enviadas}
 
 
-@router.post("/reconciliar-assinaturas", dependencies=[Depends(_verifica_secret)])
-async def reconciliar_assinaturas(
+@router.post("/reconciliar-pagamentos", dependencies=[Depends(_verifica_secret)])
+async def reconciliar_pagamentos(
     session: AsyncSession = Depends(get_session),
 ) -> dict[str, int]:
-    """Confere as assinaturas no Mercado Pago e encerra as carências vencidas.
+    """Confere os Pix pendentes no Mercado Pago e derruba quem venceu.
 
-    Existe porque **webhook se perde**. Uma notificação que não chega deixa
-    alguém PRO de graça ou tira o PRO de quem pagou, e nenhum dos dois aparece
-    como erro em lugar nenhum — o app simplesmente fica errado em silêncio. Esta
-    passada é o que fecha o buraco.
+    Existe porque **webhook se perde**. Uma notificação que não chega deixa quem
+    pagou sem o PRO, e essa pessoa não tem como saber que o problema foi nosso:
+    para ela o Pix saiu da conta e o app não mudou. Nada disso aparece como erro
+    em lugar nenhum — o app fica errado em silêncio. Esta passada fecha o buraco.
 
-    Diário, e não a cada quinze minutos: assinatura muda de estado em escala de
-    dias, e cada linha aqui custa uma chamada de rede ao provedor.
+    Diário, e não a cada quinze minutos: o recorte é de cobrança já vencida, e
+    cada linha aqui custa uma chamada de rede ao provedor.
 
     Desligada sem credencial, responde `{"desligado": 1}` sem tocar no banco.
     """
-    resultado = await assinaturas.reconciliar(session)
+    resultado = await pro.reconciliar(session)
+    await session.commit()
+    return resultado
+
+
+@router.post("/avisar-vencimento", dependencies=[Depends(_verifica_secret)])
+async def avisar_vencimento(
+    session: AsyncSession = Depends(get_session),
+) -> dict[str, int]:
+    """Avisa quem está a três dias de perder o PRO.
+
+    **É a contrapartida de não haver renovação automática.** O PRO passou a ser
+    tempo comprado por Pix em 2026-08-23; quem não pagar de novo cai, e cair sem
+    aviso é a única forma de alguém perder algo neste desenho.
+
+    Diário. O dedupe de 72 horas em `notificacoes.pro_vencendo` é o que impede a
+    mesma pessoa de receber o aviso nas três execuções que a janela cobre.
+    """
+    resultado = await pro.avisar_vencimento(session)
     await session.commit()
     return resultado
 
