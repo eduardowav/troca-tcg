@@ -73,6 +73,11 @@ class SituacaoDoPro(BaseModel):
     plano: str
     #: Até quando o PRO comprado vale. Nulo para quem não tem.
     plano_expira_em: datetime | None = None
+    #: A tela deve oferecer renovação? Verdadeiro só dentro da janela de três
+    #: dias antes do vencimento — a mesma do aviso, e por isso decidida no
+    #: servidor. Ver `pro.situacao`. Falso não fecha a rota de pagamento; só
+    #: tira o botão de quem não precisa vê-lo.
+    pode_renovar: bool = False
     #: Status da última cobrança, ou nulo para quem nunca comprou.
     status: str | None = None
     periodo: str | None = None

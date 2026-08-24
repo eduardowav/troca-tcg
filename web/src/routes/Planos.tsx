@@ -377,6 +377,13 @@ export function Topo(props: {
  * período novo aos dez que sobravam — ver `services/pro.py`. Sem essa frase, o
  * incentivo seria esperar o último dia, que é justamente o dia em que se
  * esquece.
+ *
+ * **O botão de renovar só existe dentro dos três dias finais** — decisão do
+ * Eduardo em 2026-08-24, e quem decide é o servidor (`pode_renovar`). Um
+ * "Renovar com Pix" visível o ano inteiro para quem acabou de pagar é anúncio, e
+ * contradiz o princípio da seção 16: o convite ao PRO aparece quando a pessoa
+ * esbarra num limite, não como faixa fixa. Fora da janela a cartela continua
+ * dizendo até quando o plano vale — o que some é a venda, não a informação.
  */
 function JaEPro({ compra }: { compra: Compra }) {
   const { data } = usePro()
@@ -390,10 +397,10 @@ function JaEPro({ compra }: { compra: Compra }) {
       })
     : null
 
-  // Sete dias, e não os três do aviso por notificação: aqui a pessoa **já está**
-  // na tela de planos, e o custo de destacar o prazo é zero. O aviso que vibra o
-  // celular é que precisa ser raro.
-  const acabando = dias !== null && dias <= 7
+  // **Uma janela só, e ela vem do servidor.** Aqui já houve um sete local que
+  // divergia dos três do aviso; duas contas de prazo na mesma tela é como uma
+  // acaba dizendo "está acabando" enquanto a outra não oferece como resolver.
+  const acabando = data?.pode_renovar ?? false
 
   return (
     <Cartela className="mt-6 p-5">
@@ -414,8 +421,8 @@ function JaEPro({ compra }: { compra: Compra }) {
           </p>
           <p className="mt-2 font-corpo text-[14px] leading-relaxed text-apagado">
             {acabando
-              ? `Falta${dias === 1 ? '' : 'm'} ${dias} dia${dias === 1 ? '' : 's'}. Renove pelo Pix e os dias que sobram entram na conta — você não perde nada por pagar antes.`
-              : 'Não há renovação automática e nada é cobrado de você sem que peça. Quando renovar, os dias que sobrarem entram na conta.'}
+              ? `Falta${dias === 1 ? '' : 'm'} ${dias} dia${dias === 1 ? '' : 's'}. Renove pelo Pix e o novo período começa quando este acabar — você não perde nada por pagar antes.`
+              : 'Não há renovação automática e nada é cobrado de você sem que peça. Avisamos quando estiver perto de vencer.'}
           </p>
         </>
       ) : (
@@ -424,9 +431,12 @@ function JaEPro({ compra }: { compra: Compra }) {
         </p>
       )}
 
-      <div className="mt-4">
-        <BotaoComprar compra={compra} rotulo="Renovar com Pix" />
-      </div>
+      {/* Só dentro da janela. Fora dela esta cartela informa e não vende. */}
+      {acabando && (
+        <div className="mt-4">
+          <BotaoComprar compra={compra} rotulo="Renovar com Pix" />
+        </div>
+      )}
     </Cartela>
   )
 }

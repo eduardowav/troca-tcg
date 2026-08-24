@@ -136,6 +136,15 @@ export interface SituacaoDoPro {
   plano: string
   /** Até quando o PRO comprado vale. Nulo para quem não tem. */
   plano_expira_em: string | null
+  /**
+   * A tela deve oferecer renovação?
+   *
+   * **Quem decide é o servidor**, e a conta é feita no banco. Verdadeiro só nos
+   * três dias antes do vencimento — a mesma janela do aviso, para o app não
+   * mandar uma notificação dizendo "vence em 3 dias" e a tela de destino não ter
+   * como pagar. Fora dela, a cartela informa a data e não vende nada.
+   */
+  pode_renovar: boolean
   /** Status da última cobrança. Nulo para quem nunca comprou. */
   status: string | null
   periodo: Periodo | null

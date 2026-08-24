@@ -54,10 +54,20 @@ logger = logging.getLogger(__name__)
 #: pessoa seria dar o plano por ter clicado.
 APROVADO = "approved"
 
-#: Quantos dias antes do vencimento o aviso sai. Três, e não um: renovar exige
-#: abrir o banco e ter o dinheiro, e um dia de prazo é um aviso que chega junto
-#: com a queda.
-AVISO_DIAS = 3
+#: A janela de renovação, em dias antes do vencimento. **Governa duas coisas**, e
+#: de propósito uma só constante: quando o aviso sai, e quando o botão de renovar
+#: aparece na tela.
+#:
+#: Três, e não um: renovar exige abrir o banco e ter o dinheiro, e um dia de
+#: prazo é um aviso que chega junto com a queda.
+#:
+#: **O botão entrou nesta janela por decisão do Eduardo em 2026-08-24.** Um
+#: "Renovar com Pix" visível o ano inteiro para quem acabou de pagar é anúncio, e
+#: contradiz o princípio da seção 16 — o convite ao PRO aparece no instante em
+#: que a pessoa esbarra num limite, e não como faixa fixa. Fora da janela a
+#: cartela continua dizendo até quando o plano vale, que é a informação; o que
+#: some é a venda.
+JANELA_DE_RENOVACAO_DIAS = 3
 
 #: O tópico que este app trata. Era `subscription_preapproval` até 2026-08-23;
 #: pagamento avulso notifica por `payment`.
@@ -249,6 +259,17 @@ async def situacao(session: AsyncSession, user_id: UUID) -> dict:
 
     Traz o plano e, se houver, a última cobrança — que é o que permite a folha
     do Pix se reabrir sozinha quando a pessoa volta ao app com o QR ainda vivo.
+
+    **`pode_renovar` é decidido aqui, e não na tela.** É a mesma janela do aviso
+    de vencimento (`JANELA_DE_RENOVACAO_DIAS`), e ter as duas coisas saindo de
+    uma constante só é o que impede o app de avisar "vence em 3 dias" numa
+    notificação cuja tela de destino não oferece como pagar.
+
+    **Só esconde o botão; não fecha a rota.** Quem quiser comprar fora da janela
+    ainda consegue por `POST /me/pro/pagamentos`, e isso é deliberado: a intenção
+    é não insistir com quem já pagou, não proibir quem quer pagar adiantado. O
+    crédito empilha a partir do fim do período atual de qualquer forma — ver
+    `_creditar` —, então pagar cedo nunca custa dias a ninguém.
     """
     linha = (
         (
@@ -256,6 +277,17 @@ async def situacao(session: AsyncSession, user_id: UUID) -> dict:
                 text("""
                     select p.plano,
                            p.plano_expira_em,
+                           -- Quem decide se o botão de renovar existe é o
+                           -- servidor, e a conta é feita **no banco**: o relógio
+                           -- do celular de quem usa o app erra, e um botão que
+                           -- aparece ou some conforme o horário errado da pessoa
+                           -- é pior que um botão fixo.
+                           (
+                             p.plano = 'PRO'
+                             and p.plano_expira_em is not null
+                             and p.plano_expira_em
+                                 < now() + make_interval(days => :janela)
+                           ) as pode_renovar,
                            g.status,
                            g.periodo,
                            g.qr_code,
@@ -271,14 +303,14 @@ async def situacao(session: AsyncSession, user_id: UUID) -> dict:
                     ) g on true
                     where p.id = :id
                 """),
-                {"id": str(user_id)},
+                {"id": str(user_id), "janela": JANELA_DE_RENOVACAO_DIAS},
             )
         )
         .mappings()
         .first()
     )
     if linha is None:
-        return {"plano": "FREE", "status": None}
+        return {"plano": "FREE", "status": None, "pode_renovar": False}
 
     dados = dict(linha)
     # O QR só viaja para a tela enquanto vale. Devolver um vencido faria a folha
@@ -634,7 +666,7 @@ async def avisar_vencimento(session: AsyncSession) -> dict[str, int]:
                        and plano_expira_em > now()
                        and plano_expira_em < now() + make_interval(days => :d)
                 """),
-                {"d": AVISO_DIAS},
+                {"d": JANELA_DE_RENOVACAO_DIAS},
             )
         )
         .mappings()

@@ -815,6 +815,66 @@ async def test_sem_prazo_vencido_nao_toca_em_listings():
     assert not any("update listings" in s for s in sessao.sqls)
 
 
+# -------------------------------------------------------- a janela de renovação
+
+
+async def test_a_janela_de_renovacao_e_decidida_no_servidor():
+    """O botão de renovar não é conta da tela, e a janela é a mesma do aviso.
+
+    Decisão do Eduardo em 2026-08-24: "Renovar com Pix" visível o ano inteiro
+    para quem acabou de pagar é anúncio. Uma constante só governa as duas coisas
+    — sem isso, o app manda "vence em 3 dias" e a tela de destino não oferece
+    como pagar.
+
+    A conta é feita no banco de propósito: o relógio do celular de quem usa o app
+    erra, e um botão que aparece ou some conforme o horário errado da pessoa é
+    pior que um botão fixo.
+    """
+    sessao = SessaoFalsa(linha={"plano": "PRO", "pode_renovar": True})
+    resultado = await pro.situacao(sessao, uuid4())  # type: ignore[arg-type]
+
+    assert resultado["pode_renovar"] is True
+
+    consulta = sessao.sqls[0]
+    assert "make_interval(days => :janela)" in consulta
+    assert "plano = 'PRO'" in consulta
+    assert sessao.params[0]["janela"] == pro.JANELA_DE_RENOVACAO_DIAS
+    # A mesma constante do aviso — é o que mantém os dois em acordo.
+    assert [p for p in sessao.params if "janela" in p][0][
+        "janela"
+    ] == pro.JANELA_DE_RENOVACAO_DIAS
+
+
+async def test_quem_nao_tem_perfil_nao_pode_renovar():
+    """`pode_renovar` precisa existir na resposta mesmo no caminho degenerado —
+    ausente, o Pydantic cairia no default e a tela decidiria por conta própria."""
+    sessao = SessaoFalsa(linha=None)
+    resultado = await pro.situacao(sessao, uuid4())  # type: ignore[arg-type]
+    assert resultado == {"plano": "FREE", "status": None, "pode_renovar": False}
+
+
+async def test_esconder_o_botao_nao_fecha_a_rota(monkeypatch):
+    """Fora da janela o botão some, mas quem quer pagar adiantado consegue.
+
+    A intenção é não insistir com quem já pagou, não proibir quem quer pagar — e
+    o crédito empilha a partir do fim do período atual de qualquer forma, então
+    pagar cedo nunca custa dias a ninguém.
+    """
+    enviados = []
+
+    async def falso_chamar(metodo, caminho, corpo=None, *, chave=None):
+        enviados.append(caminho)
+        return _pagamento()
+
+    monkeypatch.setattr(mercado_pago, "_chamar", falso_chamar)
+    sessao = SessaoFalsa(
+        retornos=["alguem@exemplo.com"], linhas=[None, {"payment_id": "pay-1"}]
+    )
+    # Nenhuma checagem de janela no caminho da compra.
+    await pro.comprar(sessao, uuid4(), "anual")  # type: ignore[arg-type]
+    assert enviados == ["/v1/payments"]
+
+
 # ------------------------------------------------------------------- o aviso
 
 
