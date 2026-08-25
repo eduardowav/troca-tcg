@@ -3291,6 +3291,39 @@ item 5 se o WhatsApp ficar pronto cedo — cada mensagem custa dinheiro e queima
 cota na Meta, e é ele que segura o abuso. E o **item 3 não desce**: é barato, e é
 a exposição que menos se quer ter no primeiro dia com gente de verdade usando.
 
+### Dívida aberta: a imagem que o sync não traz
+
+Registrado em 2026-08-25, para ser consertado depois.
+
+**O sync pede a listagem da expansão em português e aceita o `image` nulo.** O
+`tcgdex.py` já sabe cair para o inglês, mas só em `obter_detalhe` — raridade e
+preço. A imagem nunca herdou essa queda. Medido: **1.126 de 15.997 cartas sem
+arte, 7% do catálogo**, quase todas promo (`swshp`, `smp`, `mep`, `svp`).
+
+O `api/scripts/backfill_imagens.py` fechou **555** delas em 25/08, e o catálogo
+caiu para **3,57%**. Ele é remendo: pega o que está no banco hoje, e carta nova
+com o mesmo defeito entra sem arte de novo.
+
+**O conserto é uma queda para o inglês em `montar_imagem`**, no mesmo espírito da
+que já existe em `obter_detalhe`. Não foi feito em 25/08 porque não dava para
+testar: o `api.tcgdex.net` recusava conexão daquela máquina, enquanto o
+`assets.tcgdex.net` respondia normal. Escrever a queda sem poder exercitá-la
+seria repetir o erro que a seção 16 registra três vezes — código que parece certo
+e não é.
+
+**As galerias continuam sem arte, e de propósito.** `swsh9.5tg`, `swsh12.5gg`,
+`swsh4.5sv` e as outras têm imagem sob o caminho da expansão-mãe (`swsh12.5/GG35`
+responde 200), mas ali o 200 prova que existe *algo* naquele endereço, não que é
+*aquela* carta. Num app onde se fecha troca olhando a imagem, arte errada é pior
+que arte nenhuma. Confirmar carta a carta exige a API.
+
+**As 571 restantes não têm arte em lugar nenhum**, conferido nos dois idiomas.
+Para elas o `CartaThumb` continua sendo a resposta certa: nome, código do set e
+número, e nunca uma caixa quebrada.
+
+Uma coisa que a medição desfez: arte em inglês não é novidade deste remendo. O
+catálogo já tinha **2.127 cartas** assim antes dele.
+
 ### O que entrou fora desta ordem, em 2026-08-25
 
 **O e-mail transacional saiu do Gmail e passou a chegar na caixa de entrada.**
