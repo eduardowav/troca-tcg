@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 
 import { NaoAfiliacao } from '@/components/Isencao'
+import { CONTATO } from '@/components/termos/ConteudoDosTermos'
 import { usePerfil } from '@/hooks/usePerfil'
 import { useMarcaOculta } from '@/hooks/useMundo'
 import { usePlanos, usePro } from '@/hooks/usePlanos'
@@ -518,10 +519,10 @@ function ContaBloqueada() {
         Você ainda pode ver seu perfil e apagar sua conta. Se achar que houve
         engano, fale com{' '}
         <a
-          href="mailto:trocatcg.contato@gmail.com"
+          href={`mailto:${CONTATO}`}
           className="text-tinta underline underline-offset-2"
         >
-          trocatcg.contato@gmail.com
+          {CONTATO}
         </a>
         .
       </p>

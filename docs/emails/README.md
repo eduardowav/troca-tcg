@@ -168,6 +168,23 @@ Cada template só recebe as suas. O `telefone-alterado` **não** recebe
 `{{ .Email }}` — por isso o rodapé dele não diz "enviado para", que imprimiria
 `<no value>`.
 
+## O rodapé diz para onde ir
+
+Os cinco terminam com "Este endereço não recebe respostas. Para falar com a
+gente, escreva para `contato@trocatcg.com`", desde 2026-08-25. A caixa é real —
+recebe pelo iCloud+, e o recebimento foi provado no mesmo dia.
+
+**O nome do remetente não conta como aviso.** `nao-responda@trocatcg.com` diz
+tudo, e quase ninguém lê: no celular o cliente de e-mail mostra "TrocaTCG", não o
+endereço. Gente responde — principalmente ao de recuperação de senha, onde a
+pessoa está com problema e o e-mail acabou de chegar na mão dela. Sem a linha, a
+resposta quica e ela conclui que pediu ajuda e foi ignorada; com a linha, o
+bounce vira redundância e não beco.
+
+É também o que dispensa `nao-responda@` de ser caixa de verdade. Endereço que
+promete não receber e de fato não recebe é honesto; o que fica errado é receber
+e ninguém abrir.
+
 ## Duas coisas para conferir antes de confiar
 
 **O prazo escrito bate com o configurado?** O e-mail de senha diz "vale por uma

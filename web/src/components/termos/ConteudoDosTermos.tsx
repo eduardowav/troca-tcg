@@ -43,18 +43,25 @@ export const VERSAO = '2026-08-23'
 /**
  * Canal do controlador para pedidos de LGPD.
  *
- * **Deixou de ser a caixa pessoal do Eduardo em 2026-08-24.** Endereço do
- * projeto e não da pessoa: quem escreve para o controlador de dados espera falar
- * com o TrocaTCG, e um endereço pessoal num documento de LGPD mistura as duas
- * identidades justamente onde elas precisam estar separadas. Continua Gmail
- * porque o domínio próprio ainda não existe — o `trocatcg.com.br` é de outra
- * pessoa.
+ * **Deixou de ser a caixa pessoal do Eduardo em 2026-08-24**, e deixou de ser
+ * Gmail em 2026-08-25. Endereço do projeto e não da pessoa: quem escreve para o
+ * controlador de dados espera falar com o TrocaTCG, e um endereço pessoal num
+ * documento de LGPD mistura as duas identidades justamente onde elas precisam
+ * estar separadas. O Gmail era escala: o domínio próprio não existia, porque o
+ * `trocatcg.com.br` é de outra pessoa. Com o `trocatcg.com` registrado em 21/08
+ * e o recebimento provado em 25/08, o canal passa a ser do mesmo domínio que
+ * assina os e-mails do app.
  *
- * **Nenhuma das duas trocas de endereço subiu a VERSAO**, e é o mesmo motivo das
+ * **Nenhuma das três trocas de endereço subiu a VERSAO**, e é o mesmo motivo das
  * outras exceções: quem aceitou não perdeu direito nenhum, ganhou um canal que
  * responde.
+ *
+ * **É uma constante, e é ela que as telas usam.** Configurações e Instalar
+ * traziam o endereço escrito à mão até 25/08 — três cópias é como as três passam
+ * a dizer endereços diferentes, e num canal de LGPD a que estiver desatualizada
+ * é uma promessa quebrada.
  */
-export const CONTATO = 'trocatcg.contato@gmail.com'
+export const CONTATO = 'contato@trocatcg.com'
 
 export function ConteudoDosTermos() {
   return (

@@ -1688,9 +1688,25 @@ São 3.000 e-mails por mês no plano grátis, 100 por dia.
 **O domínio está verificado no Resend na região `sa-east-1`**, com três registros
 no DNS do Squarespace: o DKIM em `resend._domainkey`, o MX de `send` apontando
 para `feedback-smtp.sa-east-1.amazonses.com`, e o SPF `v=spf1
-include:amazonses.com ~all` em `send`. Mais dois nossos: o mesmo SPF no ápice e
-um DMARC `p=none` em `_dmarc`, com relatório indo para
-`trocatcg.contato@gmail.com`.
+include:amazonses.com ~all` em `send`. Mais dois nossos: o SPF do ápice e um
+DMARC `p=none` em `_dmarc`, com relatório indo para
+`trocatcg.contato@gmail.com` — relatório é XML diário que ninguém lê a olho, e
+não merece uma caixa do domínio.
+
+**O ápice recebe e-mail pelo iCloud desde 2026-08-25**, com o domínio
+personalizado do iCloud+: MX para `mx01`/`mx02.mail.icloud.com`, o TXT
+`apple-domain=…` de verificação e o DKIM da Apple em `sig1._domainkey`. Nada
+disso encosta no Resend, que assina por `resend._domainkey` e usa
+`send.trocatcg.com` como Return-Path.
+
+**O SPF do ápice é um só, e é onde isto quebra.** A Apple manda criar um TXT com
+`v=spf1 include:icloud.com ~all`; criado como registro novo, ficariam dois SPF no
+domínio, e dois SPF invalidam os dois — o e-mail do app pararia de passar. O
+certo é editar o que existe e somar:
+
+```
+v=spf1 include:amazonses.com include:icloud.com ~all
+```
 
 **A predefinição "Segurança dos e-mails" do Squarespace teve de sair.** Ela vem
 ligada para domínio que não envia nada: SPF `v=spf1 -all`, DKIM nulo e DMARC

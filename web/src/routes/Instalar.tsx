@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 
 import { LockupTrocaTCG } from '@/components/brutal/Pecas'
+import { CONTATO } from '@/components/termos/ConteudoDosTermos'
 import { useConviteDeInstalacao } from '@/hooks/useInstalacao'
 import {
   aceitarConvite,
@@ -75,10 +76,10 @@ export default function Instalar() {
         <p className="font-dado text-[11px] uppercase text-apagado">
           Não deu certo? Escreva para{' '}
           <a
-            href="mailto:trocatcg.contato@gmail.com"
+            href={`mailto:${CONTATO}`}
             className="text-tinta underline underline-offset-2"
           >
-            trocatcg.contato@gmail.com
+            {CONTATO}
           </a>
         </p>
       </footer>

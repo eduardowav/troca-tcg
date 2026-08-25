@@ -36,7 +36,7 @@ class Settings(BaseSettings):
     # outra pessoa desde março de 2025. Uma caixa de terceiro é pior que nenhuma
     # aqui, porque o aviso chega em quem não pode agir. Passa a ser a caixa do
     # Eduardo, a mesma que os termos publicam, até o projeto ter endereço próprio.
-    VAPID_SUBJECT: str = "mailto:trocatcg.contato@gmail.com"
+    VAPID_SUBJECT: str = "mailto:contato@trocatcg.com"
 
     # WhatsApp (verificação de número) — Cloud API da Meta.
     #
