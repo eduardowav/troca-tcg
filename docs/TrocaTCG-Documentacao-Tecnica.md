@@ -2287,6 +2287,45 @@ Traduzindo: você só paga quando tiver ~500 usuários ativos. Nesse ponto, 20 a
 
 Não cobre agora. Mas construa de forma que cobrar depois seja mudança de configuração, não refatoração.
 
+### Quem tem o PRO sem pagar
+
+São dois caminhos, e a diferença entre eles não é de grau.
+
+**Parceiro** é `parceiro_motivo` preenchido — patrocínio, permuta, contrato. É
+acordo comercial vigente, tem prazo e um dia acaba. Ver `36_parceiro.sql`.
+
+**Fundador** é `selo = 'FOUNDER'`, e desde 2026-08-25 o selo carrega a isenção
+junto: `plano_expira_em` fica nulo, o job de expiração não derruba, o aviso de
+vencimento não avisa, `pode_renovar` é falso e a rota de pagamento **recusa**.
+Ver `39_founder_nao_paga.sql`.
+
+**Por que o selo e não uma coluna nova.** Ter ajudado a construir o app antes de
+ele existir é fato passado, e fato passado não expira — escrever isso num campo
+de acordo vigente seria guardar como contrato o que não é contrato. E deixaria a
+regra "não paga" dependendo de alguém lembrar de preencher duas colunas.
+
+**Isto tinha data marcada para dar errado.** A conta do Eduardo comprou o PRO de
+verdade em 24/08, por R$ 14,90, para provar o Pix ponta a ponta; a compra gravou
+`plano_expira_em = 2026-09-24` e o `parceiro_motivo` dele tinha sido zerado no
+mesmo teste, para a tela desenhar o botão de comprar. Em 24/09 o job derrubaria o
+dono do projeto para FREE com o selo de fundador intacto no perfil — o selo
+dizendo uma coisa e o plano fazendo outra.
+
+**A recusa vem antes da ida ao provedor.** A tela esconde o botão de quem não
+paga, mas esconder botão não é fechar rota, e gerar o Pix para recusar depois
+deixaria um código pagável no ar — dinheiro entrando sem nada para creditar.
+
+**`vitalicio` sai como booleano derivado, e não como valor novo em `plano`.** Um
+`plano = 'FOUNDER'` obrigaria todo lugar que compara com `'PRO'` — limites,
+matching, vitrine, o `pro_publico` — a aprender outro nome, e cada um que
+esquecesse trataria o fundador como conta grátis. O que a tela precisa saber é
+"esta pessoa paga?", e isso é uma pergunta de sim ou não.
+
+**As três consultas foram rodadas contra o Postgres de produção** antes do
+commit, com a janela alargada para 60 dias de propósito, o que engloba a data de
+24/09: nenhuma devolveu a linha do `@eduardowav`. Testar contra dublê prova que o
+Python está certo, nunca que a consulta exclui quem deveria.
+
 ### O que fazer desde a v1
 
 1. **Coluna `plano` em `profiles`** — já está no schema, default `FREE`

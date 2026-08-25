@@ -55,7 +55,16 @@ class SessaoFalsa:
     trata como "já existe cobrança".
     """
 
-    def __init__(self, retornos=None, linha=None, lista=None, linhas=None, todos=None):
+    def __init__(
+        self,
+        retornos=None,
+        linha=None,
+        lista=None,
+        linhas=None,
+        todos=None,
+        fundador=False,
+    ):
+        self.fundador = fundador
         self.retornos = list(retornos or [])
         self.linha = linha
         self.linhas = list(linhas) if linhas is not None else None
@@ -97,6 +106,13 @@ class SessaoFalsa:
     async def scalar(self, sql, params=None):
         self.sqls.append(str(sql))
         self.params.append(params or {})
+        # A pergunta do selo é respondida à parte, e **não** consome a fila. Ela
+        # nasceu depois dos testes que seguem, e num dublê onde `retornos` é
+        # posicional uma consulta nova no meio do caminho reescreveria a
+        # resposta de todas as outras — o teste quebraria por ordem, não por
+        # regra. Quem precisa dela liga `fundador=True` e diz isso no nome.
+        if "selo = 'FOUNDER'" in str(sql):
+            return self.fundador
         return self.retornos.pop(0) if self.retornos else None
 
     async def commit(self):
@@ -914,7 +930,12 @@ async def test_quem_nao_tem_perfil_nao_pode_renovar():
     ausente, o Pydantic cairia no default e a tela decidiria por conta própria."""
     sessao = SessaoFalsa(linha=None)
     resultado = await pro.situacao(sessao, uuid4())  # type: ignore[arg-type]
-    assert resultado == {"plano": "FREE", "status": None, "pode_renovar": False}
+    assert resultado == {
+        "plano": "FREE",
+        "status": None,
+        "pode_renovar": False,
+        "vitalicio": False,
+    }
 
 
 async def test_esconder_o_botao_nao_fecha_a_rota(monkeypatch):
@@ -1013,3 +1034,79 @@ def test_erro_de_negocio_responde_por_dentro_do_cors():
 
     assert resp.status_code >= 400
     assert resp.headers.get("access-control-allow-origin") == origem
+
+
+async def test_fundador_nao_compra_e_nem_chega_ao_provedor(monkeypatch):
+    """Quem tem o selo é recusado antes de o Pix existir.
+
+    A tela já esconde o botão de quem não paga, mas esconder botão não é fechar
+    rota — e a recusa precisa vir **antes** da ida ao Mercado Pago: gerar o
+    código e recusar depois deixaria um Pix pagável no ar, com dinheiro entrando
+    e nada para creditar.
+    """
+    enviados = []
+
+    async def falso_chamar(metodo, caminho, corpo=None, *, chave=None):
+        enviados.append(caminho)
+        return _pagamento()
+
+    monkeypatch.setattr(mercado_pago, "_chamar", falso_chamar)
+    sessao = SessaoFalsa(fundador=True, linhas=[None, {"payment_id": "pay-1"}])
+
+    with pytest.raises(RegraNegocio) as e:
+        await pro.comprar(sessao, uuid4(), "mensal")  # type: ignore[arg-type]
+
+    assert e.value.codigo == "FOUNDER_NAO_PAGA"
+    assert enviados == []
+
+
+async def test_quem_paga_de_verdade_continua_comprando(monkeypatch):
+    """A recusa é do selo, e não de todo mundo.
+
+    Prende a fronteira pelo lado que dói: uma condição escrita larga demais
+    fecharia a única fonte de receita do app, e o sintoma seria ninguém
+    conseguir pagar — silencioso, porque quem não consegue não reclama, desiste.
+    """
+    enviados = []
+
+    async def falso_chamar(metodo, caminho, corpo=None, *, chave=None):
+        enviados.append(caminho)
+        return _pagamento()
+
+    monkeypatch.setattr(mercado_pago, "_chamar", falso_chamar)
+    sessao = SessaoFalsa(
+        fundador=False,
+        retornos=["alguem@exemplo.com"],
+        linhas=[None, {"payment_id": "pay-1"}],
+    )
+
+    await pro.comprar(sessao, uuid4(), "mensal")  # type: ignore[arg-type]
+    assert enviados == ["/v1/payments"]
+
+
+async def test_as_tres_consultas_de_plano_ignoram_o_selo():
+    """O selo precisa aparecer nas três, e cada ausência tem uma consequência.
+
+    Sem ele em `expirar_vencidos`, o fundador cai para FREE na data que uma
+    compra tenha gravado. Sem ele no aviso, recebe "seu PRO vence em 3 dias"
+    sobre um prazo que não existe. Sem ele no `pode_renovar`, a tela oferece
+    renovação a quem nunca vai ser cobrado.
+
+    Afirmar sobre o texto do SQL prova pouco sozinho — dublê aceita SQL que o
+    banco recusa. As três foram rodadas contra o Postgres de produção antes
+    deste commit, e a linha do `@eduardowav` ficou de fora das três.
+    """
+    guarda = "selo is distinct from 'FOUNDER'"
+
+    sessao = SessaoFalsa(lista=[])
+    await pro.expirar_vencidos(sessao)  # type: ignore[arg-type]
+    assert guarda in sessao.sqls[0]
+
+    sessao = SessaoFalsa(todos=[])
+    await pro.avisar_vencimento(sessao)  # type: ignore[arg-type]
+    assert guarda in sessao.sqls[0]
+
+    sessao = SessaoFalsa(linha=None)
+    await pro.situacao(sessao, uuid4())  # type: ignore[arg-type]
+    assert "p.selo is distinct from 'FOUNDER'" in sessao.sqls[0]
+    assert "as vitalicio" in sessao.sqls[0]

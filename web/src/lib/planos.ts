@@ -145,6 +145,16 @@ export interface SituacaoDoPro {
    * como pagar. Fora dela, a cartela informa a data e não vende nada.
    */
   pode_renovar: boolean
+  /**
+   * O PRO desta pessoa é do projeto e não vence — hoje, quem tem o selo
+   * FOUNDER.
+   *
+   * **Vem do servidor e não é deduzido do selo aqui.** A tela tem o `selo` na
+   * mão e daria para escrever `selo === 'FOUNDER'` de graça; seria a mesma
+   * regra em dois lugares, e no dia em que outro selo ganhar a mesma isenção,
+   * a tela discordaria do banco sobre quem paga. Ver `39_founder_nao_paga.sql`.
+   */
+  vitalicio: boolean
   /** Status da última cobrança. Nulo para quem nunca comprou. */
   status: string | null
   periodo: Periodo | null

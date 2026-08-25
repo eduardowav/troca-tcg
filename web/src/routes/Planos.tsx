@@ -62,8 +62,15 @@ export default function Planos() {
   const { data: perfil } = usePerfil()
   const { data, isPending } = usePlanos()
 
+  const { data: situacao } = usePro()
+
   const cobrando = data?.cobranca_ativa ?? false
   const ePro = cobrando && perfil?.plano === 'PRO'
+  // Fundador é PRO que não vence e não é vendido. Vem do servidor (`vitalicio`)
+  // e não de `perfil.selo`: a mesma regra escrita nos dois lugares é como a tela
+  // passa a discordar do banco sobre quem paga, no dia em que outro selo ganhar
+  // a mesma isenção. Ver `39_founder_nao_paga.sql`.
+  const eFundador = cobrando && (situacao?.vitalicio ?? false)
   // Parceiro é PRO sem pagar. Precisa vir separado porque a cartela do PRO fala
   // de assinatura ativa e de cancelar — duas coisas que não existem para quem
   // tem o plano por acordo, e prometer que ele "cai" seria assustar à toa.
@@ -71,7 +78,7 @@ export default function Planos() {
 
   // Só este estado vende. Os outros três não podem ver botão nenhum — nem no
   // topo, nem no rodapé.
-  const vendendo = cobrando && !ePro && !eParceiro
+  const vendendo = cobrando && !ePro && !eParceiro && !eFundador
 
   // O período mora aqui, e não dentro da `Oferta`, porque agora há **dois**
   // botões na tela. Com estado local em cada um, alguém escolheria "mensal" em
@@ -125,6 +132,7 @@ export default function Planos() {
             <Topo
               cobrando={cobrando}
               ePro={ePro}
+              eFundador={eFundador}
               eParceiro={eParceiro}
               precos={data.precos}
               compra={compra}
@@ -316,11 +324,12 @@ export function GanchoDoTopo({ compra }: { compra: Compra }) {
 export function Topo(props: {
   cobrando: boolean
   ePro: boolean
+  eFundador: boolean
   eParceiro: boolean
   precos: Record<Periodo, string>
   compra: Compra
 }) {
-  const { cobrando, ePro, eParceiro, precos, compra } = props
+  const { cobrando, ePro, eFundador, eParceiro, precos, compra } = props
 
   if (!cobrando) {
     return (
@@ -333,6 +342,25 @@ export function Topo(props: {
           Nenhum limite desta tabela está valendo — nem o de cartas, nem o de
           propostas por dia. Ela está aqui para você ver o que vai mudar quando
           o PRO entrar, e nada muda sem aviso antes.
+        </p>
+      </Cartela>
+    )
+  }
+
+  // Antes da cartela do PRO de propósito: fundador também tem `plano = 'PRO'`,
+  // e a cartela do PRO fala de data de validade e oferece renovação — duas
+  // coisas que não existem aqui.
+  if (eFundador) {
+    return (
+      <Cartela className="mt-6 p-5">
+        <Selo>Você é Founder</Selo>
+        <p className="mt-3 font-titulo text-[18px] leading-tight font-black text-tinta">
+          O PRO é seu, e não vence.
+        </p>
+        <p className="mt-2 font-corpo text-[14px] leading-relaxed text-apagado">
+          Tudo do PRO está liberado na sua conta, para sempre, por ter ajudado a
+          construir o TrocaTCG antes de ele existir. Não há data, não há
+          cobrança e não há o que renovar.
         </p>
       </Cartela>
     )

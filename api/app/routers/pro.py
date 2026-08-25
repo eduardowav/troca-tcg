@@ -78,6 +78,12 @@ class SituacaoDoPro(BaseModel):
     #: servidor. Ver `pro.situacao`. Falso não fecha a rota de pagamento; só
     #: tira o botão de quem não precisa vê-lo.
     pode_renovar: bool = False
+    #: O PRO desta pessoa é do projeto e não vence — hoje, quem tem o selo
+    #: FOUNDER. Sai como booleano derivado do selo e não como plano próprio: o
+    #: que a tela precisa saber é "esta pessoa paga?", e um valor novo em
+    #: `plano` obrigaria todo lugar que compara com `'PRO'` a aprender outro
+    #: nome. Ver `39_founder_nao_paga.sql`.
+    vitalicio: bool = False
     #: Status da última cobrança, ou nulo para quem nunca comprou.
     status: str | None = None
     periodo: str | None = None

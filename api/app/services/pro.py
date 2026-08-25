@@ -164,6 +164,16 @@ _COBRANCA_VIVA = text("""
 """)
 
 
+async def _e_fundador(session: AsyncSession, user_id: UUID) -> bool:
+    """Esta pessoa tem o selo que dispensa pagamento? Ver `39_founder_nao_paga.sql`."""
+    return bool(
+        await session.scalar(
+            text("select selo = 'FOUNDER' from profiles where id = :id"),
+            {"id": str(user_id)},
+        )
+    )
+
+
 async def comprar(session: AsyncSession, user_id: UUID, periodo: str) -> dict:
     """Gera a cobrança Pix e devolve o QR. Ninguém vira PRO aqui.
 
@@ -194,6 +204,16 @@ async def comprar(session: AsyncSession, user_id: UUID, periodo: str) -> dict:
             "PERIODO_INVALIDO",
             "Escolha entre o plano mensal e o anual.",
             campo="periodo",
+        )
+
+    # A tela já esconde o botão de quem tem o selo, mas esconder botão não é
+    # fechar rota — e cobrar de um fundador é o pior lugar possível para essa
+    # distinção falhar. Vem antes de qualquer ida ao provedor: recusar depois de
+    # o Pix existir deixaria um código pagável no ar.
+    if await _e_fundador(session, user_id):
+        raise RegraNegocio(
+            "FOUNDER_NAO_PAGA",
+            "O seu PRO é do TrocaTCG e não vence. Não há o que comprar.",
         )
 
     viva = (
@@ -337,7 +357,9 @@ async def situacao(session: AsyncSession, user_id: UUID) -> dict:
                              and p.plano_expira_em is not null
                              and p.plano_expira_em
                                  < now() + make_interval(days => :janela)
+                             and p.selo is distinct from 'FOUNDER'
                            ) as pode_renovar,
+                           (p.selo = 'FOUNDER') as vitalicio,
                            g.status,
                            g.periodo,
                            g.qr_code,
@@ -360,7 +382,12 @@ async def situacao(session: AsyncSession, user_id: UUID) -> dict:
         .first()
     )
     if linha is None:
-        return {"plano": "FREE", "status": None, "pode_renovar": False}
+        return {
+            "plano": "FREE",
+            "status": None,
+            "pode_renovar": False,
+            "vitalicio": False,
+        }
 
     dados = dict(linha)
     # O QR só viaja para a tela enquanto vale. Devolver um vencido faria a folha
@@ -656,6 +683,12 @@ async def expirar_vencidos(session: AsyncSession) -> dict[str, int]:
                        set plano = 'FREE', plano_expira_em = null
                      where plano_expira_em is not null
                        and plano_expira_em < now()
+                       -- O FOUNDER não vence. A migração 39 zera a data de
+                       -- quem tem o selo, e esta linha é o que garante que ela
+                       -- não volte por uma compra — o dono do projeto comprou
+                       -- o PRO de verdade em 24/08 para provar o Pix, e sem
+                       -- isto o job o derrubaria para FREE em 24/09.
+                       and selo is distinct from 'FOUNDER'
                  returning id::text
                 """)
             )
@@ -715,6 +748,11 @@ async def avisar_vencimento(session: AsyncSession) -> dict[str, int]:
                        and plano_expira_em is not null
                        and plano_expira_em > now()
                        and plano_expira_em < now() + make_interval(days => :d)
+                       -- Mesma razão de `expirar_vencidos`: avisar um fundador
+                       -- de que o plano dele vence seria avisar de um prazo que
+                       -- não existe, e mandá-lo pagar o que nunca vai ser
+                       -- cobrado.
+                       and selo is distinct from 'FOUNDER'
                 """),
                 {"d": JANELA_DE_RENOVACAO_DIAS},
             )
