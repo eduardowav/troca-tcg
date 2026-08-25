@@ -3306,10 +3306,33 @@ com o mesmo defeito entra sem arte de novo.
 
 **O conserto é uma queda para o inglês em `montar_imagem`**, no mesmo espírito da
 que já existe em `obter_detalhe`. Não foi feito em 25/08 porque não dava para
-testar: o `api.tcgdex.net` recusava conexão daquela máquina, enquanto o
-`assets.tcgdex.net` respondia normal. Escrever a queda sem poder exercitá-la
-seria repetir o erro que a seção 16 registra três vezes — código que parece certo
-e não é.
+testar. Escrever a queda sem poder exercitá-la seria repetir o erro que a seção
+16 registra três vezes — código que parece certo e não é.
+
+#### O diagnóstico da TCGdex fora do ar, para não refazer
+
+Em 2026-08-25 o `api.tcgdex.net` **recusava conexão**, e o que se sabe dele:
+
+- **Não é rede de uma máquina só.** Três clientes independentes bateram na mesma
+  parede — `curl` e o próprio sync do app, da máquina do Eduardo, e o navegador
+  dele. O DNS resolve (`142.44.242.175`), o TCP é que não fecha.
+- **Não é a TCGdex inteira.** O `assets.tcgdex.net` respondia **200** o tempo
+  todo — é dele que saíram as 555 imagens do backfill —, e o site `tcgdex.dev`
+  também abria. Só a API.
+- **O sync falha limpo.** Rodado à mão contra um set pequeno (`dc1`), morreu na
+  primeira chamada com `httpx.ConnectError: All connection attempts failed`,
+  **antes de tocar no banco**: o set continuou com as mesmas 34 cartas e as
+  mesmas 6 sem imagem. Ele busca antes de escrever, e sem resposta não há o que
+  escrever. Catálogo pela metade não é um risco desta falha.
+- **Nada em produção depende disso.** O `jobs.yml` agenda sete jobs
+  (`notify-wanted`, `notify-alerts`, `triangular`, `expire`,
+  `reconciliar-pagamentos`, `avisar-vencimento`, `cambio`) e **nenhum** toca a
+  TCGdex. Sync e preços rodam à mão, pelo `run.py`. Não há alerta a esperar, e
+  os logs da API confirmam: nenhuma linha de `tcgdex` desde 18/08.
+
+Ou seja, a espera não custa nada — só adia. Quando a API voltar, as duas
+pendências (a queda no `montar_imagem` e a confirmação carta a carta das
+galerias) saem no mesmo dia.
 
 **As galerias continuam sem arte, e de propósito.** `swsh9.5tg`, `swsh12.5gg`,
 `swsh4.5sv` e as outras têm imagem sob o caminho da expansão-mãe (`swsh12.5/GG35`
