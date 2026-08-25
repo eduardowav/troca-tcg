@@ -99,6 +99,7 @@ O que a função resolve, na ordem em que apareceu testando com gente digitando:
 | `pokemon` (sem acento) | 0 resultados | acha "Pokémon" |
 | `pesquisa professor` | 0 resultados | acha "Pesquisa de Professores" |
 | `charizrd` (typo) | 0 resultados | 82 Charizards |
+| `snorlax` | 46 acertos **e 24 intrusos** (snom, snorunt) | 46, só Snorlax |
 | `charizard` | 24 de 87, ordem do número impresso | 24 de 87, exato → recente |
 | `%` | catálogo inteiro | nada (curinga é escapado) |
 
@@ -106,12 +107,25 @@ Como funciona: `cards.busca_pt`/`busca_en` são colunas **geradas** com o nome s
 acento e em minúsculas — a normalização é paga na escrita, e é o que torna o
 índice trigram utilizável (um índice sobre `nome_pt` não serve para uma busca
 sobre `unaccent(nome_pt)`). Os termos viram um padrão único `%a%b%`, então as
-palavras não precisam ser contíguas. Quem não casa por LIKE ainda pode entrar
-pela similaridade trigram, sempre ranqueada **depois** de qualquer casamento
-literal. A ordem final é relevância → set mais recente → número natural
+palavras não precisam ser contíguas. **A similaridade trigram é rede, e não resultado** (migração `40`, 2026-08-25).
+Ela só entra quando nada casou por LIKE. Ranquear depois não bastava: quem
+digitava `snorlax` inteiro e certo recebia 46 acertos e, logo abaixo, 24
+intrusos — `snom`, `snorunt`. Achado pelo Eduardo usando o app. O `charizrd`
+continua achando Charizard, porque ali não há nenhum acerto literal para
+preferir.
+
+**Carta sem imagem vai para o fim do seu bloco de relevância.** São 7% do
+catálogo (1.126 de 15.997 em 25/08), quase todas promos de `swshp` e `smp`. Não
+somem — quem tem a promo na mão precisa poder anunciá-la —, mas uma grade que
+abre com três retângulos de texto parece catálogo quebrado, e o julgamento cai
+sobre o app inteiro. O conserto de verdade é o sync trazer as artes.
+
+A ordem final é relevância → tem imagem → set mais recente → número natural
 ('2' antes de '10') → id, este último como desempate estável para a paginação.
-Custo atual: ~4,8 ms com 16 mil cartas (ver a seção da migração 18 abaixo — já
-esteve em 245 ms).
+Custo atual: **~11,6 ms** com 16 mil cartas, medido em 25/08. Era ~4,8 ms antes
+da `40`: o filtro do "houve acerto?" obriga a varrer o conjunto duas vezes. É o
+preço de não mostrar carta errada, e continua vinte vezes abaixo dos 245 ms que
+a migração 18 consertou.
 
 `total` volta em cada linha (janela calculada antes do LIMIT), e é o que o app
 usa para dizer "Mostrando 24 de 87 cartas" e decidir se mostra "Mostrar mais".

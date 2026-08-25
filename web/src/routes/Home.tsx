@@ -51,7 +51,18 @@ export default function Home() {
   return (
     <div className="mx-auto w-full max-w-xl px-6 pb-20">
       <header className="pt-10">
-        <LockupTrocaTCG />
+        {/* A marca centralizada, e só ela — decisão do Eduardo em 2026-08-25.
+            Esta é a primeira tela de quem não conhece o app, e o lockup aqui
+            não é cabeçalho de navegação: é a apresentação. Centrado, ele lê
+            como capa; encostado à esquerda, lia como barra de um app em que a
+            pessoa ainda não entrou.
+
+            O texto abaixo continua alinhado à esquerda de propósito. Centrar
+            parágrafo de três linhas obriga o olho a procurar onde cada linha
+            começa, e o que vem depois do lockup é leitura, não vitrine. */}
+        <div className="flex justify-center">
+          <LockupTrocaTCG />
+        </div>
 
         {/* O slogan entra como assinatura da marca, e por isso vem em cima e
             em corpo pequeno: embaixo do título ele viraria uma segunda frase

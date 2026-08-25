@@ -59,15 +59,19 @@ export function FichaPerfil({
         )}
 
         <div className="flex min-w-0 flex-col gap-1">
-          {/* O @ e o selo na mesma linha: o selo qualifica o nome, e separado
-              dele viraria enfeite solto no card. `min-w-0` com `truncate` no
-              texto mantém o corte no @ longo em vez de espremer o selo. */}
-          <span className="flex min-w-0 items-center gap-2">
-            <p className="truncate font-titulo text-[22px] leading-none font-black text-tinta">
-              @{perfil.username}
-            </p>
-            <SeloDaPessoa selo={perfil.selo} pro={perfil.pro} />
-          </span>
+          {/* **O selo em cima, e o @ com a linha inteira.** Decisão do Eduardo
+              em 2026-08-25, olhando o próprio perfil: lado a lado, o selo
+              comia a largura e o `truncate` cortava o nome — `@eduar…` num
+              card cuja função é justamente dizer com quem se está falando.
+
+              O selo qualifica o nome e por isso continua colado nele, só que
+              acima. Fica na ordem em que se lê: primeiro o que a pessoa é,
+              depois quem ela é. E some sozinho de quem não tem selo nenhum,
+              porque `SeloDaPessoa` devolve nulo — sem linha vazia sobrando. */}
+          <SeloDaPessoa selo={perfil.selo} pro={perfil.pro} />
+          <p className="truncate font-titulo text-[22px] leading-none font-black text-tinta">
+            @{perfil.username}
+          </p>
           {desde && (
             <p className="truncate font-dado text-[12px] text-apagado">
               Membro desde {desde}
