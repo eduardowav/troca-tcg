@@ -4596,7 +4596,7 @@ não presumido; o que tem ressalva está escrito por quê.
 - [x] **Keep-alive rodando** (API + banco) — a cada ~50 min pelo Actions, devolvendo `{"status":"ok","db":"ok"}`. Verificado em 2026-08-14
 - [x] **Backup diário do banco** rodando e restauração testada — o backup roda e é cifrado desde `9ef33e1`; desde 2026-08-20 a restauração é exercitada **todo dia**, no job `restaurar` do mesmo workflow, com conferência de esquema, dados, RLS e grants
 - [x] Endpoint `/health` consultando o banco de verdade, não só retornando 200 — faz `select 1`
-- [ ] Domínio com HTTPS e HSTS — não haverá domínio próprio (decisão de custo zero em 2026-08-14). O `onrender.com` serve por HTTPS; o HSTS é dele, não nosso
+- [ ] Domínio com HTTPS e HSTS — o `trocatcg.com` foi **registrado em 2026-08-21** e derruba a decisão de custo zero de 14/08. O `render.yaml` já declara os três nomes; falta o DNS apontar e o Render emitir o certificado. Até lá o `onrender.com` serve por HTTPS, com o HSTS dele e não nosso
 - [ ] PWA instalável testada em Android e iOS
 - [x] Página "Como instalar" publicada, com o passo a passo dos dois sistemas — `/instalar`, desde 2026-08-12
 - [x] Imagem de compartilhamento (Open Graph 1200×630) e `twitter:card` no `index.html` — feita em 2026-08-15, gerada por `scripts/gerar-og.mjs`
