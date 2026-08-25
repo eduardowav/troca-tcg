@@ -59,7 +59,7 @@ const PRO: Limites = {
 
 const PRECOS: Record<Periodo, string> = { mensal: '14.90', anual: '149.90' }
 
-type Estado = 'oferta' | 'pro' | 'parceiro' | 'desligada'
+type Estado = 'oferta' | 'pro' | 'fundador' | 'parceiro' | 'desligada'
 
 const ESTADOS: { chave: Estado; rotulo: string; explica: string }[] = [
   {
@@ -71,6 +71,12 @@ const ESTADOS: { chave: Estado; rotulo: string; explica: string }[] = [
     chave: 'pro',
     rotulo: 'É PRO',
     explica: 'Já assina. Não pode ver oferta nenhuma.',
+  },
+  {
+    chave: 'fundador',
+    rotulo: 'Founder',
+    explica:
+      'PRO que não vence e não é vendido. Nem data, nem renovação, nem preço.',
   },
   {
     chave: 'parceiro',
@@ -158,6 +164,7 @@ export default function LabPlanos() {
         <Topo
           cobrando={estado !== 'desligada'}
           ePro={estado === 'pro'}
+          eFundador={estado === 'fundador'}
           eParceiro={estado === 'parceiro'}
           precos={precos}
           compra={compra}
