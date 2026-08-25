@@ -3236,6 +3236,38 @@ item 5 se o WhatsApp ficar pronto cedo — cada mensagem custa dinheiro e queima
 cota na Meta, e é ele que segura o abuso. E o **item 3 não desce**: é barato, e é
 a exposição que menos se quer ter no primeiro dia com gente de verdade usando.
 
+### O que entrou fora desta ordem, em 2026-08-25
+
+**O e-mail transacional saiu do Gmail e passou a chegar na caixa de entrada.**
+Não estava na lista porque a lista não sabia que havia um problema: o e-mail
+"funcionava" desde 14/08 — era entregue, tirava 10/10 no mail-tester — e caía no
+spam em todos os testes. Ver 11.3 para o arranjo e as armadilhas.
+
+O que a passagem provou, e que é o motivo de estar registrado aqui:
+
+- **Remetente próprio não bastou.** Com o Resend, o `trocatcg.com` verificado e
+  SPF, DKIM e DMARC os três passando e alinhando, o primeiro e-mail **ainda** foi
+  para o lixo eletrônico do iCloud.
+- **O que tirou do spam foi o corpo apontar para um domínio só.** O link ia para
+  `supabase.co/auth/v1/verify` e o logo vinha de `onrender.com`. Três domínios
+  numa mensagem que pede senha é a forma de um phishing — e o filtro lê a forma,
+  não o conteúdo, que já era bom havia onze dias.
+- **De tabela, morreu um defeito antigo.** Antivírus de caixa de entrada abre os
+  links da mensagem para inspecionar, e abrir o `/auth/v1/verify` **consome** o
+  token, que serve uma vez só. Era parte dos "este link não vale mais" que
+  ninguém conseguia reproduzir.
+
+**Os dois fluxos foram percorridos no app em produção, não em teste.**
+Recuperação de senha e cadastro novo: e-mail entregue, link em `trocatcg.com`,
+clique criando sessão, `email_confirmed_at` gravado 33 segundos depois do
+cadastro, token apagado da barra pelo `replaceState`, e as duas mensagens na
+caixa de entrada. A conta de teste foi apagada em seguida.
+
+**O que não está resolvido é reputação.** O domínio foi registrado em 21/08 e o
+primeiro e-mail saiu dele em 25/08. Remetente novo cai no spam fazendo tudo
+certo, e isso é tempo e volume. O DMARC está em `p=none` de propósito: endurecer
+para `quarantine` depende de ver relatório limpo primeiro.
+
 ### Fila atual (agosto de 2026)
 
 O roadmap acima é o plano original, e ele foi cumprido até a Fase 4 — com a
