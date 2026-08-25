@@ -51,7 +51,7 @@
                      PNG porque cliente de e-mail não renderiza SVG: o Gmail
                      bloqueia, e o que some é a primeira coisa que se vê. -->
                 <img
-                  src="https://trocatcg-web.onrender.com/assinatura-email.png"
+                  src="https://trocatcg.com/assinatura-email.png"
                   width="220" height="36" alt="TrocaTCG"
                   style="display:block; width:220px; height:36px;"
                 />
@@ -106,7 +106,7 @@
                       <table role="presentation" cellpadding="0" cellspacing="0" border="0">
                         <tr>
                           <td bgcolor="#171717" style="border-radius:14px; padding:2px;">
-                            <a href="{{ .ConfirmationURL }}"
+                            <a href="{{ .RedirectTo }}?token_hash={{ .TokenHash }}&amp;type=signup"
                                style="display:inline-block; background-color:#0067FF; border-radius:12px; padding:15px 30px; font-family:'Outfit','Trebuchet MS','Segoe UI',Arial,sans-serif; font-size:17px; font-weight:700; color:#FFFDF5; text-decoration:none;">
                               Confirmar meu e-mail
                             </a>
@@ -119,7 +119,7 @@
                         Se o botão não funcionar, copie este endereço no navegador:
                       </p>
                       <p style="margin:6px 0 0 0; font-family:'Geist Mono',ui-monospace,'SFMono-Regular',Consolas,'Courier New',monospace; font-size:12px; line-height:1.5; word-break:break-all;">
-                        <a href="{{ .ConfirmationURL }}" style="color:#0067FF; text-decoration:underline;">{{ .ConfirmationURL }}</a>
+                        <a href="{{ .RedirectTo }}?token_hash={{ .TokenHash }}&amp;type=signup" style="color:#0067FF; text-decoration:underline;">{{ .RedirectTo }}?token_hash={{ .TokenHash }}&amp;type=signup</a>
                       </p>
 
                       <!-- ------------------------------------ aviso -->

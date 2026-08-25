@@ -157,7 +157,8 @@ valores para decidir se foi roubada.
 
 | Variável | Onde |
 |---|---|
-| `{{ .ConfirmationURL }}` | botão e link cru do cadastro e do reset |
+| `{{ .RedirectTo }}` | base do botão e do link cru — a origem que o app pediu |
+| `{{ .TokenHash }}` | o token do link, trocado por sessão dentro do app |
 | `{{ .Email }}` | corpo e rodapé — no `email-alterado` é o endereço **novo** |
 | `{{ .OldEmail }}` | `email-alterado`: o endereço que a conta usava |
 | `{{ .Phone }}` / `{{ .OldPhone }}` | `telefone-alterado` |
@@ -175,31 +176,40 @@ mentir sobre prazo no e-mail mais tenso do app é o pior lugar para errar.
 Conferir em Authentication → Emails, e ajustar a frase ou o valor.
 
 **O endereço do logo aponta para produção?** Está fixo em
-`https://trocatcg-web.onrender.com/pwa-192.png`. No dia em que houver domínio
-próprio, é uma linha em cada arquivo — e é a única coisa que quebra visualmente
-se ficar para trás.
+`https://trocatcg.com/assinatura-email.png`, desde 2026-08-25. É a única coisa
+que quebra visualmente se ficar para trás.
 
-## O limite que o HTML não resolve
+## Por que o link não passa mais pelo `supabase.co`
 
-O corpo tem a cara do app; o **remetente**, não. O `trocatcg.com.br` é de outra
-pessoa, então o transacional sai pelo SMTP do Gmail e chega como um endereço
-pessoal — e em e-mail transacional o remetente é o que mais decide confiança. Um
-e-mail bem-feito vindo de um Gmail pessoal pedindo troca de senha lê como
-phishing acima da média.
+O botão monta `{{ .RedirectTo }}?token_hash={{ .TokenHash }}&type=…`, e quem
+troca o token por sessão é o app, em `web/src/lib/linkDeEmail.ts`. Até
+2026-08-25 ele apontava para `{{ .ConfirmationURL }}`, que é o
+`supabase.co/auth/v1/verify` redirecionando de volta para cá. Duas razões para a
+troca:
 
-Vale ter mesmo assim: um e-mail sem marca nenhuma treina as pessoas a clicar em
-qualquer coisa parecida, o que é pior. Mas o ganho grande vem com domínio próprio
-e SPF/DKIM, e esse é o passo que mais rende quando houver.
+**O filtro de spam.** Com o remetente em `@trocatcg.com`, um link em
+`supabase.co` e um logo em `onrender.com` punham três domínios numa mensagem que
+pede senha — a forma de um phishing. Agora o link é do mesmo domínio que assina
+o e-mail, sem redirecionamento no meio.
+
+**O link gasto antes do clique.** Antivírus de caixa de entrada abre os links da
+mensagem para inspecionar, e abrir o `/auth/v1/verify` **consome** o token, que
+serve uma vez só. A pessoa clicava e lia "este link não vale mais". A troca por
+`token_hash` só acontece quando o JavaScript roda, e scanner de e-mail não
+executa página.
+
+O que isso **não** conserta é reputação: o `trocatcg.com` foi registrado em
+2026-08-21 e o primeiro e-mail saiu dele em 25/08. Remetente novo cai no spam
+mesmo fazendo tudo certo, e o que resolve é tempo e volume.
 
 ## Nota sobre o "Confirm sign up"
 
-A confirmação de e-mail está **desligada** desde 2026-08-12 — o template existe e
-não é enviado. Ligá-la fecha o risco residual **R-1** de
+A confirmação de e-mail ficou **desligada de 2026-08-12 a 2026-08-21**, e está
+ligada desde então. Ela fecha o risco residual **R-1** de
 [`../SEGURANCA.md`](../SEGURANCA.md): a enumeração de e-mail no cadastro e o
-account squatting (hoje dá para criar conta no endereço de outra pessoa). É
-também pré-requisito para login por Google, porque o Supabase junta identidades
-pelo e-mail e a proteção dele contra pre-account takeover depende de o endereço
-estar de fato não-confirmado.
+account squatting. É também pré-requisito para login por Google, porque o
+Supabase junta identidades pelo e-mail e a proteção dele contra pre-account
+takeover depende de o endereço estar de fato não-confirmado.
 
-O custo é o funil: quem se cadastra deixa de entrar na hora. Decisão de produto,
-não de segurança — e o template já está pronto para o dia em que for tomada.
+O custo é o funil: quem se cadastra deixa de entrar na hora. Por isso existe a
+tela `ConfirmarEmail`, com o botão que abre a caixa certa.
