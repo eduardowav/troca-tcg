@@ -1675,26 +1675,36 @@ segue inteiro — é assim que o ambiente de desenvolvimento roda.
 
 ### 11.3 E-mail (fallback)
 
-**Funcionando desde 2026-08-14, pelo SMTP do próprio Gmail.** O plano original
-era Resend com domínio verificado, e ele caiu junto com uma descoberta: o
-`trocatcg.com.br` **não é do projeto** — está registrado por outra pessoa desde
-março de 2025. Sem domínio, o Resend só entrega para o dono da conta.
+**Sai pelo Resend desde 2026-08-25, por `nao-responda@trocatcg.com`.** Antes
+disso, e desde 2026-08-14, saía pelo SMTP de uma conta Gmail dedicada — o plano
+original era Resend e ele tinha caído em 14/08 junto com a descoberta de que o
+`trocatcg.com.br` é de outra pessoa. Com o `trocatcg.com` registrado em 21/08, o
+plano voltou a valer.
 
-O caminho é uma conta Gmail dedicada ao projeto, com verificação em duas etapas e
-uma senha de app, ligada em Custom SMTP do Supabase (`smtp.gmail.com`, porta
-465). São 500 e-mails por dia, de graça.
+A ligação é Custom SMTP do Supabase apontando para `smtp.resend.com` porta 465,
+usuário `resend`, senha sendo uma API key de `sending_access` presa ao domínio.
+São 3.000 e-mails por mês no plano grátis, 100 por dia.
 
-**A escolha é de entregabilidade, não de preço.** Um relay externo (Brevo,
-SendGrid) enviando *como* `@gmail.com` não alinha SPF nem DKIM — passa só porque
-o Gmail publica `p=none` no DMARC. Saindo do próprio Google, os três alinham, que
-é o melhor possível sem domínio. E não use `@icloud.com` como remetente em
-esquema nenhum: a Apple publica `p=quarantine`, e o e-mail de recuperação cairia
-no spam de quem perdeu a senha — a pessoa que menos vai procurar lá.
+**O domínio está verificado no Resend na região `sa-east-1`**, com três registros
+no DNS do Squarespace: o DKIM em `resend._domainkey`, o MX de `send` apontando
+para `feedback-smtp.sa-east-1.amazonses.com`, e o SPF `v=spf1
+include:amazonses.com ~all` em `send`. Mais dois nossos: o mesmo SPF no ápice e
+um DMARC `p=none` em `_dmarc`, com relatório indo para
+`trocatcg.contato@gmail.com`.
 
-Dois detalhes que custaram tempo e ficam escritos:
+**A predefinição "Segurança dos e-mails" do Squarespace teve de sair.** Ela vem
+ligada para domínio que não envia nada: SPF `v=spf1 -all`, DKIM nulo e DMARC
+`p=reject` com alinhamento estrito nos dois. Com o Return-Path do Resend em
+`send.trocatcg.com`, que não alinha estrito com o ápice, aquele `aspf=s`
+derrubaria e-mail legítimo. O `p=none` é o começo, não o fim — endurecer para
+`quarantine` depende de ver relatório limpo primeiro.
 
-- **O *Sender email* tem de ser igual ao *Username*.** Diferente, o Gmail
-  reescreve o remetente e a mensagem chega assinada por outro endereço.
+**E não use `@icloud.com` como remetente em esquema nenhum:** a Apple publica
+`p=quarantine`, e o e-mail de recuperação cairia no spam de quem perdeu a senha
+— a pessoa que menos vai procurar lá.
+
+Dois detalhes de teto que ficam escritos:
+
 - **O teto de envio muda de lugar quando o SMTP entra.** Com o remetente interno
   do Supabase são 2 e-mails por hora, fixos — a cota que estourou com três
   cadastros de teste. Com Custom SMTP o campo passa a ser editável em
@@ -1703,20 +1713,40 @@ Dois detalhes que custaram tempo e ficam escritos:
   cadastros numa tarde, mais reenvios e recuperações de senha, saem todos do
   mesmo balde. Vale olhar em vez de supor: o valor não aparece em nenhuma API
   pública, só ali.
+- **Quem aperta primeiro continua sendo o Supabase.** Os 100/hora dele cabem
+  dentro dos 100/dia do Resend só se o dia inteiro não passar disso — no dia do
+  lançamento é o número a vigiar, e o painel do Resend mostra cada envio.
 
-  Acima de ~75 o Supabase deixa de ser o teto e o Gmail assume. A troca não é
-  neutra: estourar o limite do Supabase dá erro limpo, que `authMensagens.ts`
-  traduz; estourar o do Gmail é falha de SMTP, e o pior caso é o Google tratar a
-  conta como spam e cortar confirmação e recuperação de uma vez. Os 100 são
-  folga declarada, não capacidade.
+### O link do e-mail não passa por `supabase.co`
 
-Serve a um caso só hoje: **recuperação de senha**. A confirmação de conta está
-desligada e as notificações vivem em in-app e push. Isso é decisão, não
-provisório — ver a coluna E-mail da matriz abaixo.
+Os templates montam `{{ .RedirectTo }}?token_hash={{ .TokenHash }}&type=…`, e
+quem troca o token por sessão é o app, em `web/src/lib/linkDeEmail.ts`. Até
+2026-08-25 o botão era `{{ .ConfirmationURL }}`, que é o
+`supabase.co/auth/v1/verify` redirecionando de volta para cá.
 
-Sem domínio próprio a entregabilidade é boa, não ótima. O dia de registrar um
-domínio resolve isto, o `VAPID_SUBJECT` e o endereço público dos termos de uma
-vez — e aí vale voltar ao Resend.
+**Foi a diferença entre spam e caixa de entrada.** Medido no iCloud em 25/08: com
+remetente em `trocatcg.com`, link em `supabase.co` e logo em `onrender.com`, a
+mensagem foi para o lixo eletrônico mesmo entregue, com SPF, DKIM e DMARC os três
+passando. Com tudo no mesmo domínio, chegou na caixa de entrada. Três domínios
+numa mensagem que pede senha é a forma de um phishing, e é o que o filtro lê —
+não o corpo, que já tirava 10/10 no mail-tester.
+
+O ganho de tabela é um defeito que ninguém tinha ligado a isto: antivírus de
+caixa de entrada abre os links da mensagem para inspecionar, e abrir o
+`/auth/v1/verify` **consome** o token, que serve uma vez só. A pessoa clicava
+depois e lia "este link não vale mais". A troca por `token_hash` só roda com
+JavaScript, e scanner de e-mail não executa página.
+
+O token sai da URL com `replaceState` assim que é lido: enquanto está na barra,
+ele é uma senha à mostra — entra no histórico, no `Referer` de qualquer imagem da
+página e em qualquer print pedido pelo suporte.
+
+**Os templates moram no painel do Supabase.** `docs/emails/*.html` é cópia
+versionada; trocar o arquivo não troca o e-mail que sai.
+
+O e-mail serve hoje a dois casos: **recuperação de senha** e **confirmação de
+cadastro** (ligada de novo em 2026-08-21). As notificações do app vivem em in-app
+e push — ver a coluna E-mail da matriz abaixo.
 
 ### Matriz de notificação
 
