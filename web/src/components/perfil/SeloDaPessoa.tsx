@@ -73,11 +73,15 @@ export function SeloDaPessoa({
           title="Assina o PRO e ajuda a manter o TrocaTCG no ar. Não dá prioridade nas trocas."
           className="inline-flex shrink-0"
         >
-          {/* `neutro` e não `marca`: o âmbar já é do FOUNDER, e dois selos
-              idênticos lado a lado não distinguem nada. Também não é `acao`,
-              que é o azul reservado a "aqui se clica" — este não clica.
-              **A cor definitiva é decisão do Eduardo**, olhando rodando. */}
-          <Selo tom="neutro">PRO</Selo>
+          {/* `marca`, o mesmo âmbar do FOUNDER — decisão do Eduardo em
+              2026-08-25, olhando rodando na conta que tem os dois. Ele nasceu
+              `neutro` como marcador de pendência, não como escolha.
+
+              Os dois ficam da mesma cor de propósito: quem tem os dois carrega
+              duas conquistas, e a distinção que importa está no rótulo. `acao`
+              foi descartado — é o azul reservado a "aqui se clica", e este não
+              clica. */}
+          <Selo tom="marca">PRO</Selo>
         </span>
       )}
     </>
