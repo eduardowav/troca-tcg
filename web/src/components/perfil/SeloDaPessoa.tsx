@@ -37,10 +37,13 @@ export function SeloDaPessoa({
   /**
    * Esta pessoa tem o PRO? Vem derivado da API — não é um valor de `selo`.
    *
-   * Separado porque as duas coisas convivem: dá para ser FOUNDER e PRO ao mesmo
-   * tempo, e a coluna `selo` guarda um valor só. Um `selo = 'PRO'` também
-   * precisaria ser apagado toda vez que um plano vence; derivado, ele some
-   * sozinho.
+   * Separado porque as duas coisas coexistem **no dado**: dá para ser FOUNDER e
+   * PRO ao mesmo tempo, e a coluna `selo` guarda um valor só. Um `selo = 'PRO'`
+   * também precisaria ser apagado toda vez que um plano vence; derivado, ele
+   * some sozinho.
+   *
+   * Na tela só um aparece — ver a regra logo abaixo. Continuar recebendo os dois
+   * é o que deixa essa escolha ser de desenho e não de modelagem.
    */
   pro?: boolean
 }) {
@@ -54,8 +57,14 @@ export function SeloDaPessoa({
   // solto. Sem ele o selo vira enfeite: quem não sabe o que é fica com a
   // pergunta "como eu consigo esse?", que aqui não tem resposta — não se
   // consegue, e é essa a graça.
-  // Os dois convivem, e o de reconhecimento vem primeiro: o FOUNDER é sobre
-  // quem a pessoa é, o PRO é sobre o que ela paga, e nessa ordem de importância.
+  // **Um selo por pessoa, e o de reconhecimento ganha.** Decisão do Eduardo em
+  // 2026-08-25. O FOUNDER é sobre quem a pessoa é, o PRO é sobre o que ela
+  // paga, e nessa ordem de importância — quem tem FOUNDER já tem o PRO junto,
+  // por parceria, então mostrar os dois anuncia a mesma coisa duas vezes e
+  // ainda dilui a distinção que importa.
+  //
+  // A regra é `pro && !definicao`, e não uma exceção para o dono do projeto:
+  // vale para qualquer selo de reconhecimento que venha a existir.
   return (
     <>
       {definicao && (
@@ -63,7 +72,7 @@ export function SeloDaPessoa({
           <Selo tom="marca">{definicao.rotulo}</Selo>
         </span>
       )}
-      {pro && (
+      {pro && !definicao && (
         // A explicação diz o que o selo **não** é, e isso não é excesso de
         // zelo: o §9 dos Termos promete que ter o PRO não garante troca e não
         // dá prioridade sobre ninguém. Um selo pago ao lado de um nome, na tela
@@ -73,15 +82,15 @@ export function SeloDaPessoa({
           title="Assina o PRO e ajuda a manter o TrocaTCG no ar. Não dá prioridade nas trocas."
           className="inline-flex shrink-0"
         >
-          {/* `marca`, o mesmo âmbar do FOUNDER — decisão do Eduardo em
-              2026-08-25, olhando rodando na conta que tem os dois. Ele nasceu
-              `neutro` como marcador de pendência, não como escolha.
+          {/* `acao`, o azul da marca — decisão do Eduardo em 2026-08-25,
+              olhando rodando na conta que tem os dois. Ele nasceu `neutro`
+              como marcador de pendência, passou pelo âmbar e parou aqui.
 
-              Os dois ficam da mesma cor de propósito: quem tem os dois carrega
-              duas conquistas, e a distinção que importa está no rótulo. `acao`
-              foi descartado — é o azul reservado a "aqui se clica", e este não
-              clica. */}
-          <Selo tom="marca">PRO</Selo>
+              O azul é o mesmo da ação primária, e o risco disso era o selo ser
+              lido como "aqui se clica". Deixou de ser risco quando os dois
+              pararam de conviver: sozinho na linha, sem nada azul por perto
+              disputando, ele lê como identidade e não como botão. */}
+          <Selo tom="acao">PRO</Selo>
         </span>
       )}
     </>
