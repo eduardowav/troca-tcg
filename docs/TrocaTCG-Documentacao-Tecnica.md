@@ -3379,6 +3379,60 @@ primeiro e-mail saiu dele em 25/08. Remetente novo cai no spam fazendo tudo
 certo, e isso é tempo e volume. O DMARC está em `p=none` de propósito: endurecer
 para `quarantine` depende de ver relatório limpo primeiro.
 
+**O contato do projeto virou `contato@trocatcg.com`**, recebendo pelo domínio
+personalizado do iCloud+ e provado com um e-mail saindo do próprio remetente do
+app. Saiu do Gmail nos Termos, em Configurações, em Instalar, no `VAPID_SUBJECT`
+e nos templates. Configurações e Instalar traziam o endereço **escrito à mão** e
+passaram a usar a constante `CONTATO` dos Termos: três cópias de um canal de LGPD
+é como as três passam a dizer endereços diferentes, e a desatualizada vira
+promessa quebrada num documento que promete.
+
+O rodapé dos cinco templates ganhou "Este endereço não recebe respostas". O nome
+do remetente não conta como aviso — no celular o cliente de e-mail mostra
+"TrocaTCG", não o endereço, e gente responde, principalmente ao de recuperação de
+senha. É também o que dispensa `nao-responda@` de ser caixa de verdade.
+
+### Os selos, decididos olhando rodando — 2026-08-25
+
+Duas decisões do Eduardo no mesmo dia, e a segunda foi o que liberou a primeira.
+
+**O PRO ficou azul** (`tom="acao"`). Ele nasceu `neutro` em `0c29af1` como
+marcador de pendência, passou pelo âmbar por algumas horas e parou aqui. O azul é
+o da ação primária, e o risco era o selo ser lido como "aqui se clica".
+
+**Quem tem FOUNDER vê só o FOUNDER** — a regra é `pro && !definicao`, geral e não
+exceção para a conta do dono. Quem tem selo de reconhecimento já tem o PRO junto,
+então os dois lado a lado anunciavam a mesma coisa duas vezes. E foi isso que
+tirou o risco do azul: sozinho na linha, sem nada azul por perto disputando, o
+selo lê como identidade e não como botão.
+
+O componente continua recebendo `selo` e `pro` **separados**. Coexistir no dado é
+o que deixa esta ser escolha de desenho e não de modelagem — mesmo motivo de o
+PRO nunca ter virado valor da coluna `selo`.
+
+**O selo saiu de ao lado do nome e foi para cima dele**, na ficha do perfil. Lado
+a lado ele comia a largura e o `truncate` cortava o resto — `@eduar…` num card
+cuja função é dizer com quem se está falando.
+
+### Três defeitos achados usando o app — 2026-08-25
+
+Nenhum apareceu em teste; os três apareceram com o Eduardo mexendo no app.
+
+**A busca trazia carta errada.** `snorlax` devolvia 46 acertos e 24 intrusos
+(`snom`, `snorunt`). Ver a seção de busca do `INFRA.md`: a similaridade virou
+rede, e só entra quando nada casou.
+
+**O "Voltar" dos Termos jogava quem estava logado na tela de login.** Era
+`<Link to="/entrar">`, endereço fixo — e quem abre os termos por Configurações
+está dentro do app. Agora volta para onde a pessoa estava; o `location.key`
+distingue quem chegou por link compartilhado, e para essa pessoa o destino
+depende de haver sessão. Virou `<button>`, porque deixou de ser um endereço.
+
+**A marca abria a primeira tela à esquerda.** Centralizada: ali o lockup não é
+cabeçalho de navegação, é apresentação. O texto abaixo fica à esquerda — centrar
+parágrafo de três linhas obriga o olho a procurar onde cada linha começa.
+
+
 ### Fila atual (agosto de 2026)
 
 O roadmap acima é o plano original, e ele foi cumprido até a Fase 4 — com a
@@ -4187,6 +4241,41 @@ jobs:
 ---
 
 ## 19. Testes e CI/CD
+
+### Os comandos que valem, e um que mente
+
+**Frontend: `cd web && npm run build`.** É o único que confere tipo, e é o que o
+Render roda.
+
+**`npx tsc --noEmit` dentro de `web/` não confere nada.** O `tsconfig.json` de lá
+é arquivo de **referências de projeto**, sem `files`: o comando termina com
+sucesso sem olhar uma linha. O build de verdade é `tsc -b && vite build`.
+
+Isto custou caro em 2026-08-25. Três mudanças de tela foram anunciadas como "no
+ar" apoiadas nesse typecheck falso, enquanto o deploy falhava com
+`src/routes/LabPlanos.tsx(158,10): error TS2741: Property 'eFundador' is
+missing` e o site seguia servindo o build anterior por uma hora e vinte. Quem
+percebeu foi o Eduardo, olhando o app: "a logo não está centralizada".
+
+**Um typecheck que sempre passa é pior que nenhum** — ele produz confiança e
+some com o sinal.
+
+Duas armadilhas de vizinhança que vieram no mesmo episódio:
+
+- **O filtro de caminho do Render esconde a falha.** O site só constrói quando o
+  commit toca `web/**`, e a API quando toca `api/**`. Depois do build quebrado,
+  três commits de `docs/` passaram sem nova tentativa, e o deploy podre ficou
+  parado sem emitir novo erro.
+- **Quem espelha a tela também muda.** `LabPlanos.tsx` reusa o componente de topo
+  da `Planos.tsx`. Mudar a prop de um sem o outro quebra o build — e passar
+  `false` só para calar o compilador faz o laboratório mentir, que é exatamente o
+  que ele existe para não fazer.
+
+**Push não é deploy.** Antes de dizer que algo está no ar, conferir o `status`
+do deploy no Render. `live` é o que vale.
+
+**Backend: `pytest` e `ruff`** pelo interpretador-base do uv — o `.exe` dentro do
+`.venv` cai na política de App Control desta máquina.
 
 ### Estratégia
 

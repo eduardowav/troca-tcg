@@ -379,13 +379,16 @@ Nenhuma destas se resolve com um commit. Todas são do Eduardo.
    conselho de tela e passa a ser a única defesa desse tipo que o app tem. Ele
    não sabe o que vazou; sabe o que é adivinhável. É menos, e por enquanto é o
    que há.
-2. **Mínimo de senha no servidor.** O `MINIMO_SENHA` de `lib/forcaSenha.ts` é do
-   cliente, e quem chama `supabase.co` direto passa com 6 — o padrão do Supabase.
-   Subir para 8 no painel alinha os dois lados. **Medido em 2026-08-21, ainda
-   em 6:** um `signup` com senha de três caracteres responde `422 weak_password`
-   / "Password should be at least 6 characters" — o número vem do servidor, não
-   da documentação, e a conta não chega a ser criada. **Validação de cliente não
-   é validação.** Desde 2026-08-21 o cadastro e a senha nova medem a força no
+2. ✅ **Mínimo de senha no servidor — FECHADO em 2026-08-21.** O `MINIMO_SENHA`
+   de `lib/forcaSenha.ts` é do cliente, e quem chama `supabase.co` direto passava
+   com 6, o padrão do Supabase. Subiu para 8 no painel, e os dois lados alinham.
+
+   **Remedido em 2026-08-25**, porque este parágrafo ainda dizia "ainda em 6" e
+   número de painel não se confere lendo: um `signup` com senha de seis
+   caracteres responde `422 weak_password` / "Password should be at least 8
+   characters", e a conta não chega a ser criada. **Validação de cliente não é
+   validação** — e documentação sobre painel envelhece calada, que é o motivo de
+   a medição estar escrita junto do resultado. Desde 2026-08-21 o cadastro e a senha nova medem a força no
    navegador e barram o que é adivinhável (lista das mais usadas, nome/@/e-mail
    da própria pessoa, vocabulário de carta), mas isso é conselho de tela: a
    barreira de verdade continua sendo estes dois interruptores.
@@ -393,6 +396,15 @@ Nenhuma destas se resolve com um commit. Todas são do Eduardo.
    força bruta em credenciais.
 4. **`pg_trgm` no schema `public`** — WARN do linter. Mover custa reconstruir os
    índices da busca por ganho nenhum. Recomendação: deixar.
+5. **Endurecer o DMARC do `trocatcg.com`.** Está em `p=none` desde 2026-08-25,
+   de propósito: o domínio passou a mandar e-mail naquele dia e o Return-Path do
+   Resend é `send.trocatcg.com`, que não alinha estrito com o ápice. Subir para
+   `quarantine` depende de ver relatório limpo — eles chegam em
+   `trocatcg.contato@gmail.com`. **E o SPF do ápice é um registro só**, com
+   `include:amazonses.com` e `include:icloud.com`: criar um segundo TXT de SPF
+   invalida os dois, e o sintoma seria o e-mail do app parar de passar. É a
+   armadilha desta parte do DNS, e ela volta toda vez que um serviço novo pedir
+   "adicione este SPF".
 
 ---
 
