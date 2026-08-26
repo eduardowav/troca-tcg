@@ -3223,6 +3223,28 @@ varredura de 2026-08-11, detalhada no bloco "Segurança do app" abaixo.
     `SEGURANCA.md`, e-mail digitado errado viraria conta que nunca recupera a
     senha — some da base no dia seguinte e ninguém descobre por quê.
 
+    **Dois itens de divulgação entram aqui, pedidos pelo Eduardo em
+    2026-08-25.** Ficam presos ao 17 e não viram fase própria, porque não são
+    trabalho paralelo: existem para encher o evento, e um lançamento com trinta
+    pessoas na sala não depende de alcance, depende de convite.
+
+    17a. **Terminar o Instagram.** O perfil existe e está pela metade. O que
+    fecha o item: bio, foto, destaque de "como funciona" e as primeiras
+    publicações — o suficiente para quem receber o convite e for conferir quem
+    somos não encontrar um perfil vazio. **Perfil vazio custa mais que perfil
+    nenhum:** ele é a única prova pública de que o app tem gente atrás, e quem
+    abre um feed em branco antes de se cadastrar não se cadastra.
+
+    17b. **Fazer as imagens de divulgação.** Post e story para o convite,
+    cartaz para o dia do torneio, e a arte que acompanha o link quando alguém
+    manda no grupo. A prévia do link já funciona — a `og:image` é absoluta e
+    aponta para `trocatcg.com` desde que o DNS resolveu —, então isto é peça
+    de rede social, não meta tag.
+
+    O texto delas não é decisão de engenharia: é voz de marca, e o Eduardo
+    decide. O que a doc registra é que **os dois precisam existir antes do
+    convite sair**, e não depois — convite mandado num grupo é uma bala só.
+
 **Fase 5 — depois de lançar.**
 
 18. Tela de três pontas da triangulação. O motor está pronto e desligado.
